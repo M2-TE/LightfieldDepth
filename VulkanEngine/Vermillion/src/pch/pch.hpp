@@ -27,3 +27,8 @@
 
 #define VULKAN_HPP_NO_SPACESHIP_OPERATOR
 #include <vulkan/vulkan.hpp>
+
+// Utils
+#include "utils/logging.hpp"
+#include "utils/timer.hpp"
+#include "utils/rule_of_five.hpp"

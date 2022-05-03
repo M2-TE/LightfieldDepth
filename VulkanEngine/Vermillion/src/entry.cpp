@@ -1,14 +1,23 @@
 #include "pch.hpp"
 
+#include "core/application.hpp"
+
+#define SYSTEM_PAUSE() system("pause")
+
 int main() {
-    uint32_t extensionCount = 0;
-    vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+    Application app;
 
-    std::cout << extensionCount << " extensions supported\n";
+    try {
 
-    glm::mat4 matrix;
-    glm::vec4 vec;
-    auto test = matrix * vec;
+        app.run();
+    }
+    catch (const std::exception& e) {
 
-    return 0;
+        VMI_LOG(e.what());
+        SYSTEM_PAUSE();
+        return EXIT_FAILURE;
+    }
+
+    SYSTEM_PAUSE();
+    return EXIT_SUCCESS;
 }

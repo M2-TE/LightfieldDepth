@@ -45,9 +45,13 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
+    <OutDir>$(SolutionDir)bin\$(SDKIdentifier)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)bin-int\$(SDKIdentifier)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
+    <OutDir>$(SolutionDir)bin\$(SDKIdentifier)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)bin-int\$(SDKIdentifier)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -97,7 +101,14 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\core\application.hpp" />
     <ClInclude Include="src\pch\pch.hpp" />
+    <ClInclude Include="src\utils\logging.hpp" />
+    <ClInclude Include="src\utils\rule_of_five.hpp" />
+    <ClInclude Include="src\utils\timer.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="cpp.hint" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
