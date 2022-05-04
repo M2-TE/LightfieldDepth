@@ -7,7 +7,10 @@
 class Application
 {
 public:
-	Application() = default;
+	Application()
+	{
+		init();
+	}
 	~Application()
 	{
 		deviceManager.destroy();
@@ -18,12 +21,29 @@ public:
 public:
 	void run()
 	{
-		init();
+		bool bRunning = true;
+		while (bRunning) {
+			// Poll for user input (could move to window.hpp)
+			SDL_Event event;
+			while (SDL_PollEvent(&event)) {
 
-		for (;;) {
-			update();
-			break;
+				switch (event.type) {
+
+				case SDL_QUIT:
+					bRunning = false;
+					break;
+
+				default:
+					// Do nothing.
+					break;
+				}
+			}
+
+			//DrawFrame();
+			//SDL_Delay(10);
 		}
+
+		deviceManager.get_logical_device().waitIdle();
 	}
 
 private:
@@ -31,10 +51,7 @@ private:
 	{
 		window.init();
 
-		auto& instance = window.get_vulkan_instance();
-		auto& surface = window.get_vulkan_surface();
-
-		deviceManager.init(instance, surface);
+		deviceManager.init(window.get_vulkan_instance(), window.get_vulkan_surface());
 		deviceManager.create_logical_device();
 
 		//CreateSwapChain();

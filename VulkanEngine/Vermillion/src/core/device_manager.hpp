@@ -8,7 +8,7 @@ public:
 	ROF_COPY_MOVE_DELETE(DeviceManager)
 
 public:
-	void init(vk::Instance instance, const vk::SurfaceKHR& surface)
+	void init(vk::Instance& instance, const vk::SurfaceKHR& surface)
 	{
 		std::vector<vk::PhysicalDevice> physicalDevices = instance.enumeratePhysicalDevices();
 		if (physicalDevices.empty()) VMI_ERR("Failed to find GPUs with Vulkan support.");
