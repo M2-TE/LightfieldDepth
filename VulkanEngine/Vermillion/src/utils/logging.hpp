@@ -13,42 +13,38 @@
 #endif
 
 #ifdef _DEBUG
-namespace VMI
+class Logging
 {
-	class Logging
+public:
+	static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
+		VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType,
+		const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
 	{
-	public:
-		static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
-			VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType,
-			const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
-		{
-			if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
-				std::cerr << "Validation layer: " << pCallbackData->pMessage << std::endl;
-			}
+		if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) VMI_ERR(pCallbackData->pMessage);
+		else VMI_LOG(pCallbackData->pMessage);
 
-			return VK_FALSE;
-		}
+		return VK_FALSE;
+	}
 
-		static vk::DebugUtilsMessengerCreateInfoEXT SetupDebugMessenger(std::vector<const char*>& extensions)
-		{
-			extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+	static vk::DebugUtilsMessengerCreateInfoEXT SetupDebugMessenger(std::vector<const char*>& extensions)
+	{
+		extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
-			vk::DebugUtilsMessengerCreateInfoEXT messengerInfo = vk::DebugUtilsMessengerCreateInfoEXT()
-				.setMessageSeverity(
-					//vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo |
-					//vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose |
-					vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |
-					vk::DebugUtilsMessageSeverityFlagBitsEXT::eError)
-				.setMessageType(
-					vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral |
-					vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation |
-					vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance)
-				.setPfnUserCallback(DebugCallback)
-				.setPUserData(nullptr);
+		vk::DebugUtilsMessengerCreateInfoEXT messengerInfo = vk::DebugUtilsMessengerCreateInfoEXT()
+			.setMessageSeverity(
+				//vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo |
+				//vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose |
+				vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |
+				vk::DebugUtilsMessageSeverityFlagBitsEXT::eError)
+			.setMessageType(
+				vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral |
+				vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation |
+				vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance)
+			.setPfnUserCallback(DebugCallback)
+			.setPUserData(nullptr);
 
 
-			return messengerInfo;
-		}
-	};
-}
+		return messengerInfo;
+	}
+};
 #endif
