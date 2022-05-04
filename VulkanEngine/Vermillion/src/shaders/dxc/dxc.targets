@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+	<ItemGroup>
+		<!-- Include definitions from dxc.xml, which defines the DXCShader item. -->
+		<PropertyPageSchema Include="$(MSBuildThisFileDirectory)dxc.xml" />
+
+		<!-- Hook up DXCShader items to be built by the DXC target. -->
+		<AvailableItemName Include="DXCShaderVS">
+			<Targets>DXCVS</Targets>
+		</AvailableItemName>
+		<AvailableItemName Include="DXCShaderPS">
+			<Targets>DXCPS</Targets>
+		</AvailableItemName>
+	</ItemGroup>
+
+	<!-- Vertex Shaders -->
+	<Target
+		Name="DXCVS"
+		Condition="'@(DXCShaderVS)' != ''"
+		BeforeTargets="ClCompile">
+		<Message Importance="High" Text=" " />
+		<Message Importance="High" Text="------ Building  shader headers ------" />
+
+		<!-- Setup metadata for custom build tool -->
+		<ItemGroup>
+			<DXCShaderVS>
+				<AdditionalInputs>$(ShaderHeaders)</AdditionalInputs>
+				<Message>%(Filename)%(Extension)</Message>
+				<Command>
+					$(VULKAN_SDK)/Bin/dxc.exe -spirv -T vs_6_0 -E main %(Identity) -Fh src/shaders/headers/%(Filename).vs.h -Vn %(Filename)_vs
+				</Command>
+				<Outputs>src/shaders/headers/%(Filename).vs.h</Outputs>
+			</DXCShaderVS>
+		</ItemGroup>
+
+		<!-- Compile by forwarding to the Custom Build Tool infrastructure -->
+		<CustomBuild Sources="@(DXCShaderVS)" MinimalRebuildFromTracking="true" TrackerLogDirectory="$(TLogLocation)" />
+	</Target>
+
+	<!-- Pixel Shaders -->
+	<Target
+		Name="DXCPS"
+		Condition="'@(DXCShaderPS)' != ''"
+		BeforeTargets="ClCompile">
+		
+		<!-- Setup metadata for custom build tool -->
+		<ItemGroup>
+			<DXCShaderPS>
+				<Message>%(Filename)%(Extension)</Message>
+				<Command>
+					$(VULKAN_SDK)/Bin/dxc.exe -spirv -T ps_6_0 -E main %(Identity) -Fh src/shaders/headers/%(Filename).ps.h -Vn %(Filename)_ps
+				</Command>
+				<Outputs>src/shaders/headers/%(Filename).ps.h</Outputs>
+			</DXCShaderPS>
+		</ItemGroup>
+
+		<!-- Compile by forwarding to the Custom Build Tool infrastructure -->
+		<CustomBuild Sources="@(DXCShaderPS)" MinimalRebuildFromTracking="true" TrackerLogDirectory="$(TLogLocation)" />
+
+		<Message Importance="High" Text="------ Completed shader headers ------" />
+		<Message Importance="High" Text=" " />
+	</Target>
+</Project>

@@ -23,6 +23,7 @@ public:
 
 	vk::Instance& get_vulkan_instance() { return instance; }
 	vk::SurfaceKHR& get_vulkan_surface() { return surface; }
+	SDL_Window* get_window() { return pWindow; }
 
 private:
 	void init_sdl_window()

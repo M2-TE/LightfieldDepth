@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ProjectSchemaDefinitions xmlns="http://schemas.microsoft.com/build/2009/properties">
+	 <!--Associate DXCShaderVS item type with .vs files--> 
+	<ItemType Name="DXCShaderVS" DisplayName="DXC Vertex Shader" />
+	<ContentType Name="DXCShaderVS" ItemType="DXCShaderVS" DisplayName="DXC Vertex Shader" />
+	<FileExtension Name=".vs" ContentType="DXCShaderVS" />
+
+	<!--Associate DXCShaderVS item type with .ps files-->
+	<ItemType Name="DXCShaderPS" DisplayName="DXC Pixel Shader" />
+	<ContentType Name="DXCShaderPS" ItemType="DXCShaderPS" DisplayName="DXC Pixel Shader" />
+	<FileExtension Name=".ps" ContentType="DXCShaderPS" />
+</ProjectSchemaDefinitions>

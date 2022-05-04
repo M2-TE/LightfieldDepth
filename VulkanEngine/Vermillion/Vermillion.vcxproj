@@ -103,6 +103,7 @@
   <ItemGroup>
     <ClInclude Include="src\core\application.hpp" />
     <ClInclude Include="src\core\device_manager.hpp" />
+    <ClInclude Include="src\core\device_wrapper.hpp" />
     <ClInclude Include="src\core\renderer.hpp" />
     <ClInclude Include="src\core\window.hpp" />
     <ClInclude Include="src\pch\pch.hpp" />
@@ -112,8 +113,23 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />
+    <None Include="src\shaders\dxc\dxc.targets" />
+  </ItemGroup>
+  <ItemGroup>
+    <DXCShaderVS Include="src\shaders\shader.vs">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+      <FileType>Document</FileType>
+    </DXCShaderVS>
+  </ItemGroup>
+  <ItemGroup>
+    <Xml Include="src\shaders\dxc\dxc.xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <DXCShaderPS Include="src\shaders\shader.ps" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
+    <Import Project="src\shaders\dxc\dxc.targets" />
   </ImportGroup>
 </Project>

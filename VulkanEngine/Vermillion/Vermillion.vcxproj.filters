@@ -47,8 +47,21 @@
     <ClInclude Include="src\core\window.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\core\device_wrapper.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />
+    <None Include="src\shaders\dxc\dxc.targets" />
+  </ItemGroup>
+  <ItemGroup>
+    <Xml Include="src\shaders\dxc\dxc.xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <DXCShaderPS Include="src\shaders\shader.ps" />
+  </ItemGroup>
+  <ItemGroup>
+    <DXCShaderVS Include="src\shaders\shader.vs" />
   </ItemGroup>
 </Project>

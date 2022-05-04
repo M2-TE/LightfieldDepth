@@ -33,7 +33,7 @@ private:
 		deviceManager.init(window.get_vulkan_instance(), window.get_vulkan_surface());
 		deviceManager.create_logical_device();
 
-		renderer.init();
+		renderer.init(deviceManager, window);
 	}
 	bool update()
 	{
