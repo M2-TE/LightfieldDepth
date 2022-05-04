@@ -41,6 +41,12 @@
     <ClInclude Include="src\core\device_manager.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\core\renderer.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\core\window.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />

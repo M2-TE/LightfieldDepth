@@ -21,21 +21,20 @@ public:
 	{
 		DeviceWrapper& deviceWrapper = devices[iCurrentDevice];
 
-		float qPriority = 1.0f;
 		std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
-		vk::DeviceQueueCreateInfo qCreateInfo;
-		// graphics queue
-		qCreateInfo = vk::DeviceQueueCreateInfo()
-			.setQueueFamilyIndex(deviceWrapper.indices.iGraphicsFamily.value())
-			.setQueueCount(1)
-			.setPQueuePriorities(&qPriority);
-		queueCreateInfos.push_back(qCreateInfo);
-		// present queue
-		qCreateInfo = vk::DeviceQueueCreateInfo()
-			.setQueueFamilyIndex(deviceWrapper.indices.iPresentFamily.value())
-			.setQueueCount(1)
-			.setPQueuePriorities(&qPriority);
-		queueCreateInfos.push_back(qCreateInfo);
+		std::set<uint32_t> uniqueQFamilies = { 
+			deviceWrapper.indices.iGraphicsFamily.value(), 
+			deviceWrapper.indices.iPresentFamily.value() 
+		};
+
+		float qPriority = 1.0f;
+		for (uint32_t queueFamily : uniqueQFamilies) {
+			vk::DeviceQueueCreateInfo qCreateInfo = vk::DeviceQueueCreateInfo()
+				.setQueueFamilyIndex(queueFamily)
+				.setQueueCount(1)
+				.setPQueuePriorities(&qPriority);
+			queueCreateInfos.push_back(qCreateInfo);
+		}
 
 		vk::PhysicalDeviceFeatures deviceFeatures = vk::PhysicalDeviceFeatures();
 		// TODO
