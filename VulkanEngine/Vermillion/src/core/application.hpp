@@ -22,9 +22,9 @@ private:
 		create_vulkan_instance();
 		create_vulkan_surface();
 
-		deviceManager.update(instance, surface);
+		deviceManager.init(instance, surface);
+		deviceManager.create_logical_device(device);
 
-		//CreateLogicalDevice();
 		//CreateSwapChain();
 		//CreateImageViews();
 		//CreateRenderPass();
@@ -103,7 +103,6 @@ private:
 		surface = vk::SurfaceKHR(c_surface);
 	}
 
-
 private:
 	DeviceManager deviceManager;
 
@@ -116,7 +115,6 @@ private:
 	SDL_Window* pWindow = nullptr;
 	vk::Instance instance;
 	vk::SurfaceKHR surface;
-	vk::PhysicalDevice physicalDevice;
 	vk::Device device;
 	vk::Queue qGraphics, qPresent;
 	vk::SwapchainKHR swapchain;
