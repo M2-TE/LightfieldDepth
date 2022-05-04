@@ -2,9 +2,8 @@
 #include "core/application.hpp"
 
 int main() {
-    Application app;
-
     try {
+        Application app;
         app.run();
     }
     catch (const std::exception& e) {

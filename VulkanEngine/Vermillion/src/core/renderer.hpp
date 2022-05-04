@@ -2,9 +2,30 @@
 
 class Renderer
 {
-	// TODO
+public:
+	Renderer() = default;
+	~Renderer() = default;
+	ROF_COPY_MOVE_DELETE(Renderer)
+
+public:
+	void init()
+	{
+
+
+		//CreateSwapChain();
+		//CreateImageViews();
+		//CreateRenderPass();
+		//CreateGraphicsPipeline();
+		//CreateFramebuffers();
+		//CreateCommandPool();
+		//CreateCommandBuffers();
+		//CreateSyncObjects();
+	}
+
 private:
 
+
+private:
 	// lazy constants (settings?)
 	const int MAX_FRAMES_IN_FLIGHT = 2;
 

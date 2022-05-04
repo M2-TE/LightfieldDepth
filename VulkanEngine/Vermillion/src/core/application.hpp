@@ -21,28 +21,7 @@ public:
 public:
 	void run()
 	{
-		bool bRunning = true;
-		while (bRunning) {
-			// Poll for user input (could move to window.hpp)
-			SDL_Event event;
-			while (SDL_PollEvent(&event)) {
-
-				switch (event.type) {
-
-				case SDL_QUIT:
-					bRunning = false;
-					break;
-
-				default:
-					// Do nothing.
-					break;
-				}
-			}
-
-			//DrawFrame();
-			//SDL_Delay(10);
-		}
-
+		while (update()) {}
 		deviceManager.get_logical_device().waitIdle();
 	}
 
@@ -54,18 +33,22 @@ private:
 		deviceManager.init(window.get_vulkan_instance(), window.get_vulkan_surface());
 		deviceManager.create_logical_device();
 
-		//CreateSwapChain();
-		//CreateImageViews();
-		//CreateRenderPass();
-		//CreateGraphicsPipeline();
-		//CreateFramebuffers();
-		//CreateCommandPool();
-		//CreateCommandBuffers();
-		//CreateSyncObjects();
+		renderer.init();
 	}
-	void update()
+	bool update()
 	{
-		// TODO
+		// Poll for user input (encapsulate in input.hpp?)
+		SDL_Event event;
+		while (SDL_PollEvent(&event)) {
+			switch (event.type) {
+				case SDL_QUIT: return false;
+				default: break;
+			}
+		}
+
+		//DrawFrame();
+		SDL_Delay(10); // reduce strain on system for now
+		return true;
 	}
 
 private:
