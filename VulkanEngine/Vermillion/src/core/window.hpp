@@ -3,11 +3,22 @@
 class Window
 {
 public:
-	void init(vk::DispatchLoaderDynamic& dld, vk::DebugUtilsMessengerEXT& debugMessenger)
+	Window() = default;
+	~Window() = default;
+	ROF_COPY_MOVE_DELETE(Window)
+
+public:
+	void init()
 	{
 		init_sdl_window();
-		create_vulkan_instance(dld, debugMessenger);
+		create_vulkan_instance();
 		create_vulkan_surface();
+	}
+	void destroy()
+	{
+		instance.destroySurfaceKHR(surface);
+		DEBUG_ONLY(instance.destroyDebugUtilsMessengerEXT(debugMessenger, nullptr, dld));
+		instance.destroy();
 	}
 
 	vk::Instance& get_vulkan_instance() { return instance; }
@@ -23,7 +34,7 @@ private:
 		pWindow = SDL_CreateWindow(WND_NAME.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WIDTH, HEIGHT, SDL_WINDOW_VULKAN);
 		if (pWindow == NULL) VMI_SDL_ERR();
 	}
-	void create_vulkan_instance(vk::DispatchLoaderDynamic& dld, vk::DebugUtilsMessengerEXT& debugMessenger)
+	void create_vulkan_instance()
 	{
 		// Look for all the available extensions
 		std::vector<vk::ExtensionProperties> availableExtensions = vk::enumerateInstanceExtensionProperties();
@@ -54,7 +65,7 @@ private:
 			.setApiVersion(VK_API_VERSION_1_0);
 
 		// Use validation layer on debug
-		DEBUG_ONLY(requiredLayers.push_back("VK_LAYER_KHRONOS_validation"));
+		DEBUG_ONLY(layers.push_back("VK_LAYER_KHRONOS_validation"));
 
 		// Create instance info
 		vk::InstanceCreateInfo createInfo = vk::InstanceCreateInfo()
@@ -64,8 +75,8 @@ private:
 			.setEnabledExtensionCount(static_cast<uint32_t>(extensions.size()))
 			.setPpEnabledExtensionNames(extensions.data())
 			// Layers
-			.setEnabledLayerCount(static_cast<uint32_t>(requiredLayers.size()))
-			.setPpEnabledLayerNames(requiredLayers.data())
+			.setEnabledLayerCount(static_cast<uint32_t>(layers.size()))
+			.setPpEnabledLayerNames(layers.data())
 			DEBUG_ONLY(.setPNext(&messengerInfo));
 
 		// Finally, create actual instance
@@ -86,8 +97,10 @@ private:
 	SDL_Window* pWindow = nullptr;
 	vk::Instance instance;
 	vk::SurfaceKHR surface;
+	DEBUG_ONLY(vk::DispatchLoaderDynamic dld);
+	DEBUG_ONLY(vk::DebugUtilsMessengerEXT debugMessenger);
 
-	std::vector<const char*> requiredLayers;
+	std::vector<const char*> layers;
 	std::vector<const char*> extensions;
 
 	// lazy constants (settings?)

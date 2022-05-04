@@ -17,7 +17,11 @@ public:
 
 		pick_best_physical_device(surface);
 	}
-	void create_logical_device(vk::Device& logicalDevice)
+	void destroy()
+	{
+		logicalDevice.destroy();
+	}
+	void create_logical_device()
 	{
 		DeviceWrapper& deviceWrapper = devices[iCurrentDevice];
 
@@ -37,7 +41,7 @@ public:
 		}
 
 		vk::PhysicalDeviceFeatures deviceFeatures = vk::PhysicalDeviceFeatures();
-		// TODO
+		// TODO: set specific features here
 
 		std::vector<const char*> requiredDeviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 		vk::DeviceCreateInfo createInfo = vk::DeviceCreateInfo()
@@ -53,6 +57,7 @@ public:
 		// Create logical device
 		logicalDevice = deviceWrapper.physicalDevice.createDevice(createInfo);
 	}
+	vk::Device& get_logical_device() { return logicalDevice; }
 
 private:
 	struct DeviceWrapper
@@ -171,6 +176,7 @@ private:
 
 
 private:
+	vk::Device logicalDevice;
 	std::vector<DeviceWrapper> devices;
 	int iCurrentDevice = -1;
 };
