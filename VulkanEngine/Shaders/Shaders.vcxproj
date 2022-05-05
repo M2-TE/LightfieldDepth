@@ -13,19 +13,19 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{1b33be85-1a32-47de-89c0-56588257f8e1}</ProjectGuid>
-    <RootNamespace>Vermillion</RootNamespace>
+    <ProjectGuid>{73f690a0-099f-43f7-bdd5-819869ddae07}</ProjectGuid>
+    <RootNamespace>Shaders</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
@@ -45,13 +45,13 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <OutDir>$(SolutionDir)bin\$(SDKIdentifier)\$(Configuration)\</OutDir>
-    <IntDir>$(SolutionDir)bin-int\$(SDKIdentifier)\$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)bin\lib\$(SDKIdentifier)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)bin-int\lib\$(SDKIdentifier)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>$(SolutionDir)bin\$(SDKIdentifier)\$(Configuration)\</OutDir>
-    <IntDir>$(SolutionDir)bin-int\$(SDKIdentifier)\$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)bin\lib\$(SDKIdentifier)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)bin-int\lib\$(SDKIdentifier)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -59,16 +59,11 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)Shaders\src\include\;$(ProjectDir)src\pch;$(ProjectDir)src\;$(VULKAN_SDK)\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpp17</LanguageStandard>
-      <PrecompiledHeader>Use</PrecompiledHeader>
-      <PrecompiledHeaderFile>pch.hpp</PrecompiledHeaderFile>
+      <AdditionalIncludeDirectories>$(ProjectDir)src\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(VULKAN_SDK)\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>vulkan-1.lib;SDL2.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -79,47 +74,37 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)Shaders\src\include\;$(ProjectDir)src\pch;$(ProjectDir)src\;$(VULKAN_SDK)\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpp17</LanguageStandard>
-      <PrecompiledHeader>Use</PrecompiledHeader>
-      <PrecompiledHeaderFile>pch.hpp</PrecompiledHeaderFile>
+      <AdditionalIncludeDirectories>$(ProjectDir)src\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(VULKAN_SDK)\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>vulkan-1.lib;SDL2.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="src\entry.cpp" />
-    <ClCompile Include="src\pch\pch.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
-    </ClCompile>
+    <None Include="src\dxc\dxc.targets" />
+    <DXCShaderPS Include="src\shader.ps">
+      <FileType>Document</FileType>
+    </DXCShaderPS>
+    <DXCShaderVS Include="src\shader.vs">
+      <FileType>Document</FileType>
+    </DXCShaderVS>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\core\application.hpp" />
-    <ClInclude Include="src\core\device_manager.hpp" />
-    <ClInclude Include="src\core\device_wrapper.hpp" />
-    <ClInclude Include="src\core\renderer.hpp" />
-    <ClInclude Include="src\core\shader_includer.hpp" />
-    <ClInclude Include="src\core\window.hpp" />
-    <ClInclude Include="src\pch\pch.hpp" />
-    <ClInclude Include="src\utils\logging.hpp" />
-    <ClInclude Include="src\utils\rule_of_five.hpp" />
-    <ClInclude Include="src\utils\timer.hpp" />
+    <Xml Include="src\dxc\dxc.xml" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="cpp.hint" />
+    <ClCompile Include="src\include\shaders.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Shaders\Shaders.vcxproj">
-      <Project>{73f690a0-099f-43f7-bdd5-819869ddae07}</Project>
-    </ProjectReference>
+    <ClInclude Include="src\headers\shader.ps.hpp" />
+    <ClInclude Include="src\headers\shader.vs.hpp" />
+    <ClInclude Include="src\include\shaders.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  <ImportGroup Label="ExtensionTargets" />
+  <ImportGroup Label="ExtensionTargets">
+    <Import Project="src\dxc\dxc.targets" />
+  </ImportGroup>
 </Project>

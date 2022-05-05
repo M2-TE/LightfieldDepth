@@ -15,46 +15,31 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\entry.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\pch\pch.cpp">
+    <None Include="src\dxc\dxc.targets" />
+  </ItemGroup>
+  <ItemGroup>
+    <Xml Include="src\dxc\dxc.xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <DXCShaderPS Include="src\shader.ps" />
+  </ItemGroup>
+  <ItemGroup>
+    <DXCShaderVS Include="src\shader.vs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\include\shaders.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\pch\pch.hpp">
+    <ClInclude Include="src\include\shaders.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\core\application.hpp">
+    <ClInclude Include="src\headers\shader.ps.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\utils\logging.hpp">
+    <ClInclude Include="src\headers\shader.vs.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\utils\rule_of_five.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\utils\timer.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\core\device_manager.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\core\renderer.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\core\window.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\core\device_wrapper.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\core\shader_includer.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="cpp.hint" />
   </ItemGroup>
 </Project>

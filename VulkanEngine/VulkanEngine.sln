@@ -4,6 +4,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 17.1.32407.343
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Vermillion", "Vermillion\Vermillion.vcxproj", "{1B33BE85-1A32-47DE-89C0-56588257F8E1}"
+	ProjectSection(ProjectDependencies) = postProject
+		{73F690A0-099F-43F7-BDD5-819869DDAE07} = {73F690A0-099F-43F7-BDD5-819869DDAE07}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Shaders", "Shaders\Shaders.vcxproj", "{73F690A0-099F-43F7-BDD5-819869DDAE07}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +20,10 @@ Global
 		{1B33BE85-1A32-47DE-89C0-56588257F8E1}.Debug|x64.Build.0 = Debug|x64
 		{1B33BE85-1A32-47DE-89C0-56588257F8E1}.Release|x64.ActiveCfg = Release|x64
 		{1B33BE85-1A32-47DE-89C0-56588257F8E1}.Release|x64.Build.0 = Release|x64
+		{73F690A0-099F-43F7-BDD5-819869DDAE07}.Debug|x64.ActiveCfg = Debug|x64
+		{73F690A0-099F-43F7-BDD5-819869DDAE07}.Debug|x64.Build.0 = Debug|x64
+		{73F690A0-099F-43F7-BDD5-819869DDAE07}.Release|x64.ActiveCfg = Release|x64
+		{73F690A0-099F-43F7-BDD5-819869DDAE07}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

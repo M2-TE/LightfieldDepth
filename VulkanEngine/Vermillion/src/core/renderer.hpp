@@ -1,5 +1,7 @@
 #pragma once
 
+#include "shader_includer.hpp"
+
 class Renderer
 {
 public:
@@ -14,6 +16,7 @@ public:
 		create_swapchain_image_views(deviceManager);
 
 		create_render_pass(deviceManager);
+		create_graphics_pipeline(deviceManager);
 
 		//CreateRenderPass();
 		//CreateGraphicsPipeline();
@@ -195,16 +198,149 @@ private:
 		renderPass = deviceManager.get_logical_device().createRenderPass(renderPassInfo);
 	}
 
-	vk::ShaderModule create_shader_module(DeviceManager& deviceManager, const unsigned char* data, size_t size)
+	vk::ShaderModule create_shader_module(vk::Device& device, const unsigned char* data, size_t size)
 	{
 		vk::ShaderModuleCreateInfo shaderInfo = vk::ShaderModuleCreateInfo()
 			.setCodeSize(size)
 			.setPCode(reinterpret_cast<const uint32_t*>(data)); // data alignment?
-		return deviceManager.get_logical_device().createShaderModule(shaderInfo);
+		return device.createShaderModule(shaderInfo);
 	}
-	void create_graphics_pipeline()
+	void create_graphics_pipeline(DeviceManager& deviceManager)
 	{
-		// TODO
+		vk::Device& device = deviceManager.get_logical_device();
+		vk::ShaderModule vs = create_shader_module(device, shader_vs, shader_vs_size);
+		vk::ShaderModule ps = create_shader_module(device, shader_ps, shader_ps_size);
+
+		vk::PipelineShaderStageCreateInfo vertStageInfo = vk::PipelineShaderStageCreateInfo()
+			.setStage(vk::ShaderStageFlagBits::eVertex)
+			.setModule(vs)
+			// entrypoint (one shader module with multiple entry points for different shading stages?)
+			.setPName("main")
+			.setPSpecializationInfo(nullptr); // constants for optimization
+
+		vk::PipelineShaderStageCreateInfo fragStageInfo = vk::PipelineShaderStageCreateInfo()
+			.setStage(vk::ShaderStageFlagBits::eFragment) // fragment == pixel shader in hlsl
+			.setModule(ps)
+			.setPName("main")
+			.setPSpecializationInfo(nullptr);
+		vk::PipelineShaderStageCreateInfo shaderStages[] = { vertStageInfo, fragStageInfo };
+
+		// Vertex Input descriptor
+		vk::PipelineVertexInputStateCreateInfo vertexInputInfo = vk::PipelineVertexInputStateCreateInfo()
+			.setVertexBindingDescriptionCount(0)
+			.setVertexBindingDescriptions(nullptr)
+			.setVertexAttributeDescriptionCount(0)
+			.setVertexAttributeDescriptions(nullptr);
+
+		// Input Assembly
+		vk::PipelineInputAssemblyStateCreateInfo inputAssemplyInfo = vk::PipelineInputAssemblyStateCreateInfo()
+			.setTopology(vk::PrimitiveTopology::eTriangleList)
+			.setPrimitiveRestartEnable(VK_FALSE);
+
+		// Scissor Rect
+		vk::Rect2D scissorRect = vk::Rect2D()
+			.setOffset({ 0, 0 })
+			.setExtent(swapchainExtent);
+		// Viewport
+		vk::Viewport viewport = vk::Viewport()
+			.setX(0.0f)
+			.setY(0.0f)
+			.setWidth(static_cast<float>(swapchainExtent.width))
+			.setHeight(static_cast<float>(swapchainExtent.height))
+			.setMinDepth(0.0f)
+			.setMaxDepth(1.0f);
+
+		// Viewport state creation (viewport + scissor rect)
+		vk::PipelineViewportStateCreateInfo viewportStateInfo = vk::PipelineViewportStateCreateInfo()
+			.setViewportCount(1)
+			.setPViewports(&viewport)
+			.setScissorCount(1)
+			.setPScissors(&scissorRect);
+
+		// Rasterizer
+		vk::PipelineRasterizationStateCreateInfo rasterizerInfo = vk::PipelineRasterizationStateCreateInfo()
+			.setDepthClampEnable(VK_FALSE)
+			.setRasterizerDiscardEnable(VK_FALSE)
+			.setPolygonMode(vk::PolygonMode::eFill)
+			.setLineWidth(1.0f)
+			.setCullMode(vk::CullModeFlagBits::eBack)
+			.setFrontFace(vk::FrontFace::eClockwise)
+			.setDepthBiasEnable(VK_FALSE)
+			.setDepthBiasConstantFactor(0.0f)
+			.setDepthBiasClamp(0.0f)
+			.setDepthBiasSlopeFactor(0.0f);
+
+		// Multisampling
+		vk::PipelineMultisampleStateCreateInfo multisamplingInfo = vk::PipelineMultisampleStateCreateInfo()
+			.setSampleShadingEnable(VK_FALSE)
+			.setRasterizationSamples(vk::SampleCountFlagBits::e1)
+			.setMinSampleShading(1.0f)
+			.setPSampleMask(nullptr)
+			.setAlphaToCoverageEnable(VK_FALSE)
+			.setAlphaToOneEnable(VK_FALSE);
+
+		// Color Blending
+		// per-framebuffer
+		vk::PipelineColorBlendAttachmentState colorBlendAttachment = vk::PipelineColorBlendAttachmentState()
+			.setColorWriteMask(
+				vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
+				vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA)
+			.setBlendEnable(VK_FALSE)
+			.setSrcColorBlendFactor(vk::BlendFactor::eOne)
+			.setDstColorBlendFactor(vk::BlendFactor::eZero)
+			.setColorBlendOp(vk::BlendOp::eAdd)
+			.setSrcAlphaBlendFactor(vk::BlendFactor::eOne)
+			.setDstAlphaBlendFactor(vk::BlendFactor::eZero)
+			.setAlphaBlendOp(vk::BlendOp::eAdd);
+		// global
+		vk::PipelineColorBlendStateCreateInfo colorBlendInfo = vk::PipelineColorBlendStateCreateInfo()
+			.setLogicOpEnable(VK_FALSE)
+			.setLogicOp(vk::LogicOp::eCopy)
+			.setAttachmentCount(1)
+			.setPAttachments(&colorBlendAttachment)
+			.setBlendConstants({ 0.0f, 0.0f, 0.0f, 0.0f });
+
+		// Pipeline Layout
+		vk::PipelineLayoutCreateInfo pipelineLayoutInfo = vk::PipelineLayoutCreateInfo()
+			.setSetLayoutCount(0)
+			.setSetLayouts(nullptr)
+			.setPushConstantRangeCount(0)
+			.setPushConstantRanges(nullptr);
+		pipelineLayout = device.createPipelineLayout(pipelineLayoutInfo);
+
+		// Finally, create actual render pipeline
+		vk::GraphicsPipelineCreateInfo graphicsPipelineInfo = vk::GraphicsPipelineCreateInfo()
+			.setStageCount(2)
+			.setPStages(shaderStages)
+			// fixed-function stages
+			.setPVertexInputState(&vertexInputInfo)
+			.setPInputAssemblyState(&inputAssemplyInfo)
+			.setPViewportState(&viewportStateInfo)
+			.setPRasterizationState(&rasterizerInfo)
+			.setPMultisampleState(&multisamplingInfo)
+			.setPDepthStencilState(nullptr)
+			.setPColorBlendState(&colorBlendInfo)
+			.setPDynamicState(nullptr)
+			// pipeline layout
+			.setLayout(pipelineLayout)
+			// render pass
+			.setRenderPass(renderPass)
+			.setSubpass(0) // index for the subpass this render pipeline will use
+			// parent pipeline
+			//.setFlags(vk::PipelineCreateFlagBits::eDerivative) // would be required for deriving from base pipelines
+			.setBasePipelineHandle(nullptr)
+			.setBasePipelineIndex(-1);
+
+		vk::Result result;
+		std::tie(result, graphicsPipeline) = device.createGraphicsPipeline(nullptr, graphicsPipelineInfo);
+		switch (result)
+		{
+			case vk::Result::eSuccess: break;
+			case vk::Result::ePipelineCompileRequiredEXT:
+				VMI_LOG("Graphics pipeline creation: PipelineCompileRequiredEXT");
+				break;
+			default: assert(false);
+		}
 	}
 
 private:
@@ -220,8 +356,8 @@ private:
 	std::vector<vk::Framebuffer> swapchainFramebuffers;
 
 	vk::Extent2D swapchainExtent;
-	vk::ShaderModule vertShaderModule;
-	vk::ShaderModule fragShaderModule;
+	vk::ShaderModule vs;
+	vk::ShaderModule ps;
 	vk::RenderPass renderPass;
 	vk::PipelineLayout pipelineLayout;
 	vk::Pipeline graphicsPipeline;
