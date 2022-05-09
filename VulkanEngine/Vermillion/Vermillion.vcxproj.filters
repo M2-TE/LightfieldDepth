@@ -50,9 +50,6 @@
     <ClInclude Include="src\core\device_wrapper.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\core\shader_includer.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />

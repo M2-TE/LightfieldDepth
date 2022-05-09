@@ -16,6 +16,9 @@ public:
 	}
 	void destroy()
 	{
+		SDL_DestroyWindow(pWindow);
+		SDL_Quit();
+
 		instance.destroySurfaceKHR(surface);
 		DEBUG_ONLY(instance.destroyDebugUtilsMessengerEXT(debugMessenger, nullptr, dld));
 		instance.destroy();

@@ -51,6 +51,7 @@ public:
 		std::optional<uint32_t> iGraphicsFamily;
 		std::optional<uint32_t> iPresentFamily;
 	} indices;
+
 	struct SwapchainSupportDetails {
 		SwapchainSupportDetails(const vk::PhysicalDevice& physicalDevice, const vk::SurfaceKHR& surface)
 		{

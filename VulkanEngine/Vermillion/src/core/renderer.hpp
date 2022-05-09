@@ -1,6 +1,6 @@
 #pragma once
 
-#include "shader_includer.hpp"
+#include "shaders.hpp"
 
 class Renderer
 {
@@ -18,17 +18,36 @@ public:
 		create_render_pass(deviceManager);
 		create_graphics_pipeline(deviceManager);
 
-		//CreateRenderPass();
-		//CreateGraphicsPipeline();
-		//CreateFramebuffers();
-		//CreateCommandPool();
-		//CreateCommandBuffers();
-		//CreateSyncObjects();
+		create_framebuffers(deviceManager);
+		create_command_pool(deviceManager);
+		create_command_buffers(deviceManager);
+
+		create_sync_objects(deviceManager);
+	}
+	void destroy(DeviceManager& deviceManager)
+	{
+		vk::Device& device = deviceManager.get_logical_device();
+
+		for (vk::ImageView imageView : swapchainImageViews) device.destroyImageView(imageView);
+		for (vk::Framebuffer framebuffer : swapchainFramebuffers) device.destroyFramebuffer(framebuffer);
+		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+			device.destroySemaphore(imageAvailableSemaphores[i]);
+			device.destroySemaphore(renderFinishedSemaphores[i]);
+			device.destroyFence(inFlightFences[i]);
+		}
+
+		device.destroyShaderModule(vs);
+		device.destroyShaderModule(ps);
+		device.destroyPipeline(graphicsPipeline);
+		device.destroyPipelineLayout(pipelineLayout);
+		device.destroyRenderPass(renderPass);
+		device.destroySwapchainKHR(swapchain);
+		device.destroyCommandPool(commandPool);
 	}
 
-	void destroy()
+	void render()
 	{
-		// TODO
+
 	}
 
 private:
@@ -122,7 +141,6 @@ private:
 		// obtain swapchain images
 		swapchainImages = device.getSwapchainImagesKHR(swapchain);
 	}
-	
 	void create_swapchain_image_views(DeviceManager& deviceManager)
 	{
 		vk::ComponentMapping mapping = vk::ComponentMapping()
@@ -197,7 +215,6 @@ private:
 
 		renderPass = deviceManager.get_logical_device().createRenderPass(renderPassInfo);
 	}
-
 	vk::ShaderModule create_shader_module(vk::Device& device, const unsigned char* data, size_t size)
 	{
 		vk::ShaderModuleCreateInfo shaderInfo = vk::ShaderModuleCreateInfo()
@@ -208,8 +225,8 @@ private:
 	void create_graphics_pipeline(DeviceManager& deviceManager)
 	{
 		vk::Device& device = deviceManager.get_logical_device();
-		vk::ShaderModule vs = create_shader_module(device, shader_vs, shader_vs_size);
-		vk::ShaderModule ps = create_shader_module(device, shader_ps, shader_ps_size);
+		vs = create_shader_module(device, shader_vs, shader_vs_size);
+		ps = create_shader_module(device, shader_ps, shader_ps_size);
 
 		vk::PipelineShaderStageCreateInfo vertStageInfo = vk::PipelineShaderStageCreateInfo()
 			.setStage(vk::ShaderStageFlagBits::eVertex)
@@ -340,6 +357,89 @@ private:
 				VMI_LOG("Graphics pipeline creation: PipelineCompileRequiredEXT");
 				break;
 			default: assert(false);
+		}
+	}
+
+	void create_framebuffers(DeviceManager& deviceManager)
+	{
+		swapchainFramebuffers.resize(swapchainImageViews.size());
+
+		for (size_t i = 0; i < swapchainImageViews.size(); i++) {
+			vk::FramebufferCreateInfo framebufferInfo = vk::FramebufferCreateInfo()
+				.setRenderPass(renderPass)
+				.setWidth(swapchainExtent.width)
+				.setHeight(swapchainExtent.height)
+				.setLayers(1)
+				// attachments
+				.setAttachmentCount(1)
+				.setPAttachments(&swapchainImageViews[i]);
+
+			swapchainFramebuffers[i] = deviceManager.get_logical_device().createFramebuffer(framebufferInfo);
+		}
+	}
+	void create_command_pool(DeviceManager& deviceManager)
+	{
+		vk::CommandPoolCreateInfo commandPoolInfo = vk::CommandPoolCreateInfo()
+			.setQueueFamilyIndex(deviceManager.get_device_wrapper().indices.iGraphicsFamily.value());
+		//.setFlags(vk::CommandPoolCreateFlagBits::eTransient); Hint that command buffers are rerecorded with new commands very often
+
+		commandPool = deviceManager.get_logical_device().createCommandPool(commandPoolInfo);
+	}
+	void create_command_buffers(DeviceManager& deviceManager)
+	{
+		commandBuffers.resize(swapchainFramebuffers.size());
+		vk::CommandBufferAllocateInfo commandBufferInfo = vk::CommandBufferAllocateInfo()
+			.setCommandPool(commandPool)
+			.setLevel(vk::CommandBufferLevel::ePrimary) // secondary are used by primary command buffers for e.g. common operations
+			.setCommandBufferCount(static_cast<uint32_t>(commandBuffers.size()));
+		commandBuffers = deviceManager.get_logical_device().allocateCommandBuffers(commandBufferInfo);
+
+		for (size_t i = 0; i < commandBuffers.size(); i++) {
+
+			vk::CommandBuffer& commandBuffer = commandBuffers[i];
+			vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo()
+				// eOneTimeSubmit: The command buffer will be rerecorded right after executing it once.
+				// eRenderPassContinue: This is a secondary command buffer that will be entirely within a single render pass.
+				// eSimultaneousUse: The command buffer can be resubmitted while it is also already pending execution.
+				//.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit)
+				.setPInheritanceInfo(nullptr);
+			commandBuffer.begin(beginInfo);
+
+			std::array<float, 4> clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+			vk::ClearValue clearValue = vk::ClearValue().setColor(clearColor);
+
+			vk::RenderPassBeginInfo renderPassBeginInfo = vk::RenderPassBeginInfo()
+				.setRenderPass(renderPass)
+				.setFramebuffer(swapchainFramebuffers[i])
+				.setRenderArea(vk::Rect2D({ 0, 0 }, swapchainExtent))
+				// clear value
+				.setClearValueCount(1)
+				.setPClearValues(&clearValue);
+
+
+			commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
+			commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline);
+			commandBuffer.draw(3, 1, 0, 0);
+			commandBuffer.endRenderPass();
+
+			commandBuffer.end();
+		}
+	}
+
+	void create_sync_objects(DeviceManager& deviceManager)
+	{
+		vk::Device& device = deviceManager.get_logical_device();
+
+		imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+		renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+		inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
+		imagesInFlight.resize(swapchainImages.size(), nullptr);
+		vk::SemaphoreCreateInfo semaphoreInfo = vk::SemaphoreCreateInfo();
+		vk::FenceCreateInfo fenceInfo = vk::FenceCreateInfo().setFlags(vk::FenceCreateFlagBits::eSignaled);
+		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+			imageAvailableSemaphores[i] = device.createSemaphore(semaphoreInfo);
+			renderFinishedSemaphores[i] = device.createSemaphore(semaphoreInfo);
+			inFlightFences[i] = device.createFence(fenceInfo);
 		}
 	}
 
