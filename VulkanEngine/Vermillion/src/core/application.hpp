@@ -15,7 +15,7 @@ public:
 	{
 		renderer.destroy(deviceManager);
 		deviceManager.destroy();
-		//window.destroy();
+		window.destroy();
 	}
 	ROF_COPY_MOVE_DELETE(Application)
 
