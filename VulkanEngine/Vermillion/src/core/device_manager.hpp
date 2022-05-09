@@ -58,6 +58,10 @@ public:
 
 		// Create logical device
 		logicalDevice = deviceWrapper.physicalDevice.createDevice(createInfo);
+
+		// get actual handle for graphics queue
+		deviceWrapper.graphicsQueue = logicalDevice.getQueue(deviceWrapper.indices.iGraphicsFamily.value(), 0u);
+		deviceWrapper.presentQueue = logicalDevice.getQueue(deviceWrapper.indices.iPresentFamily.value(), 0u);
 	}
 
 	inline vk::Device& get_logical_device() { return logicalDevice; }

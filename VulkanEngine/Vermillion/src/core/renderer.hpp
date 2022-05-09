@@ -45,9 +45,60 @@ public:
 		device.destroyCommandPool(commandPool);
 	}
 
-	void render()
+	void render(DeviceManager& deviceManager)
 	{
+		vk::Device& device = deviceManager.get_logical_device();
+		DeviceWrapper deviceWrapper = deviceManager.get_device_wrapper();
 
+		device.waitForFences(inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
+
+		auto [result, imageIndex] = device.acquireNextImageKHR(swapchain, UINT64_MAX, imageAvailableSemaphores[currentFrame], nullptr);
+		switch (result) {
+			case vk::Result::eSuccess: break;
+			case vk::Result::eTimeout: VMI_LOG("Timeout on image acquisition."); break;
+			case vk::Result::eNotReady: VMI_LOG("Images not ready."); break;
+			case vk::Result::eSuboptimalKHR: VMI_LOG("Suboptimal image acquisition."); break;
+			default: assert(false);
+		}
+
+		// Check if a previous frame is using this image (i.e. there is its fence to wait on)
+		if (imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
+			device.waitForFences(imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
+		}
+		// Mark the image as now being in use by this frame
+		imagesInFlight[imageIndex] = inFlightFences[currentFrame];
+
+
+		vk::Semaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame] };
+		vk::Semaphore waitSemaphores[] = { imageAvailableSemaphores[currentFrame] };
+		vk::PipelineStageFlags waitStages = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+		vk::SubmitInfo submitInfo = vk::SubmitInfo()
+			.setPWaitDstStageMask(&waitStages)
+			// semaphores
+			.setWaitSemaphoreCount(1)
+			.setPWaitSemaphores(waitSemaphores)
+			.setSignalSemaphoreCount(1)
+			.setPSignalSemaphores(signalSemaphores)
+			// command buffers
+			.setCommandBufferCount(1)
+			.setPCommandBuffers(&commandBuffers[imageIndex]);
+
+		device.resetFences(inFlightFences[currentFrame]); // FENCE
+
+		deviceWrapper.graphicsQueue.submit(submitInfo, inFlightFences[currentFrame]);
+
+		vk::PresentInfoKHR presentInfo = vk::PresentInfoKHR()
+			.setPImageIndices(&imageIndex)
+			// semaphores
+			.setWaitSemaphoreCount(1)
+			.setPWaitSemaphores(signalSemaphores)
+			// swapchains
+			.setSwapchainCount(1)
+			.setPSwapchains(&swapchain);
+		//.setPResults(nullptr); // optional if theres multiple swapchains
+		result = deviceWrapper.presentQueue.presentKHR(&presentInfo);
+
+		currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 	}
 
 private:
@@ -446,8 +497,6 @@ private:
 private:
 	// lazy constants (settings?)
 	const int MAX_FRAMES_IN_FLIGHT = 2;
-
-	vk::Queue qGraphics, qPresent;
 
 	vk::SwapchainKHR swapchain;
 	vk::Format swapchainImageFormat;

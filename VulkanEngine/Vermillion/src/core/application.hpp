@@ -47,7 +47,7 @@ private:
 			}
 		}
 
-		//DrawFrame();
+		renderer.render(deviceManager);
 		SDL_Delay(10); // reduce strain on system for now
 		return true;
 	}

@@ -18,6 +18,9 @@ public:
 	vk::PhysicalDeviceFeatures deviceFeatures;
 	vk::PhysicalDeviceMemoryProperties deviceMemProperties;
 
+	vk::Queue graphicsQueue;
+	vk::Queue presentQueue;
+
 	struct QueueFamilyIndices
 	{
 		QueueFamilyIndices(const vk::PhysicalDevice& physicalDevice, const vk::SurfaceKHR& surface)
