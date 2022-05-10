@@ -10,19 +10,19 @@ public:
 	ROF_COPY_MOVE_DELETE(Renderer)
 
 public:
-	void init(DeviceManager& deviceManager, Window& window)
+	void init(DeviceWrapper& deviceWrapper, Window& window)
 	{
-		create_swapchain(deviceManager, window);
-		create_swapchain_image_views(deviceManager);
+		create_swapchain(deviceWrapper, window);
+		create_swapchain_image_views(deviceWrapper);
 
-		create_render_pass(deviceManager);
-		create_graphics_pipeline(deviceManager);
+		create_render_pass(deviceWrapper);
+		create_graphics_pipeline(deviceWrapper);
 
-		create_framebuffers(deviceManager);
-		create_command_pool(deviceManager);
-		create_command_buffers(deviceManager);
+		create_framebuffers(deviceWrapper);
+		create_command_pool(deviceWrapper);
+		create_command_buffers(deviceWrapper);
 
-		create_sync_objects(deviceManager);
+		create_sync_objects(deviceWrapper);
 	}
 	void destroy(DeviceManager& deviceManager)
 	{
@@ -85,7 +85,7 @@ public:
 
 		device.resetFences(inFlightFences[currentFrame]); // FENCE
 
-		deviceWrapper.graphicsQueue.submit(submitInfo, inFlightFences[currentFrame]);
+		deviceWrapper.queue.submit(submitInfo, inFlightFences[currentFrame]);
 
 		vk::PresentInfoKHR presentInfo = vk::PresentInfoKHR()
 			.setPImageIndices(&imageIndex)
@@ -96,7 +96,7 @@ public:
 			.setSwapchainCount(1)
 			.setPSwapchains(&swapchain);
 		//.setPResults(nullptr); // optional if theres multiple swapchains
-		result = deviceWrapper.presentQueue.presentKHR(&presentInfo);
+		result = deviceWrapper.queue.presentKHR(&presentInfo);
 
 		currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 	}
@@ -141,25 +141,18 @@ private:
 			return actualExtent;
 		}
 	}
-	void create_swapchain(DeviceManager& deviceManager, Window& window)
+	void create_swapchain(DeviceWrapper& deviceWrapper, Window& window)
 	{
-		auto& deviceWrapper = deviceManager.get_device_wrapper();
-		vk::Device& device = deviceManager.get_logical_device();
-
-		vk::SurfaceFormatKHR surfaceFormat = choose_surface_format(deviceWrapper.swapchain.formats);
-		vk::PresentModeKHR presentMode = choose_present_mode(deviceWrapper.swapchain.presentModes);
-		swapchainExtent = choose_extent(deviceWrapper.swapchain.capabilities, window.get_window()); // in theory dont need a func call for this (member var)
+		vk::SurfaceFormatKHR surfaceFormat = choose_surface_format(deviceWrapper.formats);
+		vk::PresentModeKHR presentMode = choose_present_mode(deviceWrapper.presentModes);
+		swapchainExtent = choose_extent(deviceWrapper.capabilities, window.get_window()); // in theory dont need a func call for this (member var)
 		swapchainImageFormat = surfaceFormat.format;
 
 		// set number of images in the swapchain buffer
-		uint32_t imageCount = deviceWrapper.swapchain.capabilities.minImageCount + 1u;
-		if (deviceWrapper.swapchain.capabilities.maxImageCount > 0 && imageCount > deviceWrapper.swapchain.capabilities.maxImageCount) {
-			imageCount = deviceWrapper.swapchain.capabilities.maxImageCount;
+		uint32_t imageCount = deviceWrapper.capabilities.minImageCount + 1u;
+		if (deviceWrapper.capabilities.maxImageCount > 0 && imageCount > deviceWrapper.capabilities.maxImageCount) {
+			imageCount = deviceWrapper.capabilities.maxImageCount;
 		}
-
-		// figure out if present and graphics queues are the same
-		uint32_t queueFamilyIndices[] = { deviceWrapper.indices.iGraphicsFamily.value(), deviceWrapper.indices.iPresentFamily.value() };
-		bool bExclusiveAccess = deviceWrapper.indices.iGraphicsFamily == deviceWrapper.indices.iPresentFamily;
 
 		vk::SwapchainCreateInfoKHR swapchainInfo = vk::SwapchainCreateInfoKHR()
 			// image settings
@@ -171,13 +164,13 @@ private:
 			.setImageUsage(vk::ImageUsageFlagBits::eColorAttachment) // or: eTransferDst for deferred rendering
 
 			// when both queues are the same, create exclusive access, else create concurrent access
-			.setImageSharingMode(bExclusiveAccess ? vk::SharingMode::eExclusive : vk::SharingMode::eConcurrent)
-			.setQueueFamilyIndexCount(bExclusiveAccess ? 0u : 2u) // 2 queues
-			.setPQueueFamilyIndices(bExclusiveAccess ? nullptr : queueFamilyIndices)
+			.setImageSharingMode(vk::SharingMode::eExclusive)
+			.setQueueFamilyIndexCount(0)
+			.setPQueueFamilyIndices(nullptr)
 
 			// both of these should be the same
 			.setPreTransform(vk::SurfaceTransformFlagBitsKHR::eIdentity)
-			.setPreTransform(deviceWrapper.swapchain.capabilities.currentTransform)
+			.setPreTransform(deviceWrapper.capabilities.currentTransform)
 
 			// misc
 			.setSurface(window.get_vulkan_surface())
@@ -187,12 +180,12 @@ private:
 			.setOldSwapchain(nullptr); // pointer to old swapchain on resize
 
 		// finally, create swapchain
-		swapchain = device.createSwapchainKHR(swapchainInfo);
+		swapchain = deviceWrapper.logicalDevice.createSwapchainKHR(swapchainInfo);
 
 		// obtain swapchain images
-		swapchainImages = device.getSwapchainImagesKHR(swapchain);
+		swapchainImages = deviceWrapper.logicalDevice.getSwapchainImagesKHR(swapchain);
 	}
-	void create_swapchain_image_views(DeviceManager& deviceManager)
+	void create_swapchain_image_views(DeviceWrapper& deviceWrapper)
 	{
 		vk::ComponentMapping mapping = vk::ComponentMapping()
 			.setR(vk::ComponentSwizzle::eIdentity)
@@ -207,7 +200,6 @@ private:
 			.setBaseArrayLayer(0)
 			.setLayerCount(1);
 
-		auto& device = deviceManager.get_logical_device();
 		swapchainImageViews.resize(swapchainImages.size());
 		for (size_t i = 0; i < swapchainImages.size(); i++) {
 			vk::ImageViewCreateInfo imageInfo = vk::ImageViewCreateInfo()
@@ -217,11 +209,11 @@ private:
 				.setComponents(mapping)
 				.setSubresourceRange(subrange);
 
-			swapchainImageViews[i] = device.createImageView(imageInfo);
+			swapchainImageViews[i] = deviceWrapper.logicalDevice.createImageView(imageInfo);
 		}
 	}
 
-	void create_render_pass(DeviceManager& deviceManager)
+	void create_render_pass(DeviceWrapper& deviceWrapper)
 	{
 		vk::AttachmentDescription colorAttachment = vk::AttachmentDescription()
 			.setFormat(swapchainImageFormat)
@@ -264,20 +256,19 @@ private:
 			.setDependencyCount(1)
 			.setPDependencies(&dependency);
 
-		renderPass = deviceManager.get_logical_device().createRenderPass(renderPassInfo);
+		renderPass = deviceWrapper.logicalDevice.createRenderPass(renderPassInfo);
 	}
-	vk::ShaderModule create_shader_module(vk::Device& device, const unsigned char* data, size_t size)
+	vk::ShaderModule create_shader_module(DeviceWrapper& deviceWrapper, const unsigned char* data, size_t size)
 	{
 		vk::ShaderModuleCreateInfo shaderInfo = vk::ShaderModuleCreateInfo()
 			.setCodeSize(size)
 			.setPCode(reinterpret_cast<const uint32_t*>(data)); // data alignment?
-		return device.createShaderModule(shaderInfo);
+		return deviceWrapper.logicalDevice.createShaderModule(shaderInfo);
 	}
-	void create_graphics_pipeline(DeviceManager& deviceManager)
+	void create_graphics_pipeline(DeviceWrapper& deviceWrapper)
 	{
-		vk::Device& device = deviceManager.get_logical_device();
-		vs = create_shader_module(device, shader_vs, shader_vs_size);
-		ps = create_shader_module(device, shader_ps, shader_ps_size);
+		vs = create_shader_module(deviceWrapper, shader_vs, shader_vs_size);
+		ps = create_shader_module(deviceWrapper, shader_ps, shader_ps_size);
 
 		vk::PipelineShaderStageCreateInfo vertStageInfo = vk::PipelineShaderStageCreateInfo()
 			.setStage(vk::ShaderStageFlagBits::eVertex)
@@ -347,8 +338,9 @@ private:
 			.setAlphaToCoverageEnable(VK_FALSE)
 			.setAlphaToOneEnable(VK_FALSE);
 
-		// Color Blending
-		// per-framebuffer
+		// Color Blending:
+		
+		// -> per-framebuffer
 		vk::PipelineColorBlendAttachmentState colorBlendAttachment = vk::PipelineColorBlendAttachmentState()
 			.setColorWriteMask(
 				vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
@@ -360,7 +352,7 @@ private:
 			.setSrcAlphaBlendFactor(vk::BlendFactor::eOne)
 			.setDstAlphaBlendFactor(vk::BlendFactor::eZero)
 			.setAlphaBlendOp(vk::BlendOp::eAdd);
-		// global
+		// -> global
 		vk::PipelineColorBlendStateCreateInfo colorBlendInfo = vk::PipelineColorBlendStateCreateInfo()
 			.setLogicOpEnable(VK_FALSE)
 			.setLogicOp(vk::LogicOp::eCopy)
@@ -374,7 +366,7 @@ private:
 			.setSetLayouts(nullptr)
 			.setPushConstantRangeCount(0)
 			.setPushConstantRanges(nullptr);
-		pipelineLayout = device.createPipelineLayout(pipelineLayoutInfo);
+		pipelineLayout = deviceWrapper.logicalDevice.createPipelineLayout(pipelineLayoutInfo);
 
 		// Finally, create actual render pipeline
 		vk::GraphicsPipelineCreateInfo graphicsPipelineInfo = vk::GraphicsPipelineCreateInfo()
@@ -400,7 +392,7 @@ private:
 			.setBasePipelineIndex(-1);
 
 		vk::Result result;
-		std::tie(result, graphicsPipeline) = device.createGraphicsPipeline(nullptr, graphicsPipelineInfo);
+		std::tie(result, graphicsPipeline) = deviceWrapper.logicalDevice.createGraphicsPipeline(nullptr, graphicsPipelineInfo);
 		switch (result)
 		{
 			case vk::Result::eSuccess: break;
@@ -411,7 +403,7 @@ private:
 		}
 	}
 
-	void create_framebuffers(DeviceManager& deviceManager)
+	void create_framebuffers(DeviceWrapper& deviceWrapper)
 	{
 		swapchainFramebuffers.resize(swapchainImageViews.size());
 
@@ -425,25 +417,25 @@ private:
 				.setAttachmentCount(1)
 				.setPAttachments(&swapchainImageViews[i]);
 
-			swapchainFramebuffers[i] = deviceManager.get_logical_device().createFramebuffer(framebufferInfo);
+			swapchainFramebuffers[i] = deviceWrapper.logicalDevice.createFramebuffer(framebufferInfo);
 		}
 	}
-	void create_command_pool(DeviceManager& deviceManager)
+	void create_command_pool(DeviceWrapper& deviceWrapper)
 	{
 		vk::CommandPoolCreateInfo commandPoolInfo = vk::CommandPoolCreateInfo()
-			.setQueueFamilyIndex(deviceManager.get_device_wrapper().indices.iGraphicsFamily.value());
-		//.setFlags(vk::CommandPoolCreateFlagBits::eTransient); Hint that command buffers are rerecorded with new commands very often
+			.setQueueFamilyIndex(deviceWrapper.iQueue);
+		//	.setFlags(vk::CommandPoolCreateFlagBits::eTransient); Hint that command buffers are rerecorded with new commands very often
 
-		commandPool = deviceManager.get_logical_device().createCommandPool(commandPoolInfo);
+		commandPool = deviceWrapper.logicalDevice.createCommandPool(commandPoolInfo);
 	}
-	void create_command_buffers(DeviceManager& deviceManager)
+	void create_command_buffers(DeviceWrapper& deviceWrapper)
 	{
 		commandBuffers.resize(swapchainFramebuffers.size());
 		vk::CommandBufferAllocateInfo commandBufferInfo = vk::CommandBufferAllocateInfo()
 			.setCommandPool(commandPool)
 			.setLevel(vk::CommandBufferLevel::ePrimary) // secondary are used by primary command buffers for e.g. common operations
 			.setCommandBufferCount(static_cast<uint32_t>(commandBuffers.size()));
-		commandBuffers = deviceManager.get_logical_device().allocateCommandBuffers(commandBufferInfo);
+		commandBuffers = deviceWrapper.logicalDevice.allocateCommandBuffers(commandBufferInfo);
 
 		for (size_t i = 0; i < commandBuffers.size(); i++) {
 
@@ -477,9 +469,9 @@ private:
 		}
 	}
 
-	void create_sync_objects(DeviceManager& deviceManager)
+	void create_sync_objects(DeviceWrapper& deviceWrapper)
 	{
-		vk::Device& device = deviceManager.get_logical_device();
+		vk::Device& device = deviceWrapper.logicalDevice;
 
 		imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
 		renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);

@@ -32,9 +32,8 @@ private:
 		window.init();
 
 		deviceManager.init(window.get_vulkan_instance(), window.get_vulkan_surface());
-		deviceManager.create_logical_device();
 
-		renderer.init(deviceManager, window);
+		renderer.init(deviceManager.get_device_wrapper(), window);
 	}
 	bool update()
 	{
@@ -43,6 +42,7 @@ private:
 		while (SDL_PollEvent(&event)) {
 			switch (event.type) {
 				case SDL_QUIT: return false;
+				// TODO: handle more cases
 				default: break;
 			}
 		}
