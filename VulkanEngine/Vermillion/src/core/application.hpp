@@ -9,11 +9,13 @@ class Application
 public:
 	Application()
 	{
-		init();
+		window.init();
+		deviceManager.init(window.get_vulkan_instance(), window.get_vulkan_surface());
+		renderer.init(deviceManager.get_device_wrapper(), window);
 	}
 	~Application()
 	{
-		renderer.destroy(deviceManager);
+		renderer.destroy(deviceManager.get_device_wrapper());
 		deviceManager.destroy();
 		window.destroy();
 	}
@@ -27,21 +29,19 @@ public:
 	}
 
 private:
-	void init()
-	{
-		window.init();
-
-		//ImGui_ImplSDL2_InitForVulkan(nullptr);
-
-		deviceManager.init(window.get_vulkan_instance(), window.get_vulkan_surface());
-
-		renderer.init(deviceManager.get_device_wrapper(), window);
-	}
 	bool update()
 	{
+		ImGui_ImplVulkan_NewFrame();
+		ImGui_ImplSDL2_NewFrame();
+		ImGui::NewFrame();
+
 		// Poll for user input (encapsulate in input.hpp?)
 		SDL_Event event;
 		while (SDL_PollEvent(&event)) {
+
+			bool b = ImGui_ImplSDL2_ProcessEvent(&event);
+			// TODO: handle b
+
 			switch (event.type) {
 				case SDL_QUIT: return false;
 				// TODO: handle more cases
@@ -49,8 +49,12 @@ private:
 			}
 		}
 
+		ImGui::Text("TESTETEST");
+
+		ImGui::Render();
 		renderer.render(deviceManager);
-		SDL_Delay(10); // reduce strain on system for now
+
+		//SDL_Delay(10); // reduce strain on system for now
 		return true;
 	}
 

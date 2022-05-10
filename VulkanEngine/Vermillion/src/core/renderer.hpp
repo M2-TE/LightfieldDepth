@@ -23,10 +23,29 @@ public:
 		create_command_buffers(deviceWrapper);
 
 		create_sync_objects(deviceWrapper);
+
+		create_descriptor_pool(deviceWrapper);
+
+		struct ImGui_ImplVulkan_InitInfo info = { 0 };
+		info.Instance = window.get_vulkan_instance();
+		info.PhysicalDevice = deviceWrapper.physicalDevice;
+		info.Device = deviceWrapper.logicalDevice;
+		info.QueueFamily = deviceWrapper.iQueue;
+		info.Queue = deviceWrapper.queue;
+		info.PipelineCache = VK_NULL_HANDLE;
+		info.DescriptorPool = descPool;
+		info.Subpass = 0;
+		info.MinImageCount = 3; // TODO: use queried values
+		info.ImageCount = swapchainImages.size();
+		info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+
+		ImGui_ImplVulkan_Init(&info, renderPass);
+
+		if (true) upload_fonts_imgui(deviceWrapper);
 	}
-	void destroy(DeviceManager& deviceManager)
+	void destroy(DeviceWrapper& deviceWrapper)
 	{
-		vk::Device& device = deviceManager.get_logical_device();
+		vk::Device& device = deviceWrapper.logicalDevice;
 
 		for (vk::ImageView imageView : swapchainImageViews) device.destroyImageView(imageView);
 		for (vk::Framebuffer framebuffer : swapchainFramebuffers) device.destroyFramebuffer(framebuffer);
@@ -43,8 +62,60 @@ public:
 		device.destroyRenderPass(renderPass);
 		device.destroySwapchainKHR(swapchain);
 		device.destroyCommandPool(commandPool);
+		device.destroyDescriptorPool(descPool);
+
+		ImGui_ImplVulkan_Shutdown();
 	}
 
+	void upload_fonts_imgui(DeviceWrapper& deviceWrapper)
+	{
+		vk::CommandBuffer commandBuffer = commandBuffers[currentFrame];
+		deviceWrapper.logicalDevice.resetCommandPool(commandPool);
+
+		vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo()
+			.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
+		commandBuffer.begin(&beginInfo);
+		ImGui_ImplVulkan_CreateFontsTexture(commandBuffer);
+		commandBuffer.end();
+
+		vk::SubmitInfo submitInfo = vk::SubmitInfo()
+			.setCommandBufferCount(1)
+			.setPCommandBuffers(&commandBuffer);
+		deviceWrapper.queue.submit(submitInfo);
+
+		deviceWrapper.logicalDevice.waitIdle();
+		ImGui_ImplVulkan_DestroyFontUploadObjects();
+	}
+
+	void record_command_buffer(vk::CommandBuffer commandBuffer, uint32_t imageIndex) // TODO remove command buffer param
+	{
+		vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo()
+			// eOneTimeSubmit: The command buffer will be rerecorded right after executing it once.
+			// eRenderPassContinue: This is a secondary command buffer that will be entirely within a single render pass.
+			// eSimultaneousUse: The command buffer can be resubmitted while it is also already pending execution.
+			.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit)
+			.setPInheritanceInfo(nullptr);
+		commandBuffer.begin(beginInfo);
+
+		std::array<float, 4> clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+		vk::ClearValue clearValue = vk::ClearValue().setColor(clearColor);
+
+		vk::RenderPassBeginInfo renderPassBeginInfo = vk::RenderPassBeginInfo()
+			.setRenderPass(renderPass)
+			.setFramebuffer(swapchainFramebuffers[imageIndex])
+			.setRenderArea(vk::Rect2D({ 0, 0 }, swapchainExtent))
+			// clear value
+			.setClearValueCount(1)
+			.setPClearValues(&clearValue);
+
+		commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
+		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline);
+		commandBuffer.draw(3, 1, 0, 0);
+		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
+		commandBuffer.endRenderPass();
+
+		commandBuffer.end();
+	}
 	void render(DeviceManager& deviceManager)
 	{
 		vk::Device& device = deviceManager.get_logical_device();
@@ -68,7 +139,6 @@ public:
 		// Mark the image as now being in use by this frame
 		imagesInFlight[imageIndex] = inFlightFences[currentFrame];
 
-
 		vk::Semaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame] };
 		vk::Semaphore waitSemaphores[] = { imageAvailableSemaphores[currentFrame] };
 		vk::PipelineStageFlags waitStages = vk::PipelineStageFlagBits::eColorAttachmentOutput;
@@ -83,9 +153,12 @@ public:
 			.setCommandBufferCount(1)
 			.setPCommandBuffers(&commandBuffers[imageIndex]);
 
+		commandBuffers[imageIndex].reset();
+		record_command_buffer(commandBuffers[imageIndex], imageIndex);
 		device.resetFences(inFlightFences[currentFrame]); // FENCE
 
 		deviceWrapper.queue.submit(submitInfo, inFlightFences[currentFrame]);
+
 
 		vk::PresentInfoKHR presentInfo = vk::PresentInfoKHR()
 			.setPImageIndices(&imageIndex)
@@ -153,6 +226,7 @@ private:
 		if (deviceWrapper.capabilities.maxImageCount > 0 && imageCount > deviceWrapper.capabilities.maxImageCount) {
 			imageCount = deviceWrapper.capabilities.maxImageCount;
 		}
+		VMI_LOG("Swapchain image count:" << imageCount);
 
 		vk::SwapchainCreateInfoKHR swapchainInfo = vk::SwapchainCreateInfoKHR()
 			// image settings
@@ -423,8 +497,8 @@ private:
 	void create_command_pool(DeviceWrapper& deviceWrapper)
 	{
 		vk::CommandPoolCreateInfo commandPoolInfo = vk::CommandPoolCreateInfo()
-			.setQueueFamilyIndex(deviceWrapper.iQueue);
-		//	.setFlags(vk::CommandPoolCreateFlagBits::eTransient); Hint that command buffers are rerecorded with new commands very often
+			.setQueueFamilyIndex(deviceWrapper.iQueue)
+			.setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer);
 
 		commandPool = deviceWrapper.logicalDevice.createCommandPool(commandPoolInfo);
 	}
@@ -436,37 +510,6 @@ private:
 			.setLevel(vk::CommandBufferLevel::ePrimary) // secondary are used by primary command buffers for e.g. common operations
 			.setCommandBufferCount(static_cast<uint32_t>(commandBuffers.size()));
 		commandBuffers = deviceWrapper.logicalDevice.allocateCommandBuffers(commandBufferInfo);
-
-		for (size_t i = 0; i < commandBuffers.size(); i++) {
-
-			vk::CommandBuffer& commandBuffer = commandBuffers[i];
-			vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo()
-				// eOneTimeSubmit: The command buffer will be rerecorded right after executing it once.
-				// eRenderPassContinue: This is a secondary command buffer that will be entirely within a single render pass.
-				// eSimultaneousUse: The command buffer can be resubmitted while it is also already pending execution.
-				//.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit)
-				.setPInheritanceInfo(nullptr);
-			commandBuffer.begin(beginInfo);
-
-			std::array<float, 4> clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
-			vk::ClearValue clearValue = vk::ClearValue().setColor(clearColor);
-
-			vk::RenderPassBeginInfo renderPassBeginInfo = vk::RenderPassBeginInfo()
-				.setRenderPass(renderPass)
-				.setFramebuffer(swapchainFramebuffers[i])
-				.setRenderArea(vk::Rect2D({ 0, 0 }, swapchainExtent))
-				// clear value
-				.setClearValueCount(1)
-				.setPClearValues(&clearValue);
-
-
-			commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
-			commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline);
-			commandBuffer.draw(3, 1, 0, 0);
-			commandBuffer.endRenderPass();
-
-			commandBuffer.end();
-		}
 	}
 
 	void create_sync_objects(DeviceWrapper& deviceWrapper)
@@ -485,10 +528,37 @@ private:
 			inFlightFences[i] = device.createFence(fenceInfo);
 		}
 	}
+	void create_descriptor_pool(DeviceWrapper& deviceWrapper)
+	{
+		vk::DescriptorPoolSize pool_sizes[] =
+		{
+			vk::DescriptorPoolSize(vk::DescriptorType::eSampler, 1000),
+			vk::DescriptorPoolSize(vk::DescriptorType::eCombinedImageSampler, 1000),
+			vk::DescriptorPoolSize(vk::DescriptorType::eSampledImage, 1000),
+			vk::DescriptorPoolSize(vk::DescriptorType::eStorageImage, 1000),
+			vk::DescriptorPoolSize(vk::DescriptorType::eUniformTexelBuffer, 1000),
+			vk::DescriptorPoolSize(vk::DescriptorType::eStorageTexelBuffer, 1000),
+			vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer, 1000),
+			vk::DescriptorPoolSize(vk::DescriptorType::eStorageBuffer, 1000),
+			vk::DescriptorPoolSize(vk::DescriptorType::eUniformBufferDynamic, 1000),
+			vk::DescriptorPoolSize(vk::DescriptorType::eStorageBufferDynamic, 1000),
+			vk::DescriptorPoolSize(vk::DescriptorType::eInputAttachment, 1000),
+		};
+
+		vk::DescriptorPoolCreateInfo info = vk::DescriptorPoolCreateInfo()
+			.setFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet)
+			.setMaxSets(1000 * IM_ARRAYSIZE(pool_sizes))
+			.setPoolSizeCount((uint32_t)IM_ARRAYSIZE(pool_sizes))
+			.setPPoolSizes(pool_sizes);
+
+		descPool = deviceWrapper.logicalDevice.createDescriptorPool(info);
+	}
 
 private:
 	// lazy constants (settings?)
 	const int MAX_FRAMES_IN_FLIGHT = 2;
+
+	vk::DescriptorPool descPool;
 
 	vk::SwapchainKHR swapchain;
 	vk::Format swapchainImageFormat;

@@ -13,9 +13,18 @@ public:
 		init_sdl_window();
 		create_vulkan_instance();
 		create_vulkan_surface();
+
+		ImGui::CreateContext();
+		ImGui_ImplSDL2_InitForVulkan(pWindow);
+
+
+		ImGui::StyleColorsDark();
 	}
 	void destroy()
 	{
+		ImGui_ImplSDL2_Shutdown();
+		ImGui::DestroyContext();
+
 		SDL_DestroyWindow(pWindow);
 		SDL_Quit();
 
