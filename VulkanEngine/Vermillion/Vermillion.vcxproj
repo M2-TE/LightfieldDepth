@@ -59,7 +59,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)Shaders\src\include\;$(ProjectDir)src\pch;$(ProjectDir)src\;$(VULKAN_SDK)\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src\;$(ProjectDir)src\pch;$(VULKAN_SDK)\Include;$(SolutionDir)ImGui\vendor\imgui\;$(SolutionDir)Shaders\src\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.hpp</PrecompiledHeaderFile>
@@ -79,7 +79,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)Shaders\src\include\;$(ProjectDir)src\pch;$(ProjectDir)src\;$(VULKAN_SDK)\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src\;$(ProjectDir)src\pch;$(VULKAN_SDK)\Include;$(SolutionDir)ImGui\vendor\imgui\;$(SolutionDir)Shaders\src\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.hpp</PrecompiledHeaderFile>
@@ -115,6 +115,9 @@
     <None Include="cpp.hint" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\ImGui\ImGui.vcxproj">
+      <Project>{c31438c7-caac-4e09-ab30-87181aff8efd}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\Shaders\Shaders.vcxproj">
       <Project>{73f690a0-099f-43f7-bdd5-819869ddae07}</Project>
     </ProjectReference>

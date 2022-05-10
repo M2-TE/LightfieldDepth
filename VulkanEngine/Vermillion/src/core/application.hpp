@@ -31,6 +31,8 @@ private:
 	{
 		window.init();
 
+		//ImGui_ImplSDL2_InitForVulkan(nullptr);
+
 		deviceManager.init(window.get_vulkan_instance(), window.get_vulkan_surface());
 
 		renderer.init(deviceManager.get_device_wrapper(), window);
