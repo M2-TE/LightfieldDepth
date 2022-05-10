@@ -22,26 +22,12 @@ public:
 		create_command_pool(deviceWrapper);
 		create_command_buffers(deviceWrapper);
 
-		create_sync_objects(deviceWrapper);
-
 		create_descriptor_pool(deviceWrapper);
 
-		struct ImGui_ImplVulkan_InitInfo info = { 0 };
-		info.Instance = window.get_vulkan_instance();
-		info.PhysicalDevice = deviceWrapper.physicalDevice;
-		info.Device = deviceWrapper.logicalDevice;
-		info.QueueFamily = deviceWrapper.iQueue;
-		info.Queue = deviceWrapper.queue;
-		info.PipelineCache = VK_NULL_HANDLE;
-		info.DescriptorPool = descPool;
-		info.Subpass = 0;
-		info.MinImageCount = 3; // TODO: use queried values
-		info.ImageCount = swapchainImages.size();
-		info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+		create_sync_objects(deviceWrapper);
 
-		ImGui_ImplVulkan_Init(&info, renderPass);
-
-		if (true) upload_fonts_imgui(deviceWrapper);
+		imgui_init_vulkan(deviceWrapper, window);
+		imgui_upload_fonts(deviceWrapper);
 	}
 	void destroy(DeviceWrapper& deviceWrapper)
 	{
@@ -62,65 +48,17 @@ public:
 		device.destroyRenderPass(renderPass);
 		device.destroySwapchainKHR(swapchain);
 		device.destroyCommandPool(commandPool);
-		device.destroyDescriptorPool(descPool);
+		device.destroyDescriptorPool(imguiDescPool);
 
 		ImGui_ImplVulkan_Shutdown();
 	}
 
-	void upload_fonts_imgui(DeviceWrapper& deviceWrapper)
-	{
-		vk::CommandBuffer commandBuffer = commandBuffers[currentFrame];
-		deviceWrapper.logicalDevice.resetCommandPool(commandPool);
-
-		vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo()
-			.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
-		commandBuffer.begin(&beginInfo);
-		ImGui_ImplVulkan_CreateFontsTexture(commandBuffer);
-		commandBuffer.end();
-
-		vk::SubmitInfo submitInfo = vk::SubmitInfo()
-			.setCommandBufferCount(1)
-			.setPCommandBuffers(&commandBuffer);
-		deviceWrapper.queue.submit(submitInfo);
-
-		deviceWrapper.logicalDevice.waitIdle();
-		ImGui_ImplVulkan_DestroyFontUploadObjects();
-	}
-
-	void record_command_buffer(vk::CommandBuffer commandBuffer, uint32_t imageIndex) // TODO remove command buffer param
-	{
-		vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo()
-			// eOneTimeSubmit: The command buffer will be rerecorded right after executing it once.
-			// eRenderPassContinue: This is a secondary command buffer that will be entirely within a single render pass.
-			// eSimultaneousUse: The command buffer can be resubmitted while it is also already pending execution.
-			.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit)
-			.setPInheritanceInfo(nullptr);
-		commandBuffer.begin(beginInfo);
-
-		std::array<float, 4> clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
-		vk::ClearValue clearValue = vk::ClearValue().setColor(clearColor);
-
-		vk::RenderPassBeginInfo renderPassBeginInfo = vk::RenderPassBeginInfo()
-			.setRenderPass(renderPass)
-			.setFramebuffer(swapchainFramebuffers[imageIndex])
-			.setRenderArea(vk::Rect2D({ 0, 0 }, swapchainExtent))
-			// clear value
-			.setClearValueCount(1)
-			.setPClearValues(&clearValue);
-
-		commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
-		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline);
-		commandBuffer.draw(3, 1, 0, 0);
-		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
-		commandBuffer.endRenderPass();
-
-		commandBuffer.end();
-	}
 	void render(DeviceManager& deviceManager)
 	{
 		vk::Device& device = deviceManager.get_logical_device();
 		DeviceWrapper deviceWrapper = deviceManager.get_device_wrapper();
 
+		// wait for 
 		device.waitForFences(inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
 		auto [result, imageIndex] = device.acquireNextImageKHR(swapchain, UINT64_MAX, imageAvailableSemaphores[currentFrame], nullptr);
@@ -132,31 +70,22 @@ public:
 			default: assert(false);
 		}
 
-		// Check if a previous frame is using this image (i.e. there is its fence to wait on)
-		if (imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
-			device.waitForFences(imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
-		}
-		// Mark the image as now being in use by this frame
-		imagesInFlight[imageIndex] = inFlightFences[currentFrame];
-
-		vk::Semaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame] };
-		vk::Semaphore waitSemaphores[] = { imageAvailableSemaphores[currentFrame] };
 		vk::PipelineStageFlags waitStages = vk::PipelineStageFlagBits::eColorAttachmentOutput;
 		vk::SubmitInfo submitInfo = vk::SubmitInfo()
 			.setPWaitDstStageMask(&waitStages)
 			// semaphores
 			.setWaitSemaphoreCount(1)
-			.setPWaitSemaphores(waitSemaphores)
+			.setPWaitSemaphores(&imageAvailableSemaphores[currentFrame])
 			.setSignalSemaphoreCount(1)
-			.setPSignalSemaphores(signalSemaphores)
+			.setPSignalSemaphores(&renderFinishedSemaphores[currentFrame])
 			// command buffers
 			.setCommandBufferCount(1)
-			.setPCommandBuffers(&commandBuffers[imageIndex]);
+			.setPCommandBuffers(&commandBuffers[currentFrame]);
 
-		commandBuffers[imageIndex].reset();
-		record_command_buffer(commandBuffers[imageIndex], imageIndex);
+		commandBuffers[currentFrame].reset();
+		record_command_buffer(imageIndex, currentFrame);
+
 		device.resetFences(inFlightFences[currentFrame]); // FENCE
-
 		deviceWrapper.queue.submit(submitInfo, inFlightFences[currentFrame]);
 
 
@@ -164,13 +93,14 @@ public:
 			.setPImageIndices(&imageIndex)
 			// semaphores
 			.setWaitSemaphoreCount(1)
-			.setPWaitSemaphores(signalSemaphores)
+			.setPWaitSemaphores(&renderFinishedSemaphores[currentFrame])
 			// swapchains
 			.setSwapchainCount(1)
 			.setPSwapchains(&swapchain);
-		//.setPResults(nullptr); // optional if theres multiple swapchains
+			//.setPResults(nullptr); // optional if theres multiple swapchains
 		result = deviceWrapper.queue.presentKHR(&presentInfo);
 
+		// advance frame index
 		currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 	}
 
@@ -179,7 +109,7 @@ private:
 	vk::SurfaceFormatKHR choose_surface_format(const std::vector<vk::SurfaceFormatKHR>& availableFormats)
 	{
 		for (const auto& availableFormat : availableFormats) {
-			if (availableFormat.format == vk::Format::eR8G8B8A8Srgb && availableFormat.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear) {
+			if (availableFormat.format == targetFormat && availableFormat.colorSpace == targetColorSpace) {
 				return availableFormat;
 			}
 		}
@@ -190,7 +120,7 @@ private:
 	vk::PresentModeKHR choose_present_mode(const std::vector<vk::PresentModeKHR>& availablePresentModes)
 	{
 		for (const auto& availablePresentMode : availablePresentModes) {
-			if (availablePresentMode == vk::PresentModeKHR::eMailbox) {
+			if (availablePresentMode == targetPresentMode) {
 				return availablePresentMode;
 			}
 		}
@@ -226,7 +156,6 @@ private:
 		if (deviceWrapper.capabilities.maxImageCount > 0 && imageCount > deviceWrapper.capabilities.maxImageCount) {
 			imageCount = deviceWrapper.capabilities.maxImageCount;
 		}
-		VMI_LOG("Swapchain image count:" << imageCount);
 
 		vk::SwapchainCreateInfoKHR swapchainInfo = vk::SwapchainCreateInfoKHR()
 			// image settings
@@ -504,7 +433,7 @@ private:
 	}
 	void create_command_buffers(DeviceWrapper& deviceWrapper)
 	{
-		commandBuffers.resize(swapchainFramebuffers.size());
+		commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
 		vk::CommandBufferAllocateInfo commandBufferInfo = vk::CommandBufferAllocateInfo()
 			.setCommandPool(commandPool)
 			.setLevel(vk::CommandBufferLevel::ePrimary) // secondary are used by primary command buffers for e.g. common operations
@@ -512,22 +441,6 @@ private:
 		commandBuffers = deviceWrapper.logicalDevice.allocateCommandBuffers(commandBufferInfo);
 	}
 
-	void create_sync_objects(DeviceWrapper& deviceWrapper)
-	{
-		vk::Device& device = deviceWrapper.logicalDevice;
-
-		imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-		renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-		inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
-		imagesInFlight.resize(swapchainImages.size(), nullptr);
-		vk::SemaphoreCreateInfo semaphoreInfo = vk::SemaphoreCreateInfo();
-		vk::FenceCreateInfo fenceInfo = vk::FenceCreateInfo().setFlags(vk::FenceCreateFlagBits::eSignaled);
-		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-			imageAvailableSemaphores[i] = device.createSemaphore(semaphoreInfo);
-			renderFinishedSemaphores[i] = device.createSemaphore(semaphoreInfo);
-			inFlightFences[i] = device.createFence(fenceInfo);
-		}
-	}
 	void create_descriptor_pool(DeviceWrapper& deviceWrapper)
 	{
 		vk::DescriptorPoolSize pool_sizes[] =
@@ -551,14 +464,104 @@ private:
 			.setPoolSizeCount((uint32_t)IM_ARRAYSIZE(pool_sizes))
 			.setPPoolSizes(pool_sizes);
 
-		descPool = deviceWrapper.logicalDevice.createDescriptorPool(info);
+		imguiDescPool = deviceWrapper.logicalDevice.createDescriptorPool(info);
+	}
+
+	void create_sync_objects(DeviceWrapper& deviceWrapper)
+	{
+		vk::Device& device = deviceWrapper.logicalDevice;
+
+		imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+		renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+		inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
+		vk::SemaphoreCreateInfo semaphoreInfo = vk::SemaphoreCreateInfo();
+		vk::FenceCreateInfo fenceInfo = vk::FenceCreateInfo().setFlags(vk::FenceCreateFlagBits::eSignaled);
+		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+			imageAvailableSemaphores[i] = device.createSemaphore(semaphoreInfo);
+			renderFinishedSemaphores[i] = device.createSemaphore(semaphoreInfo);
+			inFlightFences[i] = device.createFence(fenceInfo);
+		}
+	}
+
+	void imgui_init_vulkan(DeviceWrapper& deviceWrapper, Window& window)
+	{
+		struct ImGui_ImplVulkan_InitInfo info = { 0 };
+		info.Instance = window.get_vulkan_instance();
+		info.PhysicalDevice = deviceWrapper.physicalDevice;
+		info.Device = deviceWrapper.logicalDevice;
+		info.QueueFamily = deviceWrapper.iQueue;
+		info.Queue = deviceWrapper.queue;
+		info.PipelineCache = VK_NULL_HANDLE;
+		info.DescriptorPool = imguiDescPool;
+		info.Subpass = 0;
+		info.MinImageCount = swapchainImages.size();
+		info.ImageCount = swapchainImages.size();
+		info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+
+		ImGui_ImplVulkan_Init(&info, renderPass);
+	}
+	void imgui_upload_fonts(DeviceWrapper& deviceWrapper)
+	{
+		vk::CommandBuffer commandBuffer = commandBuffers[currentFrame];
+		deviceWrapper.logicalDevice.resetCommandPool(commandPool);
+
+		vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo()
+			.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
+		commandBuffer.begin(&beginInfo);
+		ImGui_ImplVulkan_CreateFontsTexture(commandBuffer);
+		commandBuffer.end();
+
+		vk::SubmitInfo submitInfo = vk::SubmitInfo()
+			.setCommandBufferCount(1)
+			.setPCommandBuffers(&commandBuffer);
+		deviceWrapper.queue.submit(submitInfo);
+
+		deviceWrapper.logicalDevice.waitIdle();
+		ImGui_ImplVulkan_DestroyFontUploadObjects();
+	}
+
+	// runtime
+	void record_command_buffer(uint32_t iFrameBuffer, uint32_t iCommandBuffer)
+	{
+		vk::CommandBuffer& commandBuffer = commandBuffers[iCommandBuffer];
+
+
+		vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo()
+			// eOneTimeSubmit: The command buffer will be rerecorded right after executing it once.
+			// eRenderPassContinue: This is a secondary command buffer that will be entirely within a single render pass.
+			// eSimultaneousUse: The command buffer can be resubmitted while it is also already pending execution.
+			.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit)
+			.setPInheritanceInfo(nullptr);
+		commandBuffer.begin(beginInfo);
+
+		std::array<float, 4> clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+		vk::ClearValue clearValue = vk::ClearValue().setColor(clearColor);
+
+		vk::RenderPassBeginInfo renderPassBeginInfo = vk::RenderPassBeginInfo()
+			.setRenderPass(renderPass)
+			.setFramebuffer(swapchainFramebuffers[iFrameBuffer])
+			.setRenderArea(vk::Rect2D({ 0, 0 }, swapchainExtent))
+			// clear value
+			.setClearValueCount(1)
+			.setPClearValues(&clearValue);
+
+		commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
+		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline);
+		commandBuffer.draw(3, 1, 0, 0);
+		ImGui::Render();
+		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
+		commandBuffer.endRenderPass();
+
+		commandBuffer.end();
 	}
 
 private:
 	// lazy constants (settings?)
-	const int MAX_FRAMES_IN_FLIGHT = 2;
-
-	vk::DescriptorPool descPool;
+	static constexpr int32_t MAX_FRAMES_IN_FLIGHT = 2;
+	static constexpr vk::Format targetFormat = vk::Format::eR8G8B8A8Srgb;
+	static constexpr vk::ColorSpaceKHR targetColorSpace = vk::ColorSpaceKHR::eSrgbNonlinear;
+	static constexpr vk::PresentModeKHR targetPresentMode = vk::PresentModeKHR::eFifo; // vsync
+	//static constexpr vk::PresentModeKHR targetPresentMode = vk::PresentModeKHR::eMailbox;
 
 	vk::SwapchainKHR swapchain;
 	vk::Format swapchainImageFormat;
@@ -572,12 +575,12 @@ private:
 	vk::RenderPass renderPass;
 	vk::PipelineLayout pipelineLayout;
 	vk::Pipeline graphicsPipeline;
+	vk::DescriptorPool imguiDescPool;
 	vk::CommandPool commandPool;
 	std::vector<vk::CommandBuffer> commandBuffers;
 
 	std::vector<vk::Semaphore> imageAvailableSemaphores;
 	std::vector<vk::Semaphore> renderFinishedSemaphores;
 	std::vector<vk::Fence> inFlightFences;
-	std::vector<vk::Fence> imagesInFlight;
 	size_t currentFrame = 0;
 };
