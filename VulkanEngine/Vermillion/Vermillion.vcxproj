@@ -103,9 +103,11 @@
   <ItemGroup>
     <ClInclude Include="src\core\application.hpp" />
     <ClInclude Include="src\core\device_manager.hpp" />
-    <ClInclude Include="src\core\device_wrapper.hpp" />
+    <ClInclude Include="src\core\wrappers\device_wrapper.hpp" />
     <ClInclude Include="src\core\renderer.hpp" />
     <ClInclude Include="src\core\window.hpp" />
+    <ClInclude Include="src\core\wrappers\shader_wrapper.hpp" />
+    <ClInclude Include="src\core\wrappers\swapchain_wrapper.hpp" />
     <ClInclude Include="src\pch\pch.hpp" />
     <ClInclude Include="src\utils\logging.hpp" />
     <ClInclude Include="src\utils\rule_of_five.hpp" />

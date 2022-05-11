@@ -1,6 +1,6 @@
 #pragma once
 
-#include "device_wrapper.hpp"
+#include "wrappers/device_wrapper.hpp"
 
 class DeviceManager
 {

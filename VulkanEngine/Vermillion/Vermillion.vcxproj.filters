@@ -47,7 +47,13 @@
     <ClInclude Include="src\core\window.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\core\device_wrapper.hpp">
+    <ClInclude Include="src\core\wrappers\device_wrapper.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\core\wrappers\swapchain_wrapper.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\core\wrappers\shader_wrapper.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
