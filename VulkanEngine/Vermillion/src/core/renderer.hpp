@@ -14,10 +14,8 @@ public:
 	void init(DeviceWrapper& deviceWrapper, Window& window)
 	{
 		swapchainWrapper.init(deviceWrapper, window);
-
 		create_render_pass(deviceWrapper);
 		create_graphics_pipeline(deviceWrapper);
-
 		swapchainWrapper.create_framebuffers(deviceWrapper, renderPass);
 
 		create_command_pool(deviceWrapper);
@@ -83,6 +81,7 @@ public:
 			.setPCommandBuffers(&commandBuffers[currentFrame]);
 
 		commandBuffers[currentFrame].reset();
+		//device.resetCommandPool(commandPool);
 		record_command_buffer(imageIndex, currentFrame);
 
 		device.resetFences(inFlightFences[currentFrame]); // FENCE
@@ -356,7 +355,7 @@ private:
 		info.Device = deviceWrapper.logicalDevice;
 		info.QueueFamily = deviceWrapper.iQueue;
 		info.Queue = deviceWrapper.queue;
-		info.PipelineCache = VK_NULL_HANDLE;
+		info.PipelineCache = pipelineCache;
 		info.DescriptorPool = imguiDescPool;
 		info.Subpass = 0;
 		info.MinImageCount = swapchainWrapper.images.size();
@@ -432,8 +431,9 @@ private:
 
 	vk::ShaderModule vs, ps;
 	vk::RenderPass renderPass;
-	vk::PipelineLayout pipelineLayout;
 	vk::Pipeline graphicsPipeline;
+	vk::PipelineLayout pipelineLayout;
+	vk::PipelineCache pipelineCache;
 	vk::DescriptorPool imguiDescPool;
 	vk::CommandPool commandPool;
 

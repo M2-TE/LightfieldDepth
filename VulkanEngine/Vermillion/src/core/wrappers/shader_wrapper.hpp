@@ -1,5 +1,7 @@
 #pragma once
 
+#include "shaders.hpp"
+
 vk::ShaderModule create_shader_module(DeviceWrapper& deviceWrapper, const unsigned char* data, size_t size)
 {
 	vk::ShaderModuleCreateInfo shaderInfo = vk::ShaderModuleCreateInfo()

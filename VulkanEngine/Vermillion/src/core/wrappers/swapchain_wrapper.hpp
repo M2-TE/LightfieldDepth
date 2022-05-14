@@ -1,7 +1,5 @@
 #pragma once
 
-#include "shaders.hpp"
-
 class SwapchainWrapper
 {
 public:
@@ -163,8 +161,9 @@ private:
 	static constexpr vk::ColorSpaceKHR targetColorSpace = vk::ColorSpaceKHR::eSrgbNonlinear;
 	static constexpr vk::PresentModeKHR targetPresentMode = vk::PresentModeKHR::eFifo; // vsync
 	//static constexpr vk::PresentModeKHR targetPresentMode = vk::PresentModeKHR::eMailbox;
-	//static constexpr int32_t MAX_FRAMES_IN_FLIGHT = 2;
-	//size_t currentFrame = 0;
+
+	static constexpr int32_t MAX_FRAMES_IN_FLIGHT = 2;
+	size_t currentFrame = 0;
 
 public:
 	vk::Extent2D extent; 
