@@ -28,11 +28,31 @@ public:
 		imgui_init_vulkan(deviceWrapper, window);
 		imgui_upload_fonts(deviceWrapper);
 	}
+	void recreate_KHR(DeviceWrapper& deviceWrapper, Window& window) // TODO use better approach of recreating swapchain using old swapchain pointer
+	{
+		deviceWrapper.logicalDevice.waitIdle();
+		VMI_LOG("Rebuilding KHR");
+
+		destroy_KHR(deviceWrapper);
+
+		swapchainWrapper.init(deviceWrapper, window);
+		create_render_pass(deviceWrapper);
+		create_graphics_pipeline(deviceWrapper);
+		swapchainWrapper.create_framebuffers(deviceWrapper, renderPass);
+	}
+	void destroy_KHR(DeviceWrapper& deviceWrapper)
+	{
+		swapchainWrapper.destroy(deviceWrapper);
+
+		deviceWrapper.logicalDevice.destroyPipeline(graphicsPipeline);
+		deviceWrapper.logicalDevice.destroyPipelineLayout(pipelineLayout);
+		deviceWrapper.logicalDevice.destroyRenderPass(renderPass);
+	}
 	void destroy(DeviceWrapper& deviceWrapper)
 	{
 		vk::Device& device = deviceWrapper.logicalDevice;
 
-		swapchainWrapper.destroy(deviceWrapper);
+		destroy_KHR(deviceWrapper);
 
 		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 			device.destroySemaphore(imageAvailableSemaphores[i]);
@@ -42,29 +62,27 @@ public:
 
 		device.destroyShaderModule(vs);
 		device.destroyShaderModule(ps);
-		device.destroyPipeline(graphicsPipeline);
-		device.destroyPipelineLayout(pipelineLayout);
-		device.destroyRenderPass(renderPass);
+
 		device.destroyCommandPool(commandPool);
 		device.destroyDescriptorPool(imguiDescPool);
 
 		ImGui_ImplVulkan_Shutdown();
 	}
 
-	void render(DeviceManager& deviceManager)
+	void render(DeviceWrapper& deviceWrapper)
 	{
-		vk::Device& device = deviceManager.get_logical_device();
-		DeviceWrapper deviceWrapper = deviceManager.get_device_wrapper();
+		vk::Device& device = deviceWrapper.logicalDevice;
 
-		// wait for 
-		device.waitForFences(inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
+		// wait for fence of current frame before going any further
+		vk::Result result = device.waitForFences(inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
+		if (result != vk::Result::eSuccess) assert(false);
 
-		auto [result, imageIndex] = device.acquireNextImageKHR(swapchainWrapper.swapchain, UINT64_MAX, imageAvailableSemaphores[currentFrame], nullptr);
-		switch (result) {
+		vk::ResultValue imgResult = device.acquireNextImageKHR(swapchainWrapper.swapchain, UINT64_MAX, imageAvailableSemaphores[currentFrame], nullptr);
+		switch (imgResult.result) {
 			case vk::Result::eSuccess: break;
-			case vk::Result::eTimeout: VMI_LOG("Timeout on image acquisition."); break;
-			case vk::Result::eNotReady: VMI_LOG("Images not ready."); break;
+			case vk::Result::eNotReady: VMI_LOG("Images not ready."); return;
 			case vk::Result::eSuboptimalKHR: VMI_LOG("Suboptimal image acquisition."); break;
+			case vk::Result::eErrorOutOfDateKHR: VMI_LOG("Swapchain: KHR out of date."); return;
 			default: assert(false);
 		}
 
@@ -82,14 +100,14 @@ public:
 
 		commandBuffers[currentFrame].reset();
 		//device.resetCommandPool(commandPool);
-		record_command_buffer(imageIndex, currentFrame);
+		record_command_buffer(imgResult.value, currentFrame);
 
 		device.resetFences(inFlightFences[currentFrame]); // FENCE
 		deviceWrapper.queue.submit(submitInfo, inFlightFences[currentFrame]);
 
 
 		vk::PresentInfoKHR presentInfo = vk::PresentInfoKHR()
-			.setPImageIndices(&imageIndex)
+			.setPImageIndices(&imgResult.value)
 			// semaphores
 			.setWaitSemaphoreCount(1)
 			.setPWaitSemaphores(&renderFinishedSemaphores[currentFrame])
@@ -98,6 +116,7 @@ public:
 			.setPSwapchains(&swapchainWrapper.swapchain);
 			//.setPResults(nullptr); // optional if theres multiple swapchains
 		result = deviceWrapper.queue.presentKHR(&presentInfo);
+		if (result != vk::Result::eSuccess) assert(false);
 
 		// advance frame index
 		currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;

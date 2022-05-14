@@ -14,6 +14,8 @@
 	#define VK_USE_PLATFORM_WIN32_KHR
 #endif
 
+#define VULKAN_HPP_NO_SPACESHIP_OPERATOR
+#include <vulkan/vulkan.hpp>
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -25,8 +27,6 @@
 #include <SDL2/SDL_syswm.h>
 #include <SDL2/SDL_vulkan.h>
 
-#define VULKAN_HPP_NO_SPACESHIP_OPERATOR
-#include <vulkan/vulkan.hpp>
 
 // 3rd party libs
 #include "imgui.h"

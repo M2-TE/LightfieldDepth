@@ -33,13 +33,14 @@ public:
 			framebuffers[i] = deviceWrapper.logicalDevice.createFramebuffer(framebufferInfo);
 		}
 	}
-
 	void destroy(DeviceWrapper& deviceWrapper)
 	{
 		auto& device = deviceWrapper.logicalDevice;
-		for (vk::ImageView imageView : imageViews) device.destroyImageView(imageView);
-		for (vk::Framebuffer framebuffer : framebuffers) device.destroyFramebuffer(framebuffer);
 
+		for (uint32_t i = 0; i < images.size(); i++) {
+			device.destroyImageView(imageViews[i]);
+			device.destroyFramebuffer(framebuffers[i]);
+		}
 		device.destroySwapchainKHR(swapchain);
 	}
 
@@ -162,8 +163,8 @@ private:
 	static constexpr vk::PresentModeKHR targetPresentMode = vk::PresentModeKHR::eFifo; // vsync
 	//static constexpr vk::PresentModeKHR targetPresentMode = vk::PresentModeKHR::eMailbox;
 
-	static constexpr int32_t MAX_FRAMES_IN_FLIGHT = 2;
-	size_t currentFrame = 0;
+	//static constexpr int32_t MAX_FRAMES_IN_FLIGHT = 2;
+	//size_t currentFrame = 0;
 
 public:
 	vk::Extent2D extent; 
