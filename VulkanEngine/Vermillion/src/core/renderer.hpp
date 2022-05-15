@@ -46,7 +46,7 @@ public:
 		create_graphics_pipeline(deviceWrapper);
 		swapchainWrapper.create_framebuffers(deviceWrapper, renderPass);
 
-		create_command_pool(deviceWrapper);
+		create_command_pools(deviceWrapper);
 		create_command_buffers(deviceWrapper);
 
 		create_descriptor_pools(deviceWrapper);
@@ -93,6 +93,7 @@ public:
 		device.destroyShaderModule(ps);
 
 		device.destroyCommandPool(commandPool);
+		device.destroyCommandPool(transientCommandPool);
 		device.destroyDescriptorPool(imguiDescPool);
 
 		device.destroyBuffer(vertexBuffer);
@@ -343,13 +344,21 @@ private:
 		}
 	}
 
-	void create_command_pool(DeviceWrapper& deviceWrapper)
+	// change to having multiple command pools, not just multiple command buffers (and remove the reset command buffer bit)
+	void create_command_pools(DeviceWrapper& deviceWrapper)
 	{
-		vk::CommandPoolCreateInfo commandPoolInfo = vk::CommandPoolCreateInfo()
+		vk::CommandPoolCreateInfo commandPoolInfo;
+
+		commandPoolInfo = vk::CommandPoolCreateInfo()
 			.setQueueFamilyIndex(deviceWrapper.iQueue)
 			.setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer);
-
 		commandPool = deviceWrapper.logicalDevice.createCommandPool(commandPoolInfo);
+
+
+		commandPoolInfo = vk::CommandPoolCreateInfo()
+			.setQueueFamilyIndex(deviceWrapper.iQueue)
+			.setFlags(vk::CommandPoolCreateFlagBits::eTransient);
+		transientCommandPool = deviceWrapper.logicalDevice.createCommandPool(commandPoolInfo);
 	}
 	void create_command_buffers(DeviceWrapper& deviceWrapper)
 	{
@@ -386,31 +395,7 @@ private:
 
 		imguiDescPool = deviceWrapper.logicalDevice.createDescriptorPool(info);
 	}
-	void create_vertex_buffer(DeviceWrapper& deviceWrapper)
-	{
-		vk::BufferCreateInfo bufferInfo = vk::BufferCreateInfo()
-			.setSize(sizeof(Vertex) * vertices.size())
-			.setUsage(vk::BufferUsageFlagBits::eVertexBuffer)
-			.setSharingMode(vk::SharingMode::eExclusive);
-		vertexBuffer = deviceWrapper.logicalDevice.createBuffer(bufferInfo, nullptr);
-
-		vk::MemoryRequirements memReqs;
-		memReqs = deviceWrapper.logicalDevice.getBufferMemoryRequirements(vertexBuffer);
-
-		vk::MemoryAllocateInfo allocInfo = vk::MemoryAllocateInfo()
-			.setAllocationSize(memReqs.size)
-			.setMemoryTypeIndex(find_memory_type(deviceWrapper, memReqs.memoryTypeBits, 
-				vk::MemoryPropertyFlagBits::eHostVisible |  
-				vk::MemoryPropertyFlagBits::eHostCoherent)); // can use explicit flushing instead of relying on coherent memory!
-		vertexBufferMemory = deviceWrapper.logicalDevice.allocateMemory(allocInfo);
-		deviceWrapper.logicalDevice.bindBufferMemory(vertexBuffer, vertexBufferMemory, 0);
-
-		//void* data = deviceWrapper.logicalDevice.mapMemory(vertexBufferMemory, 0, bufferInfo.size);
-		void* data = deviceWrapper.logicalDevice.mapMemory(vertexBufferMemory, 0, VK_WHOLE_SIZE);
-		memcpy(data, vertices.data(), static_cast<size_t>(bufferInfo.size));
-		deviceWrapper.logicalDevice.unmapMemory(vertexBufferMemory);
-	}
-
+	
 	uint32_t find_memory_type(DeviceWrapper& deviceWrapper, uint32_t typeFilter, vk::MemoryPropertyFlags properties)
 	{
 		for (uint32_t i = 0; i < deviceWrapper.deviceMemProperties.memoryTypeCount; i++) {
@@ -420,6 +405,79 @@ private:
 			}
 		}
 		throw std::runtime_error("failed to find suitable memory type!");
+	}
+	// TODO: dont use vk::allocateMemory for every individual buffer. make one large one and work with offsets!
+	void create_buffer(DeviceWrapper& deviceWrapper, vk::Buffer& buffer, vk::DeviceMemory& bufferMemory, vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties)
+	{
+		vk::BufferCreateInfo bufferInfo = vk::BufferCreateInfo()
+			.setSize(size)
+			.setUsage(usage)
+			.setSharingMode(vk::SharingMode::eExclusive);
+		buffer = deviceWrapper.logicalDevice.createBuffer(bufferInfo, nullptr);
+
+		vk::MemoryRequirements memReqs;
+		memReqs = deviceWrapper.logicalDevice.getBufferMemoryRequirements(buffer);
+
+		vk::MemoryAllocateInfo allocInfo = vk::MemoryAllocateInfo()
+			.setAllocationSize(memReqs.size)
+			.setMemoryTypeIndex(find_memory_type(deviceWrapper, memReqs.memoryTypeBits, properties));
+		bufferMemory = deviceWrapper.logicalDevice.allocateMemory(allocInfo);
+		deviceWrapper.logicalDevice.bindBufferMemory(buffer, bufferMemory, 0);
+	}
+	void copy_buffer(DeviceWrapper& deviceWrapper, vk::Buffer src, vk::Buffer dst, vk::DeviceSize size)
+	{
+		vk::CommandBufferAllocateInfo allocInfo = vk::CommandBufferAllocateInfo()
+			.setLevel(vk::CommandBufferLevel::ePrimary)
+			.setCommandPool(transientCommandPool)
+			.setCommandBufferCount(1);
+
+		vk::CommandBuffer commandBuffer;
+		auto res = deviceWrapper.logicalDevice.allocateCommandBuffers(&allocInfo, &commandBuffer);
+
+		// begin recording to temporary command buffer
+		vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo()
+			.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
+		commandBuffer.begin(beginInfo);
+
+		vk::BufferCopy copyRegion = vk::BufferCopy()
+			.setSrcOffset(0)
+			.setDstOffset(0)
+			.setSize(size);
+		commandBuffer.copyBuffer(src, dst, copyRegion);
+		commandBuffer.end();
+
+		vk::SubmitInfo submitInfo = vk::SubmitInfo()
+			.setCommandBufferCount(1)
+			.setPCommandBuffers(&commandBuffer);
+		deviceWrapper.queue.submit(submitInfo);
+		deviceWrapper.queue.waitIdle(); // TODO: change this to wait on a fence instead (upon queue submit) so multiple memory transfers would be possible
+
+		// free command buffer directly after use
+		deviceWrapper.logicalDevice.freeCommandBuffers(transientCommandPool, commandBuffer);
+	}
+	void create_vertex_buffer(DeviceWrapper& deviceWrapper)
+	{
+		vk::DeviceSize bufferSize = sizeof(Vertex) * vertices.size();
+		vk::Buffer stagingBuffer;
+		vk::DeviceMemory stagingBufferMemory;
+
+		create_buffer(deviceWrapper, stagingBuffer, stagingBufferMemory, bufferSize,
+			vk::BufferUsageFlagBits::eTransferSrc,
+			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+
+		void* data = deviceWrapper.logicalDevice.mapMemory(stagingBufferMemory, 0, VK_WHOLE_SIZE);
+		memcpy(data, vertices.data(), static_cast<size_t>(bufferSize));
+		deviceWrapper.logicalDevice.unmapMemory(stagingBufferMemory);
+
+		create_buffer(deviceWrapper, vertexBuffer, vertexBufferMemory, bufferSize,
+			vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer,
+			vk::MemoryPropertyFlagBits::eDeviceLocal);
+
+		copy_buffer(deviceWrapper, stagingBuffer, vertexBuffer, bufferSize);
+
+		// free up staging buffer
+		deviceWrapper.logicalDevice.destroyBuffer(stagingBuffer);
+		deviceWrapper.logicalDevice.freeMemory(stagingBufferMemory);
 	}
 
 	void create_sync_objects(DeviceWrapper& deviceWrapper)
@@ -535,10 +593,10 @@ private:
 	vk::PipelineLayout pipelineLayout;
 	vk::PipelineCache pipelineCache;
 	vk::DescriptorPool imguiDescPool;
-	vk::CommandPool commandPool;
 
-	// TODO: move all this to the swapchain wrapper?? IS THAT EVEN GOOD? I DUNNO
-	// also todo: make number of images in swapchain based on (min + max_frames_etc - 1)
+	// TODO: make number of images in swapchain based on (min + max_frames_etc - 1)
+	vk::CommandPool commandPool;
+	vk::CommandPool transientCommandPool;
 	std::vector<vk::CommandBuffer> commandBuffers;
 
 	std::vector<vk::Semaphore> imageAvailableSemaphores;
@@ -546,12 +604,14 @@ private:
 	std::vector<vk::Fence> inFlightFences;
 	uint32_t currentFrame = 0;
 
+	// TODO: encapsulate this
 	vk::Buffer vertexBuffer;
 	vk::DeviceMemory vertexBufferMemory;
-	std::array<Vertex, 3> vertices = { {
+	std::vector<Vertex> vertices = { {
 			{{0.0f, -0.5f, 0.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
 			{{0.5f, 0.5f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
 			{{-0.5f, 0.5f, 0.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}}
+			//{{-0.5f, 0.5f, 0.0f, 1.0f}, {1.0f, 1.0f, 0.0f, 1.0f}}
 		}
 	};
 };
