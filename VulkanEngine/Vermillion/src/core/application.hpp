@@ -87,7 +87,10 @@ private:
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 
 		if (bRendering) renderer.render(deviceManager.get_device_wrapper());
-		ImGui::EndFrame();
+		else {
+			ImGui::EndFrame(); // manually end imgui frame
+			SDL_Delay(200); // slow down update loop while no rendering occurs
+		}
 
 		return true;
 	}
