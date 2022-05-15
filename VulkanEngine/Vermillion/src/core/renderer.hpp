@@ -92,7 +92,9 @@ public:
 		device.destroyShaderModule(vs);
 		device.destroyShaderModule(ps);
 
-		device.destroyCommandPool(commandPool);
+		for (uint32_t i = 0; i < commandPools.size(); i++) {
+			device.destroyCommandPool(commandPools[i]);
+		}
 		device.destroyCommandPool(transientCommandPool);
 		device.destroyDescriptorPool(imguiDescPool);
 
@@ -104,9 +106,6 @@ public:
 
 	void render(DeviceWrapper& deviceWrapper)
 	{
-		auto f = Vertex::get_binding_desc();
-
-
 		vk::Device& device = deviceWrapper.logicalDevice;
 
 		// wait for fence of current frame before going any further
@@ -134,8 +133,7 @@ public:
 			.setCommandBufferCount(1)
 			.setPCommandBuffers(&commandBuffers[currentFrame]);
 
-		commandBuffers[currentFrame].reset();
-		//device.resetCommandPool(commandPool);
+		device.resetCommandPool(commandPools[currentFrame]);
 		record_command_buffer(imgResult.value, currentFrame);
 
 		device.resetFences(inFlightFences[currentFrame]); // FENCE
@@ -344,16 +342,16 @@ private:
 		}
 	}
 
-	// change to having multiple command pools, not just multiple command buffers (and remove the reset command buffer bit)
 	void create_command_pools(DeviceWrapper& deviceWrapper)
 	{
 		vk::CommandPoolCreateInfo commandPoolInfo;
 
 		commandPoolInfo = vk::CommandPoolCreateInfo()
-			.setQueueFamilyIndex(deviceWrapper.iQueue)
-			.setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer);
-		commandPool = deviceWrapper.logicalDevice.createCommandPool(commandPoolInfo);
-
+			.setQueueFamilyIndex(deviceWrapper.iQueue);
+		commandPools.resize(MAX_FRAMES_IN_FLIGHT);
+		for (uint32_t i = 0; i < commandPools.size(); i++) {
+			commandPools[i] = deviceWrapper.logicalDevice.createCommandPool(commandPoolInfo);
+		}
 
 		commandPoolInfo = vk::CommandPoolCreateInfo()
 			.setQueueFamilyIndex(deviceWrapper.iQueue)
@@ -363,11 +361,13 @@ private:
 	void create_command_buffers(DeviceWrapper& deviceWrapper)
 	{
 		commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-		vk::CommandBufferAllocateInfo commandBufferInfo = vk::CommandBufferAllocateInfo()
-			.setCommandPool(commandPool)
-			.setLevel(vk::CommandBufferLevel::ePrimary) // secondary are used by primary command buffers for e.g. common operations
-			.setCommandBufferCount(static_cast<uint32_t>(commandBuffers.size()));
-		commandBuffers = deviceWrapper.logicalDevice.allocateCommandBuffers(commandBufferInfo);
+		for (uint32_t i = 0; i < commandPools.size(); i++) {
+			vk::CommandBufferAllocateInfo commandBufferInfo = vk::CommandBufferAllocateInfo()
+				.setCommandPool(commandPools[i])
+				.setLevel(vk::CommandBufferLevel::ePrimary) // secondary are used by primary command buffers for e.g. common operations
+				.setCommandBufferCount(1);
+			commandBuffers[i] = deviceWrapper.logicalDevice.allocateCommandBuffers(commandBufferInfo)[0];
+		}
 	}
 	void create_descriptor_pools(DeviceWrapper& deviceWrapper)
 	{
@@ -516,7 +516,7 @@ private:
 	void imgui_upload_fonts(DeviceWrapper& deviceWrapper)
 	{
 		vk::CommandBuffer commandBuffer = commandBuffers[currentFrame];
-		deviceWrapper.logicalDevice.resetCommandPool(commandPool);
+		deviceWrapper.logicalDevice.resetCommandPool(commandPools[currentFrame]);
 
 		vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo()
 			.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
@@ -595,8 +595,9 @@ private:
 	vk::DescriptorPool imguiDescPool;
 
 	// TODO: make number of images in swapchain based on (min + max_frames_etc - 1)
-	vk::CommandPool commandPool;
+	//vk::CommandPool commandPool;
 	vk::CommandPool transientCommandPool;
+	std::vector<vk::CommandPool> commandPools;
 	std::vector<vk::CommandBuffer> commandBuffers;
 
 	std::vector<vk::Semaphore> imageAvailableSemaphores;
