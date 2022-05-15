@@ -46,7 +46,7 @@ private:
 
 			switch (event.type) {
 				case SDL_QUIT: return false;
-				case SDL_WINDOWEVENT: { // TODO: handle swapchain recreation EXPLICITLY from here
+				case SDL_WINDOWEVENT: {
 					switch (event.window.event) {
 						case SDL_WINDOWEVENT_SHOWN: SDL_Log("Window %d shown", event.window.windowID); break;
 						case SDL_WINDOWEVENT_HIDDEN: SDL_Log("Window %d hidden", event.window.windowID); break;

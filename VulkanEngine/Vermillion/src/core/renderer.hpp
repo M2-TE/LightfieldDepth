@@ -3,6 +3,34 @@
 #include "wrappers/swapchain_wrapper.hpp"
 #include "wrappers/shader_wrapper.hpp"
 
+struct Vertex
+{
+	glm::vec<4, float, glm::packed_highp> pos;
+	glm::vec<4, float, glm::packed_highp> col;
+
+	static vk::VertexInputBindingDescription get_binding_desc() {
+		vk::VertexInputBindingDescription desc = vk::VertexInputBindingDescription()
+			.setBinding(0)
+			.setStride(sizeof(Vertex))
+			.setInputRate(vk::VertexInputRate::eVertex);
+		return desc;
+	}
+	static std::array<vk::VertexInputAttributeDescription, 2> get_attr_desc() {
+		std::array<vk::VertexInputAttributeDescription, 2> desc;
+		desc[0] = vk::VertexInputAttributeDescription()
+			.setBinding(0)
+			.setLocation(0)
+			.setFormat(vk::Format::eR32G32B32A32Sfloat)
+			.setOffset(offsetof(Vertex, pos));
+		desc[1] = vk::VertexInputAttributeDescription()
+			.setBinding(0)
+			.setLocation(1)
+			.setFormat(vk::Format::eR32G32B32A32Sfloat)
+			.setOffset(offsetof(Vertex, col));
+		return desc;
+	}
+};
+
 class Renderer
 {
 public:
@@ -22,6 +50,7 @@ public:
 		create_command_buffers(deviceWrapper);
 
 		create_descriptor_pools(deviceWrapper);
+		create_vertex_buffer(deviceWrapper);
 
 		create_sync_objects(deviceWrapper);
 
@@ -66,11 +95,17 @@ public:
 		device.destroyCommandPool(commandPool);
 		device.destroyDescriptorPool(imguiDescPool);
 
+		device.destroyBuffer(vertexBuffer);
+		device.freeMemory(vertexBufferMemory);
+
 		ImGui_ImplVulkan_Shutdown();
 	}
 
 	void render(DeviceWrapper& deviceWrapper)
 	{
+		auto f = Vertex::get_binding_desc();
+
+
 		vk::Device& device = deviceWrapper.logicalDevice;
 
 		// wait for fence of current frame before going any further
@@ -188,11 +223,13 @@ private:
 		vk::PipelineShaderStageCreateInfo shaderStages[] = { vertStageInfo, fragStageInfo };
 
 		// Vertex Input descriptor
+		auto bindingDesc = Vertex::get_binding_desc();
+		auto attrDesc = Vertex::get_attr_desc();
 		vk::PipelineVertexInputStateCreateInfo vertexInputInfo = vk::PipelineVertexInputStateCreateInfo()
-			.setVertexBindingDescriptionCount(0)
-			.setVertexBindingDescriptions(nullptr)
-			.setVertexAttributeDescriptionCount(0)
-			.setVertexAttributeDescriptions(nullptr);
+			.setVertexBindingDescriptionCount(1)
+			.setVertexBindingDescriptions(bindingDesc)
+			.setVertexAttributeDescriptionCount(static_cast<uint32_t>(attrDesc.size()))
+			.setVertexAttributeDescriptions(attrDesc);
 
 		// Input Assembly
 		vk::PipelineInputAssemblyStateCreateInfo inputAssemplyInfo = vk::PipelineInputAssemblyStateCreateInfo()
@@ -349,6 +386,41 @@ private:
 
 		imguiDescPool = deviceWrapper.logicalDevice.createDescriptorPool(info);
 	}
+	void create_vertex_buffer(DeviceWrapper& deviceWrapper)
+	{
+		vk::BufferCreateInfo bufferInfo = vk::BufferCreateInfo()
+			.setSize(sizeof(Vertex) * vertices.size())
+			.setUsage(vk::BufferUsageFlagBits::eVertexBuffer)
+			.setSharingMode(vk::SharingMode::eExclusive);
+		vertexBuffer = deviceWrapper.logicalDevice.createBuffer(bufferInfo, nullptr);
+
+		vk::MemoryRequirements memReqs;
+		memReqs = deviceWrapper.logicalDevice.getBufferMemoryRequirements(vertexBuffer);
+
+		vk::MemoryAllocateInfo allocInfo = vk::MemoryAllocateInfo()
+			.setAllocationSize(memReqs.size)
+			.setMemoryTypeIndex(find_memory_type(deviceWrapper, memReqs.memoryTypeBits, 
+				vk::MemoryPropertyFlagBits::eHostVisible |  
+				vk::MemoryPropertyFlagBits::eHostCoherent)); // can use explicit flushing instead of relying on coherent memory!
+		vertexBufferMemory = deviceWrapper.logicalDevice.allocateMemory(allocInfo);
+		deviceWrapper.logicalDevice.bindBufferMemory(vertexBuffer, vertexBufferMemory, 0);
+
+		//void* data = deviceWrapper.logicalDevice.mapMemory(vertexBufferMemory, 0, bufferInfo.size);
+		void* data = deviceWrapper.logicalDevice.mapMemory(vertexBufferMemory, 0, VK_WHOLE_SIZE);
+		memcpy(data, vertices.data(), static_cast<size_t>(bufferInfo.size));
+		deviceWrapper.logicalDevice.unmapMemory(vertexBufferMemory);
+	}
+
+	uint32_t find_memory_type(DeviceWrapper& deviceWrapper, uint32_t typeFilter, vk::MemoryPropertyFlags properties)
+	{
+		for (uint32_t i = 0; i < deviceWrapper.deviceMemProperties.memoryTypeCount; i++) {
+			if (typeFilter & (1 << i) && (deviceWrapper.deviceMemProperties.memoryTypes[i].propertyFlags & properties) == properties)
+			{
+				return i;
+			}
+		}
+		throw std::runtime_error("failed to find suitable memory type!");
+	}
 
 	void create_sync_objects(DeviceWrapper& deviceWrapper)
 	{
@@ -377,8 +449,8 @@ private:
 		info.PipelineCache = pipelineCache;
 		info.DescriptorPool = imguiDescPool;
 		info.Subpass = 0;
-		info.MinImageCount = swapchainWrapper.images.size();
-		info.ImageCount = swapchainWrapper.images.size();
+		info.MinImageCount = (uint32_t) swapchainWrapper.images.size();
+		info.ImageCount = (uint32_t) swapchainWrapper.images.size();
 		info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
 
 		ImGui_ImplVulkan_Init(&info, renderPass);
@@ -390,10 +462,12 @@ private:
 
 		vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo()
 			.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
-		commandBuffer.begin(&beginInfo);
-		ImGui_ImplVulkan_CreateFontsTexture(commandBuffer);
-		commandBuffer.end();
+		commandBuffer.begin(beginInfo);
 
+		// upload fonts
+		ImGui_ImplVulkan_CreateFontsTexture(commandBuffer);
+
+		commandBuffer.end();
 		vk::SubmitInfo submitInfo = vk::SubmitInfo()
 			.setCommandBufferCount(1)
 			.setPCommandBuffers(&commandBuffer);
@@ -430,9 +504,16 @@ private:
 
 		commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
 		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline);
-		commandBuffer.draw(3, 1, 0, 0);
+
+		vk::Buffer vertexBuffers[] = { vertexBuffer };
+		vk::DeviceSize offsets[] = { 0 };
+		commandBuffer.bindVertexBuffers(0, 1, vertexBuffers, offsets);
+		commandBuffer.draw(vertices.size(), 1, 0, 0);
+
+
 		ImGui::Render();
 		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
+
 		commandBuffer.endRenderPass();
 
 		commandBuffer.end();
@@ -463,5 +544,14 @@ private:
 	std::vector<vk::Semaphore> imageAvailableSemaphores;
 	std::vector<vk::Semaphore> renderFinishedSemaphores;
 	std::vector<vk::Fence> inFlightFences;
-	size_t currentFrame = 0;
+	uint32_t currentFrame = 0;
+
+	vk::Buffer vertexBuffer;
+	vk::DeviceMemory vertexBufferMemory;
+	std::array<Vertex, 3> vertices = { {
+			{{0.0f, -0.5f, 0.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
+			{{0.5f, 0.5f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
+			{{-0.5f, 0.5f, 0.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}}
+		}
+	};
 };
