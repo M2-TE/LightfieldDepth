@@ -74,19 +74,12 @@ private:
 	void choose_extent(DeviceWrapper& deviceWrapper, Window& window)
 	{
 		auto& capabilities = deviceWrapper.capabilities;
-		if (capabilities.currentExtent.width != UINT32_MAX) {
-			extent = capabilities.currentExtent;
-		}
-		else {
-			int width, height;
-			SDL_GL_GetDrawableSize(window.get_window(), &width, &height);
+		int width, height;
+		SDL_Vulkan_GetDrawableSize(window.get_window(), &width, &height);
 
-			vk::Extent2D actualExtent = vk::Extent2D()
-				.setWidth(std::clamp(static_cast<uint32_t>(width), capabilities.minImageExtent.width, capabilities.maxImageExtent.width))
-				.setHeight(std::clamp(static_cast<uint32_t>(height), capabilities.minImageExtent.height, capabilities.maxImageExtent.height));
-
-			extent = actualExtent;
-		}
+		extent = vk::Extent2D()
+			.setWidth(width)
+			.setHeight(height);
 	}
 	
 	void create_swapchain(DeviceWrapper& deviceWrapper, Window& window)

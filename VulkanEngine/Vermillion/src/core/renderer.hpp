@@ -41,16 +41,19 @@ public:
 public:
 	void init(DeviceWrapper& deviceWrapper, Window& window)
 	{
+		create_shader_modules(deviceWrapper);
+
 		swapchainWrapper.init(deviceWrapper, window);
 		create_render_pass(deviceWrapper);
 		create_graphics_pipeline(deviceWrapper);
 		swapchainWrapper.create_framebuffers(deviceWrapper, renderPass);
 
+		create_descriptor_pools(deviceWrapper);
 		create_command_pools(deviceWrapper);
 		create_command_buffers(deviceWrapper);
 
-		create_descriptor_pools(deviceWrapper);
 		create_vertex_buffer(deviceWrapper);
+		create_index_buffer(deviceWrapper);
 
 		create_sync_objects(deviceWrapper);
 
@@ -59,7 +62,6 @@ public:
 	}
 	void recreate_KHR(DeviceWrapper& deviceWrapper, Window& window) // TODO use better approach of recreating swapchain using old swapchain pointer
 	{
-		deviceWrapper.logicalDevice.waitIdle();
 		VMI_LOG("Rebuilding KHR");
 
 		destroy_KHR(deviceWrapper);
@@ -100,6 +102,8 @@ public:
 
 		device.destroyBuffer(vertexBuffer);
 		device.freeMemory(vertexBufferMemory);
+		device.destroyBuffer(indexBuffer);
+		device.freeMemory(indexBufferMemory);
 
 		ImGui_ImplVulkan_Shutdown();
 	}
@@ -150,13 +154,19 @@ public:
 			.setPSwapchains(&swapchainWrapper.swapchain);
 			//.setPResults(nullptr); // optional if theres multiple swapchains
 		result = deviceWrapper.queue.presentKHR(&presentInfo);
-		if (result != vk::Result::eSuccess) assert(false);
+		//if (result != vk::Result::eSuccess) assert(false);
 
 		// advance frame index
 		currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 	}
 
 private:
+	void create_shader_modules(DeviceWrapper& deviceWrapper)
+	{
+		vs = create_shader_module(deviceWrapper, shader_vs, shader_vs_size);
+		ps = create_shader_module(deviceWrapper, shader_ps, shader_ps_size);
+	}
+
 	void create_render_pass(DeviceWrapper& deviceWrapper)
 	{
 		vk::AttachmentDescription colorAttachment = vk::AttachmentDescription()
@@ -204,9 +214,6 @@ private:
 	}
 	void create_graphics_pipeline(DeviceWrapper& deviceWrapper)
 	{
-		vs = create_shader_module(deviceWrapper, shader_vs, shader_vs_size);
-		ps = create_shader_module(deviceWrapper, shader_ps, shader_ps_size);
-
 		vk::PipelineShaderStageCreateInfo vertStageInfo = vk::PipelineShaderStageCreateInfo()
 			.setStage(vk::ShaderStageFlagBits::eVertex)
 			.setModule(vs)
@@ -479,6 +486,31 @@ private:
 		deviceWrapper.logicalDevice.destroyBuffer(stagingBuffer);
 		deviceWrapper.logicalDevice.freeMemory(stagingBufferMemory);
 	}
+	void create_index_buffer(DeviceWrapper& deviceWrapper)
+	{
+		vk::DeviceSize bufferSize = sizeof(Index) * indices.size();
+
+		vk::Buffer stagingBuffer;
+		vk::DeviceMemory stagingBufferMemory;
+
+		create_buffer(deviceWrapper, stagingBuffer, stagingBufferMemory, bufferSize,
+			vk::BufferUsageFlagBits::eTransferSrc,
+			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+
+		void* data = deviceWrapper.logicalDevice.mapMemory(stagingBufferMemory, 0, VK_WHOLE_SIZE);
+		memcpy(data, indices.data(), static_cast<size_t>(bufferSize));
+		deviceWrapper.logicalDevice.unmapMemory(stagingBufferMemory);
+
+		create_buffer(deviceWrapper, indexBuffer, indexBufferMemory, bufferSize,
+			vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
+			vk::MemoryPropertyFlagBits::eDeviceLocal);
+
+		copy_buffer(deviceWrapper, stagingBuffer, indexBuffer, bufferSize);
+
+		// free up staging buffer
+		deviceWrapper.logicalDevice.destroyBuffer(stagingBuffer);
+		deviceWrapper.logicalDevice.freeMemory(stagingBufferMemory);
+	}
 
 	void create_sync_objects(DeviceWrapper& deviceWrapper)
 	{
@@ -566,7 +598,8 @@ private:
 		vk::Buffer vertexBuffers[] = { vertexBuffer };
 		vk::DeviceSize offsets[] = { 0 };
 		commandBuffer.bindVertexBuffers(0, 1, vertexBuffers, offsets);
-		commandBuffer.draw(vertices.size(), 1, 0, 0);
+		commandBuffer.bindIndexBuffer(indexBuffer, 0, vk::IndexType::eUint16);
+		commandBuffer.drawIndexed(static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 
 
 		ImGui::Render();
@@ -606,13 +639,20 @@ private:
 	uint32_t currentFrame = 0;
 
 	// TODO: encapsulate this
+	// also TODO: store both index/vertex data in the same buffer and use offsets to access each
 	vk::Buffer vertexBuffer;
+	vk::Buffer indexBuffer;
 	vk::DeviceMemory vertexBufferMemory;
+	vk::DeviceMemory indexBufferMemory;
 	std::vector<Vertex> vertices = { {
-			{{0.0f, -0.5f, 0.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
-			{{0.5f, 0.5f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
-			{{-0.5f, 0.5f, 0.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}}
-			//{{-0.5f, 0.5f, 0.0f, 1.0f}, {1.0f, 1.0f, 0.0f, 1.0f}}
+			{{-0.5f, -0.5f, 0.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
+			{{0.5f, -0.5f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
+			{{0.5f, 0.5f, 0.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
+			{{-0.5f, 0.5f, 0.0f, 1.0f}, {1.0f, 1.0f, 0.0f, 1.0f}}
 		}
+	};
+	typedef uint16_t Index;
+	std::vector<Index> indices = {
+		0, 1, 2, 2, 3, 0
 	};
 };
