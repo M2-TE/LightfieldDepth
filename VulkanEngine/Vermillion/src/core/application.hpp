@@ -52,7 +52,12 @@ private:
 					if (event.key.repeat > 0) break;
 					switch (event.key.keysym.sym) {
 						case SDLK_F11: {
-							if (event.key.type == SDL_KEYDOWN) SDL_SetWindowFullscreen(window.get_window(), SDL_WINDOW_FULLSCREEN_DESKTOP);
+							if (event.key.type == SDL_KEYDOWN) {
+								deviceManager.get_logical_device().waitIdle();
+								SDL_SetWindowFullscreen(window.get_window(), SDL_WINDOW_FULLSCREEN);
+								//SDL_SetWindowFullscreen(window.get_window(), SDL_WINDOW_FULLSCREEN_DESKTOP); // borderless
+								bSwapchainRebuildQueued = true;
+							}
 						}
 					}
 				}

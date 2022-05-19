@@ -74,6 +74,7 @@ private:
 	void choose_extent(DeviceWrapper& deviceWrapper, Window& window)
 	{
 		auto& capabilities = deviceWrapper.capabilities;
+
 		int width, height;
 		SDL_Vulkan_GetDrawableSize(window.get_window(), &width, &height);
 

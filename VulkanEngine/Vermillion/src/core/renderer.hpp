@@ -5,8 +5,8 @@
 
 struct Vertex
 {
-	glm::vec<4, float, glm::packed_highp> pos;
-	glm::vec<4, float, glm::packed_highp> col;
+	glm::vec<4, glm::f32, glm::packed_highp> pos;
+	glm::vec<4, glm::f32, glm::packed_highp> col;
 
 	static vk::VertexInputBindingDescription get_binding_desc() {
 		vk::VertexInputBindingDescription desc = vk::VertexInputBindingDescription()
@@ -30,6 +30,12 @@ struct Vertex
 		return desc;
 	}
 };
+struct UniformBufferObject 
+{
+	glm::mat<4, 4, glm::f32, glm::packed_highp> model;
+	glm::mat<4, 4, glm::f32, glm::packed_highp> view;
+	glm::mat<4, 4, glm::f32, glm::packed_highp> proj;
+};
 
 class Renderer
 {
@@ -41,19 +47,19 @@ public:
 public:
 	void init(DeviceWrapper& deviceWrapper, Window& window)
 	{
-		create_shader_modules(deviceWrapper);
-
-		swapchainWrapper.init(deviceWrapper, window);
-		create_render_pass(deviceWrapper);
-		create_graphics_pipeline(deviceWrapper);
-		swapchainWrapper.create_framebuffers(deviceWrapper, renderPass);
-
-		create_descriptor_pools(deviceWrapper);
 		create_command_pools(deviceWrapper);
 		create_command_buffers(deviceWrapper);
 
 		create_vertex_buffer(deviceWrapper);
 		create_index_buffer(deviceWrapper);
+		create_uniform_buffers(deviceWrapper);
+
+		create_shader_modules(deviceWrapper);
+		create_descriptor_set_layout(deviceWrapper); // TODO: move into swapchain build/rebuild?
+		create_descriptor_pools(deviceWrapper);
+		create_descriptor_sets(deviceWrapper);
+
+		create_KHR(deviceWrapper, window);
 
 		create_sync_objects(deviceWrapper);
 
@@ -65,19 +71,7 @@ public:
 		VMI_LOG("Rebuilding KHR");
 
 		destroy_KHR(deviceWrapper);
-
-		swapchainWrapper.init(deviceWrapper, window);
-		create_render_pass(deviceWrapper);
-		create_graphics_pipeline(deviceWrapper);
-		swapchainWrapper.create_framebuffers(deviceWrapper, renderPass);
-	}
-	void destroy_KHR(DeviceWrapper& deviceWrapper)
-	{
-		swapchainWrapper.destroy(deviceWrapper);
-
-		deviceWrapper.logicalDevice.destroyPipeline(graphicsPipeline);
-		deviceWrapper.logicalDevice.destroyPipelineLayout(pipelineLayout);
-		deviceWrapper.logicalDevice.destroyRenderPass(renderPass);
+		create_KHR(deviceWrapper, window);
 	}
 	void destroy(DeviceWrapper& deviceWrapper)
 	{
@@ -89,6 +83,9 @@ public:
 			device.destroySemaphore(imageAvailableSemaphores[i]);
 			device.destroySemaphore(renderFinishedSemaphores[i]);
 			device.destroyFence(inFlightFences[i]);
+
+			device.destroyBuffer(uniformBuffers[i]);
+			device.freeMemory(uniformBuffersMemory[i]);
 		}
 
 		device.destroyShaderModule(vs);
@@ -98,7 +95,10 @@ public:
 			device.destroyCommandPool(commandPools[i]);
 		}
 		device.destroyCommandPool(transientCommandPool);
+
 		device.destroyDescriptorPool(imguiDescPool);
+		device.destroyDescriptorPool(descPool);
+		device.destroyDescriptorSetLayout(descSetLayout);
 
 		device.destroyBuffer(vertexBuffer);
 		device.freeMemory(vertexBufferMemory);
@@ -116,6 +116,7 @@ public:
 		vk::Result result = device.waitForFences(inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 		if (result != vk::Result::eSuccess) assert(false);
 
+		// TODO: check which array index actually needs either imgResult.value (image index) or currentFrame
 		vk::ResultValue imgResult = device.acquireNextImageKHR(swapchainWrapper.swapchain, UINT64_MAX, imageAvailableSemaphores[currentFrame], nullptr);
 		switch (imgResult.result) {
 			case vk::Result::eSuccess: break;
@@ -138,6 +139,7 @@ public:
 			.setPCommandBuffers(&commandBuffers[currentFrame]);
 
 		device.resetCommandPool(commandPools[currentFrame]);
+		update_uniform_buffer(deviceWrapper, currentFrame);
 		record_command_buffer(imgResult.value, currentFrame);
 
 		device.resetFences(inFlightFences[currentFrame]); // FENCE
@@ -161,12 +163,139 @@ public:
 	}
 
 private:
+	void create_KHR(DeviceWrapper& deviceWrapper, Window& window)
+	{
+		swapchainWrapper.init(deviceWrapper, window);
+		create_render_pass(deviceWrapper);
+		create_graphics_pipeline(deviceWrapper);
+		swapchainWrapper.create_framebuffers(deviceWrapper, renderPass);
+	}
+	void destroy_KHR(DeviceWrapper& deviceWrapper)
+	{
+		swapchainWrapper.destroy(deviceWrapper);
+
+		deviceWrapper.logicalDevice.destroyPipeline(graphicsPipeline);
+		deviceWrapper.logicalDevice.destroyPipelineLayout(pipelineLayout);
+		deviceWrapper.logicalDevice.destroyRenderPass(renderPass);
+	}
+
 	void create_shader_modules(DeviceWrapper& deviceWrapper)
 	{
 		vs = create_shader_module(deviceWrapper, shader_vs, shader_vs_size);
 		ps = create_shader_module(deviceWrapper, shader_ps, shader_ps_size);
 	}
+	void create_descriptor_set_layout(DeviceWrapper& deviceWrapper)
+	{
+		vk::DescriptorSetLayoutBinding layoutBinding = vk::DescriptorSetLayoutBinding()
+			.setBinding(0)
+			.setDescriptorType(vk::DescriptorType::eUniformBuffer)
+			.setDescriptorCount(1)
+			.setStageFlags(vk::ShaderStageFlagBits::eVertex)
+			.setPImmutableSamplers(nullptr);
 
+		vk::DescriptorSetLayoutCreateInfo createInfo = vk::DescriptorSetLayoutCreateInfo()
+			.setBindingCount(1)
+			.setPBindings(&layoutBinding);
+
+		descSetLayout = deviceWrapper.logicalDevice.createDescriptorSetLayout(createInfo);
+	}
+	void create_descriptor_pools(DeviceWrapper& deviceWrapper)
+	{
+		vk::DescriptorPoolSize poolSize = vk::DescriptorPoolSize()
+			.setType(vk::DescriptorType::eUniformBuffer)
+			.setDescriptorCount(MAX_FRAMES_IN_FLIGHT);
+
+		vk::DescriptorPoolCreateInfo info = vk::DescriptorPoolCreateInfo()
+			//.setFlags()
+			.setMaxSets(MAX_FRAMES_IN_FLIGHT)
+			.setPoolSizeCount(1)
+			.setPPoolSizes(&poolSize);
+		descPool = deviceWrapper.logicalDevice.createDescriptorPool(info);
+
+
+		uint32_t descCountImgui = 1000;
+		vk::DescriptorPoolSize pool_sizes[] =
+		{
+			vk::DescriptorPoolSize(vk::DescriptorType::eSampler, descCountImgui),
+			vk::DescriptorPoolSize(vk::DescriptorType::eCombinedImageSampler, descCountImgui),
+			vk::DescriptorPoolSize(vk::DescriptorType::eSampledImage, descCountImgui),
+			vk::DescriptorPoolSize(vk::DescriptorType::eStorageImage, descCountImgui),
+			vk::DescriptorPoolSize(vk::DescriptorType::eUniformTexelBuffer, descCountImgui),
+			vk::DescriptorPoolSize(vk::DescriptorType::eStorageTexelBuffer, descCountImgui),
+			vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer, descCountImgui),
+			vk::DescriptorPoolSize(vk::DescriptorType::eStorageBuffer, descCountImgui),
+			vk::DescriptorPoolSize(vk::DescriptorType::eUniformBufferDynamic, descCountImgui),
+			vk::DescriptorPoolSize(vk::DescriptorType::eStorageBufferDynamic, descCountImgui),
+			vk::DescriptorPoolSize(vk::DescriptorType::eInputAttachment, descCountImgui),
+		};
+
+		info = vk::DescriptorPoolCreateInfo()
+			.setFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet)
+			.setMaxSets(descCountImgui * IM_ARRAYSIZE(pool_sizes))
+			.setPoolSizeCount((uint32_t)IM_ARRAYSIZE(pool_sizes))
+			.setPPoolSizes(pool_sizes);
+
+		imguiDescPool = deviceWrapper.logicalDevice.createDescriptorPool(info);
+	}
+	void create_descriptor_sets(DeviceWrapper& deviceWrapper)
+	{
+		std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, descSetLayout);
+		vk::DescriptorSetAllocateInfo allocInfo = vk::DescriptorSetAllocateInfo()
+			.setDescriptorPool(descPool)
+			.setDescriptorSetCount(MAX_FRAMES_IN_FLIGHT)
+			.setPSetLayouts(layouts.data());
+
+		descSets = deviceWrapper.logicalDevice.allocateDescriptorSets(allocInfo);
+
+		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+			vk::DescriptorBufferInfo bufferInfo = vk::DescriptorBufferInfo()
+				.setBuffer(uniformBuffers[i])
+				.setOffset(0)
+				.setRange(sizeof(UniformBufferObject));
+
+			vk::WriteDescriptorSet descWrite = vk::WriteDescriptorSet()
+				.setDstSet(descSets[i])
+				.setDstBinding(0)
+				.setDstArrayElement(0)
+				.setDescriptorType(vk::DescriptorType::eUniformBuffer)
+				.setDescriptorCount(1)
+				//
+				.setPBufferInfo(&bufferInfo)
+				.setPImageInfo(nullptr)
+				.setPTexelBufferView(nullptr);
+
+			deviceWrapper.logicalDevice.updateDescriptorSets(descWrite, {});
+		}
+	}
+
+	void create_command_pools(DeviceWrapper& deviceWrapper)
+	{
+		vk::CommandPoolCreateInfo commandPoolInfo;
+
+		commandPoolInfo = vk::CommandPoolCreateInfo()
+			.setQueueFamilyIndex(deviceWrapper.iQueue);
+		commandPools.resize(MAX_FRAMES_IN_FLIGHT);
+		for (uint32_t i = 0; i < commandPools.size(); i++) {
+			commandPools[i] = deviceWrapper.logicalDevice.createCommandPool(commandPoolInfo);
+		}
+
+		commandPoolInfo = vk::CommandPoolCreateInfo()
+			.setQueueFamilyIndex(deviceWrapper.iQueue)
+			.setFlags(vk::CommandPoolCreateFlagBits::eTransient);
+		transientCommandPool = deviceWrapper.logicalDevice.createCommandPool(commandPoolInfo);
+	}
+	void create_command_buffers(DeviceWrapper& deviceWrapper)
+	{
+		commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+		for (uint32_t i = 0; i < commandPools.size(); i++) {
+			vk::CommandBufferAllocateInfo commandBufferInfo = vk::CommandBufferAllocateInfo()
+				.setCommandPool(commandPools[i])
+				.setLevel(vk::CommandBufferLevel::ePrimary) // secondary are used by primary command buffers for e.g. common operations
+				.setCommandBufferCount(1);
+			commandBuffers[i] = deviceWrapper.logicalDevice.allocateCommandBuffers(commandBufferInfo)[0];
+		}
+	}
+	
 	void create_render_pass(DeviceWrapper& deviceWrapper)
 	{
 		vk::AttachmentDescription colorAttachment = vk::AttachmentDescription()
@@ -308,8 +437,8 @@ private:
 
 		// Pipeline Layout
 		vk::PipelineLayoutCreateInfo pipelineLayoutInfo = vk::PipelineLayoutCreateInfo()
-			.setSetLayoutCount(0)
-			.setSetLayouts(nullptr)
+			.setSetLayoutCount(1)
+			.setSetLayouts(descSetLayout)
 			.setPushConstantRangeCount(0)
 			.setPushConstantRanges(nullptr);
 		pipelineLayout = deviceWrapper.logicalDevice.createPipelineLayout(pipelineLayoutInfo);
@@ -347,60 +476,6 @@ private:
 				break;
 			default: assert(false);
 		}
-	}
-
-	void create_command_pools(DeviceWrapper& deviceWrapper)
-	{
-		vk::CommandPoolCreateInfo commandPoolInfo;
-
-		commandPoolInfo = vk::CommandPoolCreateInfo()
-			.setQueueFamilyIndex(deviceWrapper.iQueue);
-		commandPools.resize(MAX_FRAMES_IN_FLIGHT);
-		for (uint32_t i = 0; i < commandPools.size(); i++) {
-			commandPools[i] = deviceWrapper.logicalDevice.createCommandPool(commandPoolInfo);
-		}
-
-		commandPoolInfo = vk::CommandPoolCreateInfo()
-			.setQueueFamilyIndex(deviceWrapper.iQueue)
-			.setFlags(vk::CommandPoolCreateFlagBits::eTransient);
-		transientCommandPool = deviceWrapper.logicalDevice.createCommandPool(commandPoolInfo);
-	}
-	void create_command_buffers(DeviceWrapper& deviceWrapper)
-	{
-		commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-		for (uint32_t i = 0; i < commandPools.size(); i++) {
-			vk::CommandBufferAllocateInfo commandBufferInfo = vk::CommandBufferAllocateInfo()
-				.setCommandPool(commandPools[i])
-				.setLevel(vk::CommandBufferLevel::ePrimary) // secondary are used by primary command buffers for e.g. common operations
-				.setCommandBufferCount(1);
-			commandBuffers[i] = deviceWrapper.logicalDevice.allocateCommandBuffers(commandBufferInfo)[0];
-		}
-	}
-	void create_descriptor_pools(DeviceWrapper& deviceWrapper)
-	{
-		// do stuff
-		vk::DescriptorPoolSize pool_sizes[] =
-		{
-			vk::DescriptorPoolSize(vk::DescriptorType::eSampler, 1000),
-			vk::DescriptorPoolSize(vk::DescriptorType::eCombinedImageSampler, 1000),
-			vk::DescriptorPoolSize(vk::DescriptorType::eSampledImage, 1000),
-			vk::DescriptorPoolSize(vk::DescriptorType::eStorageImage, 1000),
-			vk::DescriptorPoolSize(vk::DescriptorType::eUniformTexelBuffer, 1000),
-			vk::DescriptorPoolSize(vk::DescriptorType::eStorageTexelBuffer, 1000),
-			vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer, 1000),
-			vk::DescriptorPoolSize(vk::DescriptorType::eStorageBuffer, 1000),
-			vk::DescriptorPoolSize(vk::DescriptorType::eUniformBufferDynamic, 1000),
-			vk::DescriptorPoolSize(vk::DescriptorType::eStorageBufferDynamic, 1000),
-			vk::DescriptorPoolSize(vk::DescriptorType::eInputAttachment, 1000),
-		};
-
-		vk::DescriptorPoolCreateInfo info = vk::DescriptorPoolCreateInfo()
-			.setFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet)
-			.setMaxSets(1000 * IM_ARRAYSIZE(pool_sizes))
-			.setPoolSizeCount((uint32_t)IM_ARRAYSIZE(pool_sizes))
-			.setPPoolSizes(pool_sizes);
-
-		imguiDescPool = deviceWrapper.logicalDevice.createDescriptorPool(info);
 	}
 	
 	uint32_t find_memory_type(DeviceWrapper& deviceWrapper, uint32_t typeFilter, vk::MemoryPropertyFlags properties)
@@ -511,6 +586,17 @@ private:
 		deviceWrapper.logicalDevice.destroyBuffer(stagingBuffer);
 		deviceWrapper.logicalDevice.freeMemory(stagingBufferMemory);
 	}
+	void create_uniform_buffers(DeviceWrapper& deviceWrapper)
+	{
+		vk::DeviceSize bufferSize = sizeof(UniformBufferObject);
+		uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+		uniformBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
+		for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+			create_buffer(deviceWrapper, uniformBuffers[i], uniformBuffersMemory[i], bufferSize, 
+				vk::BufferUsageFlagBits::eUniformBuffer,
+				vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+		}
+	}
 
 	void create_sync_objects(DeviceWrapper& deviceWrapper)
 	{
@@ -568,6 +654,21 @@ private:
 	}
 
 	// runtime
+	void update_uniform_buffer(DeviceWrapper& deviceWrapper, uint32_t iCurrentFrame)
+	{
+		static auto startTime = std::chrono::high_resolution_clock::now();
+		auto currentTime = std::chrono::high_resolution_clock::now();
+		float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+		UniformBufferObject ubo{};
+		ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		ubo.view = glm::lookAt(glm::vec3(0.0f, 2.0f, -2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		ubo.proj = glm::perspective(glm::radians(45.0f), (float)swapchainWrapper.extent.width / (float)swapchainWrapper.extent.height, 0.1f, 10.0f);
+
+		void* data = deviceWrapper.logicalDevice.mapMemory(uniformBuffersMemory[iCurrentFrame], 0, sizeof(ubo));
+		memcpy(data, &ubo, static_cast<size_t>(sizeof(ubo)));
+		deviceWrapper.logicalDevice.unmapMemory(uniformBuffersMemory[iCurrentFrame]);
+	}
 	void record_command_buffer(uint32_t iFrameBuffer, uint32_t iCommandBuffer)
 	{
 		vk::CommandBuffer& commandBuffer = commandBuffers[iCommandBuffer];
@@ -599,6 +700,7 @@ private:
 		vk::DeviceSize offsets[] = { 0 };
 		commandBuffer.bindVertexBuffers(0, 1, vertexBuffers, offsets);
 		commandBuffer.bindIndexBuffer(indexBuffer, 0, vk::IndexType::eUint16);
+		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, descSets[currentFrame], {});
 		commandBuffer.drawIndexed(static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 
 
@@ -612,7 +714,7 @@ private:
 
 private:
 	// lazy constants (settings?)
-	static constexpr int32_t MAX_FRAMES_IN_FLIGHT = 2;
+	static constexpr int32_t MAX_FRAMES_IN_FLIGHT = 2; // use uint instead?
 	static constexpr vk::Format targetFormat = vk::Format::eR8G8B8A8Srgb;
 	static constexpr vk::ColorSpaceKHR targetColorSpace = vk::ColorSpaceKHR::eSrgbNonlinear;
 	static constexpr vk::PresentModeKHR targetPresentMode = vk::PresentModeKHR::eFifo; // vsync
@@ -627,8 +729,11 @@ private:
 	vk::PipelineCache pipelineCache;
 	vk::DescriptorPool imguiDescPool;
 
+	vk::DescriptorPool descPool;
+	vk::DescriptorSetLayout descSetLayout; // for cbuffer
+	std::vector<vk::DescriptorSet> descSets;
+
 	// TODO: make number of images in swapchain based on (min + max_frames_etc - 1)
-	//vk::CommandPool commandPool;
 	vk::CommandPool transientCommandPool;
 	std::vector<vk::CommandPool> commandPools;
 	std::vector<vk::CommandBuffer> commandBuffers;
@@ -641,9 +746,13 @@ private:
 	// TODO: encapsulate this
 	// also TODO: store both index/vertex data in the same buffer and use offsets to access each
 	vk::Buffer vertexBuffer;
-	vk::Buffer indexBuffer;
+	vk::Buffer indexBuffer; 
+	// updated each frame, so needs at least one buffer per frame in flight
+	std::vector<vk::Buffer> uniformBuffers;// TODO: use push constants instead
 	vk::DeviceMemory vertexBufferMemory;
 	vk::DeviceMemory indexBufferMemory;
+	std::vector<vk::DeviceMemory> uniformBuffersMemory; // TODO: use push constants instead
+
 	std::vector<Vertex> vertices = { {
 			{{-0.5f, -0.5f, 0.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
 			{{0.5f, -0.5f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
