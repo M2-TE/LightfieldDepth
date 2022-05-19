@@ -10,7 +10,8 @@ struct Output
     float4 color : Color;
 };
 
-cbuffer MVP : register(b0)
+[[vk::binding(0, 0)]] // binding slot 0, descriptor set 0
+cbuffer MVP
 {
     float4x4 model;
     float4x4 view;

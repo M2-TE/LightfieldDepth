@@ -748,7 +748,7 @@ private:
 	vk::Buffer vertexBuffer;
 	vk::Buffer indexBuffer; 
 	// updated each frame, so needs at least one buffer per frame in flight
-	std::vector<vk::Buffer> uniformBuffers;// TODO: use push constants instead
+	std::vector<vk::Buffer> uniformBuffers;
 	vk::DeviceMemory vertexBufferMemory;
 	vk::DeviceMemory indexBufferMemory;
 	std::vector<vk::DeviceMemory> uniformBuffersMemory; // TODO: use push constants instead
