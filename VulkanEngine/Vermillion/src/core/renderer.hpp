@@ -1,36 +1,10 @@
 #pragma once
 
+#include "vk_mem_alloc.hpp"
 #include "wrappers/swapchain_wrapper.hpp"
 #include "wrappers/shader_wrapper.hpp"
-#include "vk_mem_alloc.hpp"
+#include "geometry/indexed_geometry.hpp"
 
-struct Vertex
-{
-	glm::vec<4, glm::f32, glm::packed_highp> pos;
-	glm::vec<4, glm::f32, glm::packed_highp> col;
-
-	static vk::VertexInputBindingDescription get_binding_desc() {
-		vk::VertexInputBindingDescription desc = vk::VertexInputBindingDescription()
-			.setBinding(0)
-			.setStride(sizeof(Vertex))
-			.setInputRate(vk::VertexInputRate::eVertex);
-		return desc;
-	}
-	static std::array<vk::VertexInputAttributeDescription, 2> get_attr_desc() {
-		std::array<vk::VertexInputAttributeDescription, 2> desc;
-		desc[0] = vk::VertexInputAttributeDescription()
-			.setBinding(0)
-			.setLocation(0)
-			.setFormat(vk::Format::eR32G32B32A32Sfloat)
-			.setOffset(offsetof(Vertex, pos));
-		desc[1] = vk::VertexInputAttributeDescription()
-			.setBinding(0)
-			.setLocation(1)
-			.setFormat(vk::Format::eR32G32B32A32Sfloat)
-			.setOffset(offsetof(Vertex, col));
-		return desc;
-	}
-};
 struct UniformBufferObject 
 {
 	glm::mat<4, 4, glm::f32, glm::packed_highp> model;
@@ -49,6 +23,7 @@ public:
 	void init(DeviceWrapper& deviceWrapper, Window& window)
 	{
 		create_allocator(deviceWrapper, window);
+		geometry.allocate(allocator, deviceWrapper.queue);
 
 		create_command_pools(deviceWrapper);
 		create_command_buffers(deviceWrapper);
@@ -109,6 +84,9 @@ public:
 		device.freeMemory(indexBufferMemory);
 
 		ImGui_ImplVulkan_Shutdown();
+
+		geometry.deallocate(allocator);
+		allocator.destroy();
 	}
 
 	void render(DeviceWrapper& deviceWrapper)
@@ -502,7 +480,6 @@ private:
 		}
 		throw std::runtime_error("failed to find suitable memory type!");
 	}
-	// TODO: dont use vk::allocateMemory for every individual buffer. make one large one and work with offsets!
 	void create_buffer(DeviceWrapper& deviceWrapper, vk::Buffer& buffer, vk::DeviceMemory& bufferMemory, vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties)
 	{
 		vk::BufferCreateInfo bufferInfo = vk::BufferCreateInfo()
@@ -761,7 +738,10 @@ private:
 	std::vector<vk::Buffer> uniformBuffers;
 	vk::DeviceMemory vertexBufferMemory;
 	vk::DeviceMemory indexBufferMemory;
-	std::vector<vk::DeviceMemory> uniformBuffersMemory; // TODO: use push constants instead
+	std::vector<vk::DeviceMemory> uniformBuffersMemory; // TODO: use push constants instead?
+
+	IndexedGeometry geometry;
+
 
 	std::vector<Vertex> vertices = { {
 			{{-0.5f, -0.5f, 0.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
