@@ -4,7 +4,7 @@
 #include "device_manager.hpp"
 #include "renderer.hpp"
 
-#include "vma-hpp/include/vk_mem_alloc.hpp"
+#include "vk_mem_alloc.hpp"
 class Application
 {
 public:
