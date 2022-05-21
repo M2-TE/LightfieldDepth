@@ -37,8 +37,6 @@ public:
 
 		create_KHR(deviceWrapper, window);
 
-		create_sync_objects(deviceWrapper);
-
 		imgui_init_vulkan(deviceWrapper, window);
 		imgui_upload_fonts(deviceWrapper);
 	}
@@ -56,11 +54,6 @@ public:
 		destroy_KHR(deviceWrapper);
 
 		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-			device.destroySemaphore(imageAvailableSemaphores[i]);
-			device.destroySemaphore(renderFinishedSemaphores[i]);
-			device.destroyFence(inFlightFences[i]);
-
-			device.destroyFramebuffer(framebuffers[i]);
 			device.destroyBuffer(uniformBuffers[i]);
 			device.freeMemory(uniformBuffersMemory[i]);
 		}
@@ -85,56 +78,14 @@ public:
 
 	void render(DeviceWrapper& deviceWrapper)
 	{
-		vk::Device& device = deviceWrapper.logicalDevice;
+		uint32_t iImage = swapchainWrapper.acquire_image(deviceWrapper);
+		uint32_t iFrame = swapchainWrapper.currentFrame;
 
-		// wait for fence of current frame before going any further
-		vk::Result result = device.waitForFences(inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
-		if (result != vk::Result::eSuccess) assert(false);
+		deviceWrapper.logicalDevice.resetCommandPool(commandPools[iFrame]);
+		update_uniform_buffer(deviceWrapper, iFrame);
+		record_command_buffer(iFrame, iImage);
 
-		// TODO: check which array index actually needs either imgResult.value (image index) or currentFrame
-		vk::ResultValue imgResult = device.acquireNextImageKHR(swapchainWrapper.swapchain, UINT64_MAX, imageAvailableSemaphores[currentFrame], nullptr);
-		switch (imgResult.result) {
-			case vk::Result::eSuccess: break;
-			case vk::Result::eNotReady: VMI_LOG("Images not ready."); return;
-			case vk::Result::eSuboptimalKHR: VMI_LOG("Suboptimal image acquisition."); break;
-			case vk::Result::eErrorOutOfDateKHR: VMI_LOG("Swapchain: KHR out of date."); return;
-			default: assert(false);
-		}
-
-		vk::PipelineStageFlags waitStages = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-		vk::SubmitInfo submitInfo = vk::SubmitInfo()
-			.setPWaitDstStageMask(&waitStages)
-			// semaphores
-			.setWaitSemaphoreCount(1)
-			.setPWaitSemaphores(&imageAvailableSemaphores[currentFrame])
-			.setSignalSemaphoreCount(1)
-			.setPSignalSemaphores(&renderFinishedSemaphores[currentFrame])
-			// command buffers
-			.setCommandBufferCount(1)
-			.setPCommandBuffers(&commandBuffers[currentFrame]);
-
-		device.resetCommandPool(commandPools[currentFrame]);
-		update_uniform_buffer(deviceWrapper, currentFrame);
-		record_command_buffer(imgResult.value, currentFrame);
-
-		device.resetFences(inFlightFences[currentFrame]); // FENCE
-		deviceWrapper.queue.submit(submitInfo, inFlightFences[currentFrame]);
-
-
-		vk::PresentInfoKHR presentInfo = vk::PresentInfoKHR()
-			.setPImageIndices(&imgResult.value)
-			// semaphores
-			.setWaitSemaphoreCount(1)
-			.setPWaitSemaphores(&renderFinishedSemaphores[currentFrame])
-			// swapchains
-			.setSwapchainCount(1)
-			.setPSwapchains(&swapchainWrapper.swapchain);
-			//.setPResults(nullptr); // optional if theres multiple swapchains
-		result = deviceWrapper.queue.presentKHR(&presentInfo);
-		//if (result != vk::Result::eSuccess) assert(false);
-
-		// advance frame index
-		currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+		swapchainWrapper.present(deviceWrapper, commandBuffers[iFrame], iImage);
 	}
 
 private:
@@ -154,7 +105,7 @@ private:
 		swapchainWrapper.init(deviceWrapper, window);
 		create_render_pass(deviceWrapper);
 		create_graphics_pipeline(deviceWrapper);
-		create_framebuffers(deviceWrapper, renderPass);
+		swapchainWrapper.create_framebuffers(deviceWrapper, renderPass);
 	}
 	void destroy_KHR(DeviceWrapper& deviceWrapper)
 	{
@@ -463,24 +414,6 @@ private:
 			default: assert(false);
 		}
 	}
-	void create_framebuffers(DeviceWrapper& deviceWrapper, vk::RenderPass& renderPass)
-	{
-		size_t size = swapchainWrapper.images.size();
-		framebuffers.resize(size);
-
-		for (size_t i = 0; i < size; i++) {
-			vk::FramebufferCreateInfo framebufferInfo = vk::FramebufferCreateInfo()
-				.setRenderPass(renderPass)
-				.setWidth(swapchainWrapper.extent.width)
-				.setHeight(swapchainWrapper.extent.height)
-				.setLayers(1)
-				// attachments
-				.setAttachmentCount(1)
-				.setPAttachments(&swapchainWrapper.imageViews[i]);
-
-			framebuffers[i] = deviceWrapper.logicalDevice.createFramebuffer(framebufferInfo);
-		}
-	}
 	
 	uint32_t find_memory_type(DeviceWrapper& deviceWrapper, uint32_t typeFilter, vk::MemoryPropertyFlags properties)
 	{
@@ -552,22 +485,6 @@ private:
 		}
 	}
 
-	void create_sync_objects(DeviceWrapper& deviceWrapper)
-	{
-		vk::Device& device = deviceWrapper.logicalDevice;
-
-		imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-		renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-		inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
-		vk::SemaphoreCreateInfo semaphoreInfo = vk::SemaphoreCreateInfo();
-		vk::FenceCreateInfo fenceInfo = vk::FenceCreateInfo().setFlags(vk::FenceCreateFlagBits::eSignaled);
-		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-			imageAvailableSemaphores[i] = device.createSemaphore(semaphoreInfo);
-			renderFinishedSemaphores[i] = device.createSemaphore(semaphoreInfo);
-			inFlightFences[i] = device.createFence(fenceInfo);
-		}
-	}
-
 	void imgui_init_vulkan(DeviceWrapper& deviceWrapper, Window& window)
 	{
 		struct ImGui_ImplVulkan_InitInfo info = { 0 };
@@ -587,8 +504,8 @@ private:
 	}
 	void imgui_upload_fonts(DeviceWrapper& deviceWrapper)
 	{
-		vk::CommandBuffer commandBuffer = commandBuffers[currentFrame];
-		deviceWrapper.logicalDevice.resetCommandPool(commandPools[currentFrame]);
+		vk::CommandBuffer commandBuffer = commandBuffers[0];
+		deviceWrapper.logicalDevice.resetCommandPool(commandPools[0]);
 
 		vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo()
 			.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
@@ -623,9 +540,9 @@ private:
 		memcpy(data, &ubo, static_cast<size_t>(sizeof(ubo)));
 		deviceWrapper.logicalDevice.unmapMemory(uniformBuffersMemory[iCurrentFrame]);
 	}
-	void record_command_buffer(uint32_t iFrameBuffer, uint32_t iCommandBuffer)
+	void record_command_buffer(uint32_t iFrame, uint32_t iImage)
 	{
-		vk::CommandBuffer& commandBuffer = commandBuffers[iCommandBuffer];
+		vk::CommandBuffer& commandBuffer = commandBuffers[iFrame];
 
 
 		vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo()
@@ -641,7 +558,7 @@ private:
 
 		vk::RenderPassBeginInfo renderPassBeginInfo = vk::RenderPassBeginInfo()
 			.setRenderPass(renderPass)
-			.setFramebuffer(framebuffers[iFrameBuffer])
+			.setFramebuffer(swapchainWrapper.framebuffers[iImage])
 			.setRenderArea(vk::Rect2D({ 0, 0 }, swapchainWrapper.extent))
 			// clear value
 			.setClearValueCount(1)
@@ -650,7 +567,7 @@ private:
 		commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
 		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline);
 
-		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, descSets[currentFrame], {});
+		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, descSets[iFrame], {});
 		geometry.draw(commandBuffer);
 
 
@@ -664,6 +581,8 @@ private:
 
 private:
 	static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2; // use uint instead?
+
+	// TODO: create a wrapper for all per-frame and per-image objects (all the std::vectors)
 
 	vma::Allocator allocator;
 	SwapchainWrapper swapchainWrapper;
@@ -683,13 +602,6 @@ private:
 	vk::CommandPool transientCommandPool;
 	std::vector<vk::CommandPool> commandPools;
 	std::vector<vk::CommandBuffer> commandBuffers;
-
-	std::vector<vk::Framebuffer> framebuffers;
-
-	std::vector<vk::Semaphore> imageAvailableSemaphores;
-	std::vector<vk::Semaphore> renderFinishedSemaphores;
-	std::vector<vk::Fence> inFlightFences;
-	uint32_t currentFrame = 0;
 
 	// updated each frame, so needs at least one buffer per frame in flight
 	std::vector<vk::Buffer> uniformBuffers;
