@@ -27,7 +27,7 @@ public:
 			.setUsage(vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst);
 		vma::AllocationCreateInfo allocCreateInfo = vma::AllocationCreateInfo()
 			.setUsage(vma::MemoryUsage::eAutoPreferDevice);
-		vertexBuffer = allocator.createBuffer(bufferInfo, allocCreateInfo);
+		buffer = allocator.createBuffer(bufferInfo, allocCreateInfo);
 
 		// staging buffer
 		bufferInfo = vk::BufferCreateInfo()
@@ -62,7 +62,7 @@ public:
 				.setSrcOffset(0)
 				.setDstOffset(0)
 				.setSize(bufferSize);
-			commandBuffer.copyBuffer(stagingBuffer.first, vertexBuffer.first, copyRegion);
+			commandBuffer.copyBuffer(stagingBuffer.first, buffer.first, copyRegion);
 			commandBuffer.end();
 
 			vk::SubmitInfo submitInfo = vk::SubmitInfo()
@@ -85,7 +85,7 @@ public:
 
 private:
 	// TODO: allocate both vertex and index buffer to the same buffer, access via offsets
-	std::pair<vk::Buffer, vma::Allocation> vertexBuffer;
+	std::pair<vk::Buffer, vma::Allocation> buffer;
 
 	std::vector<Vertex> vertices = {
 		Vertex(float4(-0.5f, -0.5f, 0.0f, 1.0f), float4(1.0f, 0.0f, 0.0f, 1.0f)),
