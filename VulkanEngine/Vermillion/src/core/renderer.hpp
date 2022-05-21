@@ -653,7 +653,7 @@ private:
 		ImGui_ImplVulkan_DestroyFontUploadObjects();
 	}
 
-	// runtime
+	// runtime (TODO: create and use a timer class)
 	void update_uniform_buffer(DeviceWrapper& deviceWrapper, uint32_t iCurrentFrame)
 	{
 		static auto startTime = std::chrono::high_resolution_clock::now();
@@ -699,7 +699,7 @@ private:
 		vk::Buffer vertexBuffers[] = { vertexBuffer };
 		vk::DeviceSize offsets[] = { 0 };
 		commandBuffer.bindVertexBuffers(0, 1, vertexBuffers, offsets);
-		commandBuffer.bindIndexBuffer(indexBuffer, 0, vk::IndexType::eUint16);
+		commandBuffer.bindIndexBuffer(indexBuffer, 0, vk::IndexType::eUint32);
 		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, descSets[currentFrame], {});
 		commandBuffer.drawIndexed(static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 
@@ -714,7 +714,7 @@ private:
 
 private:
 	// lazy constants (settings?)
-	static constexpr int32_t MAX_FRAMES_IN_FLIGHT = 2; // use uint instead?
+	static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2; // use uint instead?
 	static constexpr vk::Format targetFormat = vk::Format::eR8G8B8A8Srgb;
 	static constexpr vk::ColorSpaceKHR targetColorSpace = vk::ColorSpaceKHR::eSrgbNonlinear;
 	static constexpr vk::PresentModeKHR targetPresentMode = vk::PresentModeKHR::eFifo; // vsync
@@ -760,7 +760,7 @@ private:
 			{{-0.5f, 0.5f, 0.0f, 1.0f}, {1.0f, 1.0f, 0.0f, 1.0f}}
 		}
 	};
-	typedef uint16_t Index;
+	typedef uint32_t Index;
 	std::vector<Index> indices = {
 		0, 1, 2, 2, 3, 0
 	};
