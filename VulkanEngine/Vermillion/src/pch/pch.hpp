@@ -14,7 +14,7 @@
 	#define VK_USE_PLATFORM_WIN32_KHR
 #endif
 
-#define VULKAN_HPP_NO_SPACESHIP_OPERATOR
+// include the hpp wrapper of vulkan
 #include <vulkan/vulkan.hpp>
 
 #define GLM_FORCE_RADIANS
