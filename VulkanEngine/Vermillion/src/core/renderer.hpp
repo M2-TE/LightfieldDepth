@@ -28,9 +28,6 @@ public:
 		create_command_buffers(deviceWrapper);
 
 		geometry.allocate(allocator, transientCommandPool, deviceWrapper);
-
-		create_vertex_buffer(deviceWrapper);
-		create_index_buffer(deviceWrapper);
 		create_uniform_buffers(deviceWrapper);
 
 		create_shader_modules(deviceWrapper);
@@ -78,11 +75,6 @@ public:
 		device.destroyDescriptorPool(imguiDescPool);
 		device.destroyDescriptorPool(descPool);
 		device.destroyDescriptorSetLayout(descSetLayout);
-
-		device.destroyBuffer(vertexBuffer);
-		device.freeMemory(vertexBufferMemory);
-		device.destroyBuffer(indexBuffer);
-		device.freeMemory(indexBufferMemory);
 
 		ImGui_ImplVulkan_Shutdown();
 
@@ -529,55 +521,6 @@ private:
 		// free command buffer directly after use
 		deviceWrapper.logicalDevice.freeCommandBuffers(transientCommandPool, commandBuffer);
 	}
-	void create_vertex_buffer(DeviceWrapper& deviceWrapper)
-	{
-		vk::DeviceSize bufferSize = sizeof(Vertex) * vertices.size();
-		vk::Buffer stagingBuffer;
-		vk::DeviceMemory stagingBufferMemory;
-
-		create_buffer(deviceWrapper, stagingBuffer, stagingBufferMemory, bufferSize,
-			vk::BufferUsageFlagBits::eTransferSrc,
-			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-
-		void* data = deviceWrapper.logicalDevice.mapMemory(stagingBufferMemory, 0, VK_WHOLE_SIZE);
-		memcpy(data, vertices.data(), static_cast<size_t>(bufferSize));
-		deviceWrapper.logicalDevice.unmapMemory(stagingBufferMemory);
-
-		create_buffer(deviceWrapper, vertexBuffer, vertexBufferMemory, bufferSize,
-			vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer,
-			vk::MemoryPropertyFlagBits::eDeviceLocal);
-
-		copy_buffer(deviceWrapper, stagingBuffer, vertexBuffer, bufferSize);
-
-		// free up staging buffer
-		deviceWrapper.logicalDevice.destroyBuffer(stagingBuffer);
-		deviceWrapper.logicalDevice.freeMemory(stagingBufferMemory);
-	}
-	void create_index_buffer(DeviceWrapper& deviceWrapper)
-	{
-		vk::DeviceSize bufferSize = sizeof(Index) * indices.size();
-
-		vk::Buffer stagingBuffer;
-		vk::DeviceMemory stagingBufferMemory;
-
-		create_buffer(deviceWrapper, stagingBuffer, stagingBufferMemory, bufferSize,
-			vk::BufferUsageFlagBits::eTransferSrc,
-			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-
-		void* data = deviceWrapper.logicalDevice.mapMemory(stagingBufferMemory, 0, VK_WHOLE_SIZE);
-		memcpy(data, indices.data(), static_cast<size_t>(bufferSize));
-		deviceWrapper.logicalDevice.unmapMemory(stagingBufferMemory);
-
-		create_buffer(deviceWrapper, indexBuffer, indexBufferMemory, bufferSize,
-			vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
-			vk::MemoryPropertyFlagBits::eDeviceLocal);
-
-		copy_buffer(deviceWrapper, stagingBuffer, indexBuffer, bufferSize);
-
-		// free up staging buffer
-		deviceWrapper.logicalDevice.destroyBuffer(stagingBuffer);
-		deviceWrapper.logicalDevice.freeMemory(stagingBufferMemory);
-	}
 	void create_uniform_buffers(DeviceWrapper& deviceWrapper)
 	{
 		vk::DeviceSize bufferSize = sizeof(UniformBufferObject);
@@ -645,7 +588,7 @@ private:
 		ImGui_ImplVulkan_DestroyFontUploadObjects();
 	}
 
-	// runtime (TODO: create and use a timer class)
+	// runtime
 	void update_uniform_buffer(DeviceWrapper& deviceWrapper, uint32_t iCurrentFrame)
 	{
 		static auto startTime = std::chrono::high_resolution_clock::now();
@@ -688,12 +631,8 @@ private:
 		commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
 		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline);
 
-		vk::Buffer vertexBuffers[] = { vertexBuffer };
-		vk::DeviceSize offsets[] = { 0 };
-		commandBuffer.bindVertexBuffers(0, 1, vertexBuffers, offsets);
-		commandBuffer.bindIndexBuffer(indexBuffer, 0, vk::IndexType::eUint32);
 		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, descSets[currentFrame], {});
-		commandBuffer.drawIndexed(static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+		geometry.draw(commandBuffer);
 
 
 		ImGui::Render();
@@ -715,8 +654,8 @@ private:
 	vk::Pipeline graphicsPipeline;
 	vk::PipelineLayout pipelineLayout;
 	vk::PipelineCache pipelineCache;
-	vk::DescriptorPool imguiDescPool;
 
+	vk::DescriptorPool imguiDescPool;
 	vk::DescriptorPool descPool;
 	vk::DescriptorSetLayout descSetLayout; // for cbuffer
 	std::vector<vk::DescriptorSet> descSets;
@@ -731,28 +670,9 @@ private:
 	std::vector<vk::Fence> inFlightFences;
 	uint32_t currentFrame = 0;
 
-	// TODO: encapsulate this
-	// also TODO: store both index/vertex data in the same buffer and use offsets to access each
-	vk::Buffer vertexBuffer;
-	vk::Buffer indexBuffer; 
 	// updated each frame, so needs at least one buffer per frame in flight
 	std::vector<vk::Buffer> uniformBuffers;
-	vk::DeviceMemory vertexBufferMemory;
-	vk::DeviceMemory indexBufferMemory;
 	std::vector<vk::DeviceMemory> uniformBuffersMemory; // TODO: use push constants instead?
 
 	IndexedGeometry geometry;
-
-
-	std::vector<Vertex> vertices = { {
-			{{-0.5f, -0.5f, 0.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
-			{{0.5f, -0.5f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
-			{{0.5f, 0.5f, 0.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
-			{{-0.5f, 0.5f, 0.0f, 1.0f}, {1.0f, 1.0f, 0.0f, 1.0f}}
-		}
-	};
-	typedef uint32_t Index;
-	std::vector<Index> indices = {
-		0, 1, 2, 2, 3, 0
-	};
 };

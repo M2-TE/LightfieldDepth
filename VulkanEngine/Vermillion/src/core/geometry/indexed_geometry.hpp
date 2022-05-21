@@ -13,7 +13,13 @@ public:
 	ROF_COPY_MOVE_DELETE(IndexedGeometry)
 
 public:
-
+	void draw(vk::CommandBuffer& commandBuffer) // can make bindless by storing the memory offsets in a manager or something?
+	{
+		vk::DeviceSize offsets[] = { 0 };
+		commandBuffer.bindVertexBuffers(0, 1, &buffer.first, offsets);
+		commandBuffer.bindIndexBuffer(buffer.first, sizeof(Vertex) * vertices.size(), vk::IndexType::eUint32);
+		commandBuffer.drawIndexed(indices.size(), 1, 0, 0, 0);
+	}
 
 	void allocate(vma::Allocator& allocator, vk::CommandPool& transientCommandPool, DeviceWrapper& deviceWrapper)
 	{
@@ -24,7 +30,9 @@ public:
 		// buffer
 		vk::BufferCreateInfo bufferInfo = vk::BufferCreateInfo()
 			.setSize(bufferSize)
-			.setUsage(vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst);
+			.setUsage(vk::BufferUsageFlagBits::eVertexBuffer |
+				vk::BufferUsageFlagBits::eIndexBuffer |
+				vk::BufferUsageFlagBits::eTransferDst);
 		vma::AllocationCreateInfo allocCreateInfo = vma::AllocationCreateInfo()
 			.setUsage(vma::MemoryUsage::eAutoPreferDevice);
 		buffer = allocator.createBuffer(bufferInfo, allocCreateInfo);
@@ -80,7 +88,7 @@ public:
 	}
 	void deallocate(vma::Allocator& allocator)
 	{
-		allocator.destroyBuffer(vertexBuffer.first, vertexBuffer.second);
+		allocator.destroyBuffer(buffer.first, buffer.second);
 	}
 
 private:
