@@ -30,12 +30,13 @@ public:
 		// buffer
 		vk::BufferCreateInfo bufferInfo = vk::BufferCreateInfo()
 			.setSize(bufferSize)
-			.setUsage(vk::BufferUsageFlagBits::eVertexBuffer |
-				vk::BufferUsageFlagBits::eIndexBuffer |
-				vk::BufferUsageFlagBits::eTransferDst);
+			.setUsage(vk::BufferUsageFlagBits::eTransferDst |
+				vk::BufferUsageFlagBits::eVertexBuffer |
+				vk::BufferUsageFlagBits::eIndexBuffer);
 		vma::AllocationCreateInfo allocCreateInfo = vma::AllocationCreateInfo()
 			.setUsage(vma::MemoryUsage::eAutoPreferDevice);
 		buffer = allocator.createBuffer(bufferInfo, allocCreateInfo);
+		allocator.setAllocationName(buffer.second, "Indexed Geometry Buffer");
 
 		// staging buffer
 		bufferInfo = vk::BufferCreateInfo()

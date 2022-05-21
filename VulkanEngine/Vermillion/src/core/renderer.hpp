@@ -60,6 +60,7 @@ public:
 			device.destroySemaphore(renderFinishedSemaphores[i]);
 			device.destroyFence(inFlightFences[i]);
 
+			device.destroyFramebuffer(framebuffers[i]);
 			device.destroyBuffer(uniformBuffers[i]);
 			device.freeMemory(uniformBuffersMemory[i]);
 		}
@@ -153,7 +154,7 @@ private:
 		swapchainWrapper.init(deviceWrapper, window);
 		create_render_pass(deviceWrapper);
 		create_graphics_pipeline(deviceWrapper);
-		swapchainWrapper.create_framebuffers(deviceWrapper, renderPass);
+		create_framebuffers(deviceWrapper, renderPass);
 	}
 	void destroy_KHR(DeviceWrapper& deviceWrapper)
 	{
@@ -462,6 +463,24 @@ private:
 			default: assert(false);
 		}
 	}
+	void create_framebuffers(DeviceWrapper& deviceWrapper, vk::RenderPass& renderPass)
+	{
+		size_t size = swapchainWrapper.images.size();
+		framebuffers.resize(size);
+
+		for (size_t i = 0; i < size; i++) {
+			vk::FramebufferCreateInfo framebufferInfo = vk::FramebufferCreateInfo()
+				.setRenderPass(renderPass)
+				.setWidth(swapchainWrapper.extent.width)
+				.setHeight(swapchainWrapper.extent.height)
+				.setLayers(1)
+				// attachments
+				.setAttachmentCount(1)
+				.setPAttachments(&swapchainWrapper.imageViews[i]);
+
+			framebuffers[i] = deviceWrapper.logicalDevice.createFramebuffer(framebufferInfo);
+		}
+	}
 	
 	uint32_t find_memory_type(DeviceWrapper& deviceWrapper, uint32_t typeFilter, vk::MemoryPropertyFlags properties)
 	{
@@ -622,7 +641,7 @@ private:
 
 		vk::RenderPassBeginInfo renderPassBeginInfo = vk::RenderPassBeginInfo()
 			.setRenderPass(renderPass)
-			.setFramebuffer(swapchainWrapper.framebuffers[iFrameBuffer])
+			.setFramebuffer(framebuffers[iFrameBuffer])
 			.setRenderArea(vk::Rect2D({ 0, 0 }, swapchainWrapper.extent))
 			// clear value
 			.setClearValueCount(1)
@@ -664,6 +683,8 @@ private:
 	vk::CommandPool transientCommandPool;
 	std::vector<vk::CommandPool> commandPools;
 	std::vector<vk::CommandBuffer> commandBuffers;
+
+	std::vector<vk::Framebuffer> framebuffers;
 
 	std::vector<vk::Semaphore> imageAvailableSemaphores;
 	std::vector<vk::Semaphore> renderFinishedSemaphores;

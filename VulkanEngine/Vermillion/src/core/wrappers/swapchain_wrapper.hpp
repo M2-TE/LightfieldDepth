@@ -16,30 +16,12 @@ public:
 		create_swapchain(deviceWrapper, window);
 		create_image_views(deviceWrapper);
 	}
-	void create_framebuffers(DeviceWrapper& deviceWrapper, vk::RenderPass& renderPass)
-	{
-		framebuffers.resize(imageViews.size());
-
-		for (size_t i = 0; i < imageViews.size(); i++) {
-			vk::FramebufferCreateInfo framebufferInfo = vk::FramebufferCreateInfo()
-				.setRenderPass(renderPass)
-				.setWidth(extent.width)
-				.setHeight(extent.height)
-				.setLayers(1)
-				// attachments
-				.setAttachmentCount(1)
-				.setPAttachments(&imageViews[i]);
-
-			framebuffers[i] = deviceWrapper.logicalDevice.createFramebuffer(framebufferInfo);
-		}
-	}
 	void destroy(DeviceWrapper& deviceWrapper)
 	{
 		auto& device = deviceWrapper.logicalDevice;
 
 		for (uint32_t i = 0; i < images.size(); i++) {
 			device.destroyImageView(imageViews[i]);
-			device.destroyFramebuffer(framebuffers[i]);
 		}
 		device.destroySwapchainKHR(swapchain);
 	}
@@ -157,10 +139,11 @@ private:
 	static constexpr vk::PresentModeKHR targetPresentMode = vk::PresentModeKHR::eFifo; // vsync
 	//static constexpr vk::PresentModeKHR targetPresentMode = vk::PresentModeKHR::eMailbox;
 
-	//static constexpr int32_t MAX_FRAMES_IN_FLIGHT = 2;
-	//size_t currentFrame = 0;
 
 public:
+	static constexpr int32_t MAX_FRAMES_IN_FLIGHT = 2;
+	size_t currentFrame = 0;
+
 	vk::Extent2D extent; 
 	vk::SurfaceFormatKHR surfaceFormat;
 	vk::PresentModeKHR presentMode;
@@ -168,5 +151,4 @@ public:
 	vk::SwapchainKHR swapchain;
 	std::vector<vk::Image> images;
 	std::vector<vk::ImageView> imageViews;
-	std::vector<vk::Framebuffer> framebuffers;
 };
