@@ -75,7 +75,7 @@ private:
 			.setApplicationVersion(VK_MAKE_API_VERSION(0, 0, 1, 0))
 			.setPEngineName("Vermillion")
 			.setEngineVersion(VK_MAKE_API_VERSION(0, 0, 1, 0))
-			.setApiVersion(VK_API_VERSION_1_0);
+			.setApiVersion(VK_API_VERSION_1_3);
 
 		// Use validation layer on debug
 		DEBUG_ONLY(layers.push_back("VK_LAYER_KHRONOS_validation"));

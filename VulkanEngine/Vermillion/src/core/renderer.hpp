@@ -2,6 +2,7 @@
 
 #include "wrappers/swapchain_wrapper.hpp"
 #include "wrappers/shader_wrapper.hpp"
+#include "vk_mem_alloc.hpp"
 
 struct Vertex
 {
@@ -47,6 +48,8 @@ public:
 public:
 	void init(DeviceWrapper& deviceWrapper, Window& window)
 	{
+		create_allocator(deviceWrapper, window);
+
 		create_command_pools(deviceWrapper);
 		create_command_buffers(deviceWrapper);
 
@@ -163,6 +166,17 @@ public:
 	}
 
 private:
+	void create_allocator(DeviceWrapper& deviceWrapper, Window& window)
+	{
+		vma::AllocatorCreateInfo info = vma::AllocatorCreateInfo()
+			.setPhysicalDevice(deviceWrapper.physicalDevice)
+			.setDevice(deviceWrapper.logicalDevice)
+			.setInstance(window.get_vulkan_instance())
+			.setVulkanApiVersion(VK_API_VERSION_1_3);
+
+		allocator = vma::createAllocator(info);
+	}
+
 	void create_KHR(DeviceWrapper& deviceWrapper, Window& window)
 	{
 		swapchainWrapper.init(deviceWrapper, window);
@@ -713,13 +727,9 @@ private:
 	}
 
 private:
-	// lazy constants (settings?)
 	static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2; // use uint instead?
-	static constexpr vk::Format targetFormat = vk::Format::eR8G8B8A8Srgb;
-	static constexpr vk::ColorSpaceKHR targetColorSpace = vk::ColorSpaceKHR::eSrgbNonlinear;
-	static constexpr vk::PresentModeKHR targetPresentMode = vk::PresentModeKHR::eFifo; // vsync
-	//static constexpr vk::PresentModeKHR targetPresentMode = vk::PresentModeKHR::eMailbox;
 
+	vma::Allocator allocator;
 	SwapchainWrapper swapchainWrapper;
 
 	vk::ShaderModule vs, ps;
