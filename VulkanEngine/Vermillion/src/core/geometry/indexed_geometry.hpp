@@ -15,10 +15,13 @@ public:
 public:
 
 
-	void allocate(vma::Allocator& allocator, vk::Queue& transferQueue)
+	void allocate(vma::Allocator& allocator, vk::CommandPool& transientCommandPool, DeviceWrapper& deviceWrapper)
 	{
+		size_t vertexSize = vertices.size() * sizeof(Vertex);
+		size_t indexSize = indices.size() * sizeof(Index);
+		size_t bufferSize = vertexSize + indexSize;
+
 		// buffer
-		size_t bufferSize = vertices.size() * sizeof(Vertex);
 		vk::BufferCreateInfo bufferInfo = vk::BufferCreateInfo()
 			.setSize(bufferSize)
 			.setUsage(vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst);
@@ -37,8 +40,40 @@ public:
 		auto stagingBuffer = allocator.createBuffer(bufferInfo, allocCreateInfo, allocInfo);
 
 		// already mapped, so just copy over
-		memcpy(allocInfo.pMappedData, &vertices, bufferSize);
-		// TODO: memory transfer
+		memcpy(allocInfo.pMappedData, vertices.data(), vertexSize);
+		memcpy(static_cast<char*>(allocInfo.pMappedData) + vertexSize, indices.data(), indexSize);
+
+		// memory transfer
+		{
+			vk::CommandBufferAllocateInfo allocInfo = vk::CommandBufferAllocateInfo()
+				.setLevel(vk::CommandBufferLevel::ePrimary)
+				.setCommandPool(transientCommandPool)
+				.setCommandBufferCount(1);
+
+			vk::CommandBuffer commandBuffer;
+			auto res = deviceWrapper.logicalDevice.allocateCommandBuffers(&allocInfo, &commandBuffer);
+			
+			// begin recording to temporary command buffer
+			vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo()
+				.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
+			commandBuffer.begin(beginInfo);
+
+			vk::BufferCopy copyRegion = vk::BufferCopy()
+				.setSrcOffset(0)
+				.setDstOffset(0)
+				.setSize(bufferSize);
+			commandBuffer.copyBuffer(stagingBuffer.first, vertexBuffer.first, copyRegion);
+			commandBuffer.end();
+
+			vk::SubmitInfo submitInfo = vk::SubmitInfo()
+				.setCommandBufferCount(1)
+				.setPCommandBuffers(&commandBuffer);
+			deviceWrapper.queue.submit(submitInfo);
+			deviceWrapper.queue.waitIdle(); // TODO: change this to wait on a fence instead (upon queue submit) so multiple memory transfers would be possible
+
+			// free command buffer directly after use
+			deviceWrapper.logicalDevice.freeCommandBuffers(transientCommandPool, commandBuffer);
+		}
 
 		allocator.destroyBuffer(stagingBuffer.first, stagingBuffer.second);
 

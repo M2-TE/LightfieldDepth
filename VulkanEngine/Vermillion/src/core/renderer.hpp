@@ -23,10 +23,11 @@ public:
 	void init(DeviceWrapper& deviceWrapper, Window& window)
 	{
 		create_allocator(deviceWrapper, window);
-		geometry.allocate(allocator, deviceWrapper.queue);
 
 		create_command_pools(deviceWrapper);
 		create_command_buffers(deviceWrapper);
+
+		geometry.allocate(allocator, transientCommandPool, deviceWrapper);
 
 		create_vertex_buffer(deviceWrapper);
 		create_index_buffer(deviceWrapper);
