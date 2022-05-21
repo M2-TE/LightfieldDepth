@@ -1,3 +1,6 @@
 [submodule "VulkanEngine/ImGui/vendor/imgui"]
 	path = VulkanEngine/ImGui/vendor/imgui
 	url = https://github.com/ocornut/imgui.git
+[submodule "VulkanEngine/Vermillion/vendor/vma-hpp"]
+	path = VulkanEngine/Vermillion/vendor/vma-hpp
+	url = https://github.com/YaaZ/VulkanMemoryAllocator-Hpp.git

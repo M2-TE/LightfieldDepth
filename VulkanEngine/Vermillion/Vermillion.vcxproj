@@ -59,7 +59,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)src\;$(ProjectDir)src\pch;$(VULKAN_SDK)\Include;$(SolutionDir)ImGui\vendor\imgui\;$(SolutionDir)Shaders\src\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src\;$(ProjectDir)src\pch;$(ProjectDir)vendor\;$(ProjectDir)vendor\vma-hpp\include\;$(VULKAN_SDK)\Include;$(SolutionDir)ImGui\vendor\imgui\;$(SolutionDir)Shaders\src\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.hpp</PrecompiledHeaderFile>
@@ -79,7 +79,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)src\;$(ProjectDir)src\pch;$(VULKAN_SDK)\Include;$(SolutionDir)ImGui\vendor\imgui\;$(SolutionDir)Shaders\src\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src\;$(ProjectDir)src\pch;$(ProjectDir)vendor\;$(ProjectDir)vendor\vma-hpp\include\;$(VULKAN_SDK)\Include;$(SolutionDir)ImGui\vendor\imgui\;$(SolutionDir)Shaders\src\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.hpp</PrecompiledHeaderFile>
@@ -112,6 +112,12 @@
     <ClInclude Include="src\utils\logging.hpp" />
     <ClInclude Include="src\utils\rule_of_five.hpp" />
     <ClInclude Include="src\utils\timer.hpp" />
+    <ClInclude Include="vendor\vma-hpp\include\vk_mem_alloc.h" />
+    <ClInclude Include="vendor\vma-hpp\include\vk_mem_alloc.hpp" />
+    <ClInclude Include="vendor\vma-hpp\include\vk_mem_alloc_enums.hpp" />
+    <ClInclude Include="vendor\vma-hpp\include\vk_mem_alloc_funcs.hpp" />
+    <ClInclude Include="vendor\vma-hpp\include\vk_mem_alloc_handles.hpp" />
+    <ClInclude Include="vendor\vma-hpp\include\vk_mem_alloc_structs.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />

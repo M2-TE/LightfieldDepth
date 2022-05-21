@@ -4,6 +4,7 @@
 #include "device_manager.hpp"
 #include "renderer.hpp"
 
+#include "vma-hpp/include/vk_mem_alloc.hpp"
 class Application
 {
 public:
@@ -103,6 +104,15 @@ private:
 			ImGui::EndFrame(); // manually end imgui frame
 			SDL_Delay(200); // slow down update loop while no rendering occurs
 		}
+
+		vma::AllocatorCreateInfo info = vma::AllocatorCreateInfo()
+			.setPhysicalDevice(deviceManager.get_physical_device())
+			.setDevice(deviceManager.get_logical_device())
+			.setInstance(window.get_vulkan_instance());
+
+		vma::Allocator alloc = vma::createAllocator(info);
+
+		alloc.destroy();
 
 		return true;
 	}

@@ -17,6 +17,9 @@
 // include the hpp wrapper of vulkan
 #include <vulkan/vulkan.hpp>
 
+// Vulkan Memory Allocator with hpp bindings
+// -> stb-style lib included and implemented in pch.cpp
+
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #define GLM_FORCE_LEFT_HANDED
@@ -29,7 +32,6 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_syswm.h>
 #include <SDL2/SDL_vulkan.h>
-
 
 // 3rd party libs
 #include "imgui.h"
