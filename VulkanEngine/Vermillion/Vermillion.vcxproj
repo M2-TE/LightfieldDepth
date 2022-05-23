@@ -110,10 +110,12 @@
     <ClInclude Include="src\core\window.hpp" />
     <ClInclude Include="src\core\wrappers\shader_wrapper.hpp" />
     <ClInclude Include="src\core\wrappers\swapchain_wrapper.hpp" />
+    <ClInclude Include="src\core\wrappers\uniform_buffer_wrapper.hpp" />
     <ClInclude Include="src\pch\pch.hpp" />
     <ClInclude Include="src\utils\logging.hpp" />
     <ClInclude Include="src\utils\rule_of_five.hpp" />
     <ClInclude Include="src\utils\timer.hpp" />
+    <ClInclude Include="src\utils\types.hpp" />
     <ClInclude Include="vendor\vma-hpp\include\vk_mem_alloc.h" />
     <ClInclude Include="vendor\vma-hpp\include\vk_mem_alloc.hpp" />
     <ClInclude Include="vendor\vma-hpp\include\vk_mem_alloc_enums.hpp" />

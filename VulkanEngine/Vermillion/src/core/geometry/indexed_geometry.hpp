@@ -1,7 +1,5 @@
 #pragma once
 
-typedef glm::vec<4, glm::f32, glm::packed_highp> float4;
-typedef uint32_t Index;
 
 #include "vertex.hpp"
 
@@ -18,7 +16,7 @@ public:
 		vk::DeviceSize offsets[] = { 0 };
 		commandBuffer.bindVertexBuffers(0, 1, &buffer.first, offsets);
 		commandBuffer.bindIndexBuffer(buffer.first, sizeof(Vertex) * vertices.size(), vk::IndexType::eUint32);
-		commandBuffer.drawIndexed(indices.size(), 1, 0, 0, 0);
+		commandBuffer.drawIndexed((uint32_t)indices.size(), 1, 0, 0, 0);
 	}
 
 	void allocate(vma::Allocator& allocator, vk::CommandPool& transientCommandPool, DeviceWrapper& deviceWrapper)
@@ -93,7 +91,6 @@ public:
 	}
 
 private:
-	// TODO: allocate both vertex and index buffer to the same buffer, access via offsets
 	std::pair<vk::Buffer, vma::Allocation> buffer;
 
 	std::vector<Vertex> vertices = {

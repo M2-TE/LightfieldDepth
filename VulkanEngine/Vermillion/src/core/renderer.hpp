@@ -1,8 +1,10 @@
 #pragma once
 
 #include "vk_mem_alloc.hpp"
+#include "utils/types.hpp"
 #include "wrappers/swapchain_wrapper.hpp"
 #include "wrappers/shader_wrapper.hpp"
+#include "wrappers/uniform_buffer_wrapper.hpp"
 #include "geometry/indexed_geometry.hpp"
 
 struct UniformBufferObject 
@@ -28,7 +30,7 @@ public:
 		create_command_buffers(deviceWrapper);
 
 		geometry.allocate(allocator, transientCommandPool, deviceWrapper);
-		create_uniform_buffers(deviceWrapper);
+		mvpBuffer.allocate(allocator, swapchainWrapper.MAX_FRAMES_IN_FLIGHT);
 
 		create_shader_modules(deviceWrapper);
 		create_descriptor_set_layout(deviceWrapper); // TODO: move into swapchain build/rebuild?
@@ -53,18 +55,13 @@ public:
 
 		destroy_KHR(deviceWrapper);
 
-		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-			device.destroyBuffer(uniformBuffers[i]);
-			device.freeMemory(uniformBuffersMemory[i]);
-		}
-
-		device.destroyShaderModule(vs);
-		device.destroyShaderModule(ps);
-
-		for (uint32_t i = 0; i < commandPools.size(); i++) {
+		for (size_t i = 0; i < swapchainWrapper.MAX_FRAMES_IN_FLIGHT; i++) {
 			device.destroyCommandPool(commandPools[i]);
 		}
 		device.destroyCommandPool(transientCommandPool);
+
+		device.destroyShaderModule(vs);
+		device.destroyShaderModule(ps);
 
 		device.destroyDescriptorPool(imguiDescPool);
 		device.destroyDescriptorPool(descPool);
@@ -73,13 +70,14 @@ public:
 		ImGui_ImplVulkan_Shutdown();
 
 		geometry.deallocate(allocator);
+		mvpBuffer.deallocate(allocator);
 		allocator.destroy();
 	}
 
 	void render(DeviceWrapper& deviceWrapper)
 	{
 		uint32_t iImage = swapchainWrapper.acquire_image(deviceWrapper);
-		uint32_t iFrame = swapchainWrapper.currentFrame;
+		uint32_t iFrame = (uint32_t)swapchainWrapper.currentFrame;
 
 		deviceWrapper.logicalDevice.resetCommandPool(commandPools[iFrame]);
 		update_uniform_buffer(deviceWrapper, iFrame);
@@ -100,6 +98,7 @@ private:
 		allocator = vma::createAllocator(info);
 	}
 
+	// for swapchain builds/rebuilds
 	void create_KHR(DeviceWrapper& deviceWrapper, Window& window)
 	{
 		swapchainWrapper.init(deviceWrapper, window);
@@ -115,124 +114,6 @@ private:
 		deviceWrapper.logicalDevice.destroyPipelineLayout(pipelineLayout);
 		deviceWrapper.logicalDevice.destroyRenderPass(renderPass);
 	}
-
-	void create_shader_modules(DeviceWrapper& deviceWrapper)
-	{
-		vs = create_shader_module(deviceWrapper, shader_vs, shader_vs_size);
-		ps = create_shader_module(deviceWrapper, shader_ps, shader_ps_size);
-	}
-	void create_descriptor_set_layout(DeviceWrapper& deviceWrapper)
-	{
-		vk::DescriptorSetLayoutBinding layoutBinding = vk::DescriptorSetLayoutBinding()
-			.setBinding(0)
-			.setDescriptorType(vk::DescriptorType::eUniformBuffer)
-			.setDescriptorCount(1)
-			.setStageFlags(vk::ShaderStageFlagBits::eVertex)
-			.setPImmutableSamplers(nullptr);
-
-		vk::DescriptorSetLayoutCreateInfo createInfo = vk::DescriptorSetLayoutCreateInfo()
-			.setBindingCount(1)
-			.setPBindings(&layoutBinding);
-
-		descSetLayout = deviceWrapper.logicalDevice.createDescriptorSetLayout(createInfo);
-	}
-	void create_descriptor_pools(DeviceWrapper& deviceWrapper)
-	{
-		vk::DescriptorPoolSize poolSize = vk::DescriptorPoolSize()
-			.setType(vk::DescriptorType::eUniformBuffer)
-			.setDescriptorCount(MAX_FRAMES_IN_FLIGHT);
-
-		vk::DescriptorPoolCreateInfo info = vk::DescriptorPoolCreateInfo()
-			//.setFlags()
-			.setMaxSets(MAX_FRAMES_IN_FLIGHT)
-			.setPoolSizeCount(1)
-			.setPPoolSizes(&poolSize);
-		descPool = deviceWrapper.logicalDevice.createDescriptorPool(info);
-
-
-		uint32_t descCountImgui = 1000;
-		vk::DescriptorPoolSize pool_sizes[] =
-		{
-			vk::DescriptorPoolSize(vk::DescriptorType::eSampler, descCountImgui),
-			vk::DescriptorPoolSize(vk::DescriptorType::eCombinedImageSampler, descCountImgui),
-			vk::DescriptorPoolSize(vk::DescriptorType::eSampledImage, descCountImgui),
-			vk::DescriptorPoolSize(vk::DescriptorType::eStorageImage, descCountImgui),
-			vk::DescriptorPoolSize(vk::DescriptorType::eUniformTexelBuffer, descCountImgui),
-			vk::DescriptorPoolSize(vk::DescriptorType::eStorageTexelBuffer, descCountImgui),
-			vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer, descCountImgui),
-			vk::DescriptorPoolSize(vk::DescriptorType::eStorageBuffer, descCountImgui),
-			vk::DescriptorPoolSize(vk::DescriptorType::eUniformBufferDynamic, descCountImgui),
-			vk::DescriptorPoolSize(vk::DescriptorType::eStorageBufferDynamic, descCountImgui),
-			vk::DescriptorPoolSize(vk::DescriptorType::eInputAttachment, descCountImgui),
-		};
-
-		info = vk::DescriptorPoolCreateInfo()
-			.setFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet)
-			.setMaxSets(descCountImgui * IM_ARRAYSIZE(pool_sizes))
-			.setPoolSizeCount((uint32_t)IM_ARRAYSIZE(pool_sizes))
-			.setPPoolSizes(pool_sizes);
-
-		imguiDescPool = deviceWrapper.logicalDevice.createDescriptorPool(info);
-	}
-	void create_descriptor_sets(DeviceWrapper& deviceWrapper)
-	{
-		std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, descSetLayout);
-		vk::DescriptorSetAllocateInfo allocInfo = vk::DescriptorSetAllocateInfo()
-			.setDescriptorPool(descPool)
-			.setDescriptorSetCount(MAX_FRAMES_IN_FLIGHT)
-			.setPSetLayouts(layouts.data());
-
-		descSets = deviceWrapper.logicalDevice.allocateDescriptorSets(allocInfo);
-
-		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-			vk::DescriptorBufferInfo bufferInfo = vk::DescriptorBufferInfo()
-				.setBuffer(uniformBuffers[i])
-				.setOffset(0)
-				.setRange(sizeof(UniformBufferObject));
-
-			vk::WriteDescriptorSet descWrite = vk::WriteDescriptorSet()
-				.setDstSet(descSets[i])
-				.setDstBinding(0)
-				.setDstArrayElement(0)
-				.setDescriptorType(vk::DescriptorType::eUniformBuffer)
-				.setDescriptorCount(1)
-				//
-				.setPBufferInfo(&bufferInfo)
-				.setPImageInfo(nullptr)
-				.setPTexelBufferView(nullptr);
-
-			deviceWrapper.logicalDevice.updateDescriptorSets(descWrite, {});
-		}
-	}
-
-	void create_command_pools(DeviceWrapper& deviceWrapper)
-	{
-		vk::CommandPoolCreateInfo commandPoolInfo;
-
-		commandPoolInfo = vk::CommandPoolCreateInfo()
-			.setQueueFamilyIndex(deviceWrapper.iQueue);
-		commandPools.resize(MAX_FRAMES_IN_FLIGHT);
-		for (uint32_t i = 0; i < commandPools.size(); i++) {
-			commandPools[i] = deviceWrapper.logicalDevice.createCommandPool(commandPoolInfo);
-		}
-
-		commandPoolInfo = vk::CommandPoolCreateInfo()
-			.setQueueFamilyIndex(deviceWrapper.iQueue)
-			.setFlags(vk::CommandPoolCreateFlagBits::eTransient);
-		transientCommandPool = deviceWrapper.logicalDevice.createCommandPool(commandPoolInfo);
-	}
-	void create_command_buffers(DeviceWrapper& deviceWrapper)
-	{
-		commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-		for (uint32_t i = 0; i < commandPools.size(); i++) {
-			vk::CommandBufferAllocateInfo commandBufferInfo = vk::CommandBufferAllocateInfo()
-				.setCommandPool(commandPools[i])
-				.setLevel(vk::CommandBufferLevel::ePrimary) // secondary are used by primary command buffers for e.g. common operations
-				.setCommandBufferCount(1);
-			commandBuffers[i] = deviceWrapper.logicalDevice.allocateCommandBuffers(commandBufferInfo)[0];
-		}
-	}
-	
 	void create_render_pass(DeviceWrapper& deviceWrapper)
 	{
 		vk::AttachmentDescription colorAttachment = vk::AttachmentDescription()
@@ -414,77 +295,127 @@ private:
 			default: assert(false);
 		}
 	}
+
+	void create_shader_modules(DeviceWrapper& deviceWrapper)
+	{
+		vs = create_shader_module(deviceWrapper, shader_vs, shader_vs_size);
+		ps = create_shader_module(deviceWrapper, shader_ps, shader_ps_size);
+	}
+
+	// TODO: move to uniform buffer wrapper?
+	void create_descriptor_set_layout(DeviceWrapper& deviceWrapper)
+	{
+		vk::DescriptorSetLayoutBinding layoutBinding = vk::DescriptorSetLayoutBinding()
+			.setBinding(0)
+			.setDescriptorType(vk::DescriptorType::eUniformBuffer)
+			.setDescriptorCount(1)
+			.setStageFlags(vk::ShaderStageFlagBits::eVertex)
+			.setPImmutableSamplers(nullptr);
+
+		vk::DescriptorSetLayoutCreateInfo createInfo = vk::DescriptorSetLayoutCreateInfo()
+			.setBindingCount(1)
+			.setPBindings(&layoutBinding);
+
+		descSetLayout = deviceWrapper.logicalDevice.createDescriptorSetLayout(createInfo);
+	}
+	void create_descriptor_pools(DeviceWrapper& deviceWrapper)
+	{
+		vk::DescriptorPoolSize poolSize = vk::DescriptorPoolSize()
+			.setType(vk::DescriptorType::eUniformBuffer)
+			.setDescriptorCount(swapchainWrapper.MAX_FRAMES_IN_FLIGHT);
+
+		vk::DescriptorPoolCreateInfo info = vk::DescriptorPoolCreateInfo()
+			//.setFlags()
+			.setMaxSets(swapchainWrapper.MAX_FRAMES_IN_FLIGHT)
+			.setPoolSizeCount(1)
+			.setPPoolSizes(&poolSize);
+		descPool = deviceWrapper.logicalDevice.createDescriptorPool(info);
+
+
+		uint32_t descCountImgui = 1000;
+		vk::DescriptorPoolSize pool_sizes[] =
+		{
+			vk::DescriptorPoolSize(vk::DescriptorType::eSampler, descCountImgui),
+			vk::DescriptorPoolSize(vk::DescriptorType::eCombinedImageSampler, descCountImgui),
+			vk::DescriptorPoolSize(vk::DescriptorType::eSampledImage, descCountImgui),
+			vk::DescriptorPoolSize(vk::DescriptorType::eStorageImage, descCountImgui),
+			vk::DescriptorPoolSize(vk::DescriptorType::eUniformTexelBuffer, descCountImgui),
+			vk::DescriptorPoolSize(vk::DescriptorType::eStorageTexelBuffer, descCountImgui),
+			vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer, descCountImgui),
+			vk::DescriptorPoolSize(vk::DescriptorType::eStorageBuffer, descCountImgui),
+			vk::DescriptorPoolSize(vk::DescriptorType::eUniformBufferDynamic, descCountImgui),
+			vk::DescriptorPoolSize(vk::DescriptorType::eStorageBufferDynamic, descCountImgui),
+			vk::DescriptorPoolSize(vk::DescriptorType::eInputAttachment, descCountImgui),
+		};
+
+		info = vk::DescriptorPoolCreateInfo()
+			.setFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet)
+			.setMaxSets(descCountImgui * IM_ARRAYSIZE(pool_sizes))
+			.setPoolSizeCount((uint32_t)IM_ARRAYSIZE(pool_sizes))
+			.setPPoolSizes(pool_sizes);
+
+		imguiDescPool = deviceWrapper.logicalDevice.createDescriptorPool(info);
+	}
+	void create_descriptor_sets(DeviceWrapper& deviceWrapper)
+	{
+		std::vector<vk::DescriptorSetLayout> layouts(swapchainWrapper.MAX_FRAMES_IN_FLIGHT, descSetLayout);
+		vk::DescriptorSetAllocateInfo allocInfo = vk::DescriptorSetAllocateInfo()
+			.setDescriptorPool(descPool)
+			.setDescriptorSetCount(swapchainWrapper.MAX_FRAMES_IN_FLIGHT)
+			.setPSetLayouts(layouts.data());
+
+		descSets = deviceWrapper.logicalDevice.allocateDescriptorSets(allocInfo);
+
+		for (size_t i = 0; i < swapchainWrapper.MAX_FRAMES_IN_FLIGHT; i++) {
+			vk::DescriptorBufferInfo bufferInfo = vk::DescriptorBufferInfo()
+				.setBuffer(mvpBuffer.get_buffer(i))
+				.setOffset(0)
+				.setRange(mvpBuffer.get_buffer_size());
+
+			vk::WriteDescriptorSet descWrite = vk::WriteDescriptorSet()
+				.setDstSet(descSets[i])
+				.setDstBinding(0)
+				.setDstArrayElement(0)
+				.setDescriptorType(vk::DescriptorType::eUniformBuffer)
+				.setDescriptorCount(1)
+				//
+				.setPBufferInfo(&bufferInfo)
+				.setPImageInfo(nullptr)
+				.setPTexelBufferView(nullptr);
+
+			deviceWrapper.logicalDevice.updateDescriptorSets(descWrite, {});
+		}
+	}
+
+	void create_command_pools(DeviceWrapper& deviceWrapper)
+	{
+		vk::CommandPoolCreateInfo commandPoolInfo;
+
+		commandPoolInfo = vk::CommandPoolCreateInfo()
+			.setQueueFamilyIndex(deviceWrapper.iQueue);
+		commandPools.resize(swapchainWrapper.MAX_FRAMES_IN_FLIGHT);
+		for (uint32_t i = 0; i < commandPools.size(); i++) {
+			commandPools[i] = deviceWrapper.logicalDevice.createCommandPool(commandPoolInfo);
+		}
+
+		commandPoolInfo = vk::CommandPoolCreateInfo()
+			.setQueueFamilyIndex(deviceWrapper.iQueue)
+			.setFlags(vk::CommandPoolCreateFlagBits::eTransient);
+		transientCommandPool = deviceWrapper.logicalDevice.createCommandPool(commandPoolInfo);
+	}
+	void create_command_buffers(DeviceWrapper& deviceWrapper)
+	{
+		commandBuffers.resize(swapchainWrapper.MAX_FRAMES_IN_FLIGHT);
+		for (uint32_t i = 0; i < commandPools.size(); i++) {
+			vk::CommandBufferAllocateInfo commandBufferInfo = vk::CommandBufferAllocateInfo()
+				.setCommandPool(commandPools[i])
+				.setLevel(vk::CommandBufferLevel::ePrimary) // secondary are used by primary command buffers for e.g. common operations
+				.setCommandBufferCount(1);
+			commandBuffers[i] = deviceWrapper.logicalDevice.allocateCommandBuffers(commandBufferInfo)[0];
+		}
+	}
 	
-	uint32_t find_memory_type(DeviceWrapper& deviceWrapper, uint32_t typeFilter, vk::MemoryPropertyFlags properties)
-	{
-		for (uint32_t i = 0; i < deviceWrapper.deviceMemProperties.memoryTypeCount; i++) {
-			if (typeFilter & (1 << i) && (deviceWrapper.deviceMemProperties.memoryTypes[i].propertyFlags & properties) == properties)
-			{
-				return i;
-			}
-		}
-		throw std::runtime_error("failed to find suitable memory type!");
-	}
-	void create_buffer(DeviceWrapper& deviceWrapper, vk::Buffer& buffer, vk::DeviceMemory& bufferMemory, vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties)
-	{
-		vk::BufferCreateInfo bufferInfo = vk::BufferCreateInfo()
-			.setSize(size)
-			.setUsage(usage)
-			.setSharingMode(vk::SharingMode::eExclusive);
-		buffer = deviceWrapper.logicalDevice.createBuffer(bufferInfo, nullptr);
-
-		vk::MemoryRequirements memReqs;
-		memReqs = deviceWrapper.logicalDevice.getBufferMemoryRequirements(buffer);
-
-		vk::MemoryAllocateInfo allocInfo = vk::MemoryAllocateInfo()
-			.setAllocationSize(memReqs.size)
-			.setMemoryTypeIndex(find_memory_type(deviceWrapper, memReqs.memoryTypeBits, properties));
-		bufferMemory = deviceWrapper.logicalDevice.allocateMemory(allocInfo);
-		deviceWrapper.logicalDevice.bindBufferMemory(buffer, bufferMemory, 0);
-	}
-	void copy_buffer(DeviceWrapper& deviceWrapper, vk::Buffer src, vk::Buffer dst, vk::DeviceSize size)
-	{
-		vk::CommandBufferAllocateInfo allocInfo = vk::CommandBufferAllocateInfo()
-			.setLevel(vk::CommandBufferLevel::ePrimary)
-			.setCommandPool(transientCommandPool)
-			.setCommandBufferCount(1);
-
-		vk::CommandBuffer commandBuffer;
-		auto res = deviceWrapper.logicalDevice.allocateCommandBuffers(&allocInfo, &commandBuffer);
-
-		// begin recording to temporary command buffer
-		vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo()
-			.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
-		commandBuffer.begin(beginInfo);
-
-		vk::BufferCopy copyRegion = vk::BufferCopy()
-			.setSrcOffset(0)
-			.setDstOffset(0)
-			.setSize(size);
-		commandBuffer.copyBuffer(src, dst, copyRegion);
-		commandBuffer.end();
-
-		vk::SubmitInfo submitInfo = vk::SubmitInfo()
-			.setCommandBufferCount(1)
-			.setPCommandBuffers(&commandBuffer);
-		deviceWrapper.queue.submit(submitInfo);
-		deviceWrapper.queue.waitIdle(); // TODO: change this to wait on a fence instead (upon queue submit) so multiple memory transfers would be possible
-
-		// free command buffer directly after use
-		deviceWrapper.logicalDevice.freeCommandBuffers(transientCommandPool, commandBuffer);
-	}
-	void create_uniform_buffers(DeviceWrapper& deviceWrapper)
-	{
-		vk::DeviceSize bufferSize = sizeof(UniformBufferObject);
-		uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-		uniformBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
-		for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-			create_buffer(deviceWrapper, uniformBuffers[i], uniformBuffersMemory[i], bufferSize, 
-				vk::BufferUsageFlagBits::eUniformBuffer,
-				vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-		}
-	}
-
+	// ImGui
 	void imgui_init_vulkan(DeviceWrapper& deviceWrapper, Window& window)
 	{
 		struct ImGui_ImplVulkan_InitInfo info = { 0 };
@@ -531,14 +462,12 @@ private:
 		auto currentTime = std::chrono::high_resolution_clock::now();
 		float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
-		UniformBufferObject ubo{};
+		auto& ubo = mvpBuffer.data;
 		ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 		ubo.view = glm::lookAt(glm::vec3(0.0f, 2.0f, -2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 		ubo.proj = glm::perspective(glm::radians(45.0f), (float)swapchainWrapper.extent.width / (float)swapchainWrapper.extent.height, 0.1f, 10.0f);
 
-		void* data = deviceWrapper.logicalDevice.mapMemory(uniformBuffersMemory[iCurrentFrame], 0, sizeof(ubo));
-		memcpy(data, &ubo, static_cast<size_t>(sizeof(ubo)));
-		deviceWrapper.logicalDevice.unmapMemory(uniformBuffersMemory[iCurrentFrame]);
+		mvpBuffer.update(iCurrentFrame);
 	}
 	void record_command_buffer(uint32_t iFrame, uint32_t iImage)
 	{
@@ -580,12 +509,11 @@ private:
 	}
 
 private:
-	static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2; // use uint instead?
-
 	// TODO: create a wrapper for all per-frame and per-image objects (all the std::vectors)
 
 	vma::Allocator allocator;
 	SwapchainWrapper swapchainWrapper;
+	UniformBufferWrapper<UniformBufferObject> mvpBuffer;
 
 	vk::ShaderModule vs, ps;
 	vk::RenderPass renderPass;
@@ -598,14 +526,9 @@ private:
 	vk::DescriptorSetLayout descSetLayout; // for cbuffer
 	std::vector<vk::DescriptorSet> descSets;
 
-	// TODO: make number of images in swapchain based on (min + max_frames_etc - 1)
 	vk::CommandPool transientCommandPool;
 	std::vector<vk::CommandPool> commandPools;
 	std::vector<vk::CommandBuffer> commandBuffers;
-
-	// updated each frame, so needs at least one buffer per frame in flight
-	std::vector<vk::Buffer> uniformBuffers;
-	std::vector<vk::DeviceMemory> uniformBuffersMemory; // TODO: use push constants instead?
 
 	IndexedGeometry geometry;
 };
