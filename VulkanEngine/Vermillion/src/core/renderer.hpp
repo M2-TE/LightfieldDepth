@@ -4,7 +4,7 @@
 #include "utils/types.hpp"
 #include "wrappers/swapchain_wrapper.hpp"
 #include "wrappers/shader_wrapper.hpp"
-#include "wrappers/uniform_buffer_wrapper.hpp"
+#include "wrappers/descriptor_wrapper.hpp"
 #include "geometry/indexed_geometry.hpp"
 
 struct UniformBufferObject 
@@ -30,7 +30,12 @@ public:
 		create_command_buffers(deviceWrapper);
 
 		geometry.allocate(allocator, transientCommandPool, deviceWrapper);
-		mvpBuffer.allocate(allocator, swapchainWrapper.MAX_FRAMES_IN_FLIGHT);
+
+		descriptorWrapper.init(deviceWrapper);
+		uint32_t nFrames = swapchainWrapper.MAX_FRAMES_IN_FLIGHT;
+		mvpBuffer.allocate(allocator, nFrames);
+		descriptorWrapper.add_uniform_buffer(mvpBuffer, 0, vk::ShaderStageFlagBits::eVertex);
+		descriptorWrapper.update(deviceWrapper, nFrames);
 
 		create_shader_modules(deviceWrapper);
 		create_descriptor_set_layout(deviceWrapper); // TODO: move into swapchain build/rebuild?
@@ -71,6 +76,7 @@ public:
 
 		geometry.deallocate(allocator);
 		mvpBuffer.deallocate(allocator);
+		descriptorWrapper.destroy(deviceWrapper);
 		allocator.destroy();
 	}
 
@@ -333,7 +339,7 @@ private:
 
 
 		uint32_t descCountImgui = 1000;
-		vk::DescriptorPoolSize pool_sizes[] =
+		std::array<vk::DescriptorPoolSize, 11> poolSizes =
 		{
 			vk::DescriptorPoolSize(vk::DescriptorType::eSampler, descCountImgui),
 			vk::DescriptorPoolSize(vk::DescriptorType::eCombinedImageSampler, descCountImgui),
@@ -345,14 +351,14 @@ private:
 			vk::DescriptorPoolSize(vk::DescriptorType::eStorageBuffer, descCountImgui),
 			vk::DescriptorPoolSize(vk::DescriptorType::eUniformBufferDynamic, descCountImgui),
 			vk::DescriptorPoolSize(vk::DescriptorType::eStorageBufferDynamic, descCountImgui),
-			vk::DescriptorPoolSize(vk::DescriptorType::eInputAttachment, descCountImgui),
+			vk::DescriptorPoolSize(vk::DescriptorType::eInputAttachment, descCountImgui)
 		};
 
 		info = vk::DescriptorPoolCreateInfo()
 			.setFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet)
-			.setMaxSets(descCountImgui * IM_ARRAYSIZE(pool_sizes))
-			.setPoolSizeCount((uint32_t)IM_ARRAYSIZE(pool_sizes))
-			.setPPoolSizes(pool_sizes);
+			.setMaxSets(descCountImgui * (uint32_t)poolSizes.size())
+			.setPoolSizeCount((uint32_t)poolSizes.size())
+			.setPPoolSizes(poolSizes.data());
 
 		imguiDescPool = deviceWrapper.logicalDevice.createDescriptorPool(info);
 	}
@@ -366,25 +372,28 @@ private:
 
 		descSets = deviceWrapper.logicalDevice.allocateDescriptorSets(allocInfo);
 
+		size_t n = swapchainWrapper.MAX_FRAMES_IN_FLIGHT;
+		std::vector<vk::DescriptorBufferInfo> descBufferInfos(n);
+		std::vector<vk::WriteDescriptorSet> descBufferWrites(n);
 		for (size_t i = 0; i < swapchainWrapper.MAX_FRAMES_IN_FLIGHT; i++) {
-			vk::DescriptorBufferInfo bufferInfo = vk::DescriptorBufferInfo()
+			descBufferInfos[i] = vk::DescriptorBufferInfo()
 				.setBuffer(mvpBuffer.get_buffer(i))
 				.setOffset(0)
 				.setRange(mvpBuffer.get_buffer_size());
 
-			vk::WriteDescriptorSet descWrite = vk::WriteDescriptorSet()
+			descBufferWrites[i] = vk::WriteDescriptorSet()
 				.setDstSet(descSets[i])
 				.setDstBinding(0)
 				.setDstArrayElement(0)
 				.setDescriptorType(vk::DescriptorType::eUniformBuffer)
 				.setDescriptorCount(1)
 				//
-				.setPBufferInfo(&bufferInfo)
+				.setPBufferInfo(&descBufferInfos[i])
 				.setPImageInfo(nullptr)
 				.setPTexelBufferView(nullptr);
 
-			deviceWrapper.logicalDevice.updateDescriptorSets(descWrite, {});
 		}
+		deviceWrapper.logicalDevice.updateDescriptorSets(descBufferWrites, {});
 	}
 
 	void create_command_pools(DeviceWrapper& deviceWrapper)
@@ -513,6 +522,7 @@ private:
 
 	vma::Allocator allocator;
 	SwapchainWrapper swapchainWrapper;
+	DescriptorWrapper descriptorWrapper;
 	UniformBufferWrapper<UniformBufferObject> mvpBuffer;
 
 	vk::ShaderModule vs, ps;

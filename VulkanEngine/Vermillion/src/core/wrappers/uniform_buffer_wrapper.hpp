@@ -3,22 +3,19 @@
 template<class T>
 class UniformBufferWrapper
 {
+	friend class DescriptorWrapper;
 public:
 	UniformBufferWrapper() = default;
 	~UniformBufferWrapper() = default;
 	ROF_COPY_MOVE_DELETE(UniformBufferWrapper)
 
 public:
-	void bind()
-	{
-		// TODO when encapsulating descriptor sets
-	}
-
 	void update(size_t iBuffer)
 	{
 		// already mapped, so just copy over
 		memcpy(allocInfos[iBuffer].pMappedData, &data, sizeof(T));
 	}
+
 	void allocate(vma::Allocator& allocator, size_t nBuffers)
 	{
 		size_t bufferSize = sizeof(T);
@@ -46,6 +43,7 @@ public:
 		}
 	}
 
+	// TODO: shove these to private
 	vk::Buffer& get_buffer(size_t iBuffer)
 	{
 		return buffers[iBuffer].first;
@@ -54,10 +52,17 @@ public:
 	{
 		return sizeof(T);
 	}
+private:
+	static inline constexpr vk::DescriptorType get_descriptor_type()
+	{
+		return vk::DescriptorType::eUniformBuffer;
+	}
+
 public:
 	T data;
 
 private:
 	std::vector<std::pair<vk::Buffer, vma::Allocation>> buffers;
 	std::vector<vma::AllocationInfo> allocInfos;
+	size_t iLayoutBinding = MAXSIZE_T;
 };

@@ -105,6 +105,7 @@
     <ClInclude Include="src\core\device_manager.hpp" />
     <ClInclude Include="src\core\geometry\indexed_geometry.hpp" />
     <ClInclude Include="src\core\geometry\vertex.hpp" />
+    <ClInclude Include="src\core\wrappers\descriptor_wrapper.hpp" />
     <ClInclude Include="src\core\wrappers\device_wrapper.hpp" />
     <ClInclude Include="src\core\renderer.hpp" />
     <ClInclude Include="src\core\window.hpp" />
