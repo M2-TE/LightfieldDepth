@@ -51,9 +51,11 @@ private:
 	{
 		// Look for all the available extensions
 		std::vector<vk::ExtensionProperties> availableExtensions = vk::enumerateInstanceExtensionProperties();
-		VMI_LOG("Available extensions:");
-		for (const auto& extension : availableExtensions) VMI_LOG(extension.extensionName);
-		VMI_LOG("");
+		if (false) {
+			VMI_LOG("Available instance extensions:");
+			for (const auto& extension : availableExtensions) VMI_LOG(extension.extensionName);
+			VMI_LOG("");
+		}
 
 		// Get WSI extensions from SDL
 		uint32_t nExtensions;
@@ -65,9 +67,9 @@ private:
 		DEBUG_ONLY(vk::DebugUtilsMessengerCreateInfoEXT messengerInfo = Logging::SetupDebugMessenger(extensions));
 
 		// Log output:
-		std::cout << "Required extensions:\n";
-		for (const auto& extension : extensions) std::cout << extension << '\n';
-		std::cout << std::endl;
+		std::cout << "Required instance extensions:\n";
+		for (const auto& extension : extensions) VMI_LOG(extension);
+		VMI_LOG("");
 
 		// Create app info
 		vk::ApplicationInfo appInfo = vk::ApplicationInfo()

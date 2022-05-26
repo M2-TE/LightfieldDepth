@@ -40,7 +40,19 @@ public:
 		vk::PhysicalDeviceFeatures deviceFeatures = vk::PhysicalDeviceFeatures();
 		// TODO: set specific features here
 
+		if (false) {
+			VMI_LOG("Available device extensions:");
+			std::vector<vk::ExtensionProperties> availableExtensions = physicalDevice.enumerateDeviceExtensionProperties();
+			for (const auto& extension : availableExtensions) VMI_LOG(extension.extensionName);
+			VMI_LOG("");
+		}
+
+		VMI_LOG("Required device extensions:");
 		std::vector<const char*> requiredDeviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+		for (const auto& extension : requiredDeviceExtensions) VMI_LOG(extension);
+		VMI_LOG("");
+
+
 		vk::DeviceCreateInfo createInfo = vk::DeviceCreateInfo()
 			// queues
 			.setPQueueCreateInfos(&queueCreateInfo)

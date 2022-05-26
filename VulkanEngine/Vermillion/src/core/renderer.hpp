@@ -194,11 +194,11 @@ private:
 
 		vk::SubpassDependency dependency = vk::SubpassDependency()
 			.setDependencyFlags(vk::DependencyFlagBits::eByRegion) // for tiled GPUs.. i think.
-			// src
+			// src (when/what to wait on)
 			.setSrcSubpass(VK_SUBPASS_EXTERNAL)
 			.setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eLateFragmentTests)
 			.setSrcAccessMask(vk::AccessFlagBits::eNoneKHR)
-			// dst
+			// dst (when/what to write to)
 			.setDstSubpass(0)
 			.setDstStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests)
 			.setDstAccessMask(vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentWrite);
