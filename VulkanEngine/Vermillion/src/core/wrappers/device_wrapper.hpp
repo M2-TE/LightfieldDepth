@@ -10,8 +10,8 @@ public:
 		physicalDevice.getFeatures(&deviceFeatures);
 		physicalDevice.getMemoryProperties(&deviceMemProperties);
 
-		assign_queue_family_index(surface);
 		query_swapchain_support_details(surface);
+		assign_queue_family_index(surface);
 	}
 
 	int32_t get_device_score() 
@@ -25,7 +25,6 @@ public:
 		deviceScore += deviceProperties.limits.maxImageDimension2D;
 
 		if (iQueue == UINT32_MAX) return -1; // check for valid queue index
-		else if (!are_extensions_supported()) return -1;
 		else if (formats.empty() || presentModes.empty()) return -1;
 		else return deviceScore;
 	}
@@ -78,8 +77,19 @@ private:
 		std::vector<vk::QueueFamilyProperties> queueFamilies = physicalDevice.getQueueFamilyProperties();
 		for (int i = 0; i < queueFamilies.size(); i++) {
 
-			if (queueFamilies[i].queueFlags & vk::QueueFlagBits::eGraphics
-				&& physicalDevice.getSurfaceSupportKHR(i, surface)) {
+#ifdef _DEBUG
+			VMI_LOG("Queue family capabilities at index " << i);
+			if(queueFamilies[i].queueFlags & vk::QueueFlagBits::eGraphics) VMI_LOG("\t-> graphics");
+			if(queueFamilies[i].queueFlags & vk::QueueFlagBits::eTransfer) VMI_LOG("\t-> transfer");
+			if(queueFamilies[i].queueFlags & vk::QueueFlagBits::eCompute) VMI_LOG("\t-> compute");
+			if(queueFamilies[i].queueFlags & vk::QueueFlagBits::eProtected) VMI_LOG("\t-> protected");
+			if(queueFamilies[i].queueFlags & vk::QueueFlagBits::eSparseBinding) VMI_LOG("\t-> sparse binding");
+			VMI_LOG("");
+#endif
+
+			if (queueFamilies[i].queueFlags & vk::QueueFlagBits::eGraphics &&
+				physicalDevice.getSurfaceSupportKHR(i, surface)) {
+
 				iQueue = i;
 				break;
 			}
@@ -90,23 +100,6 @@ private:
 		capabilities = physicalDevice.getSurfaceCapabilitiesKHR(surface);
 		formats = physicalDevice.getSurfaceFormatsKHR(surface);
 		presentModes = physicalDevice.getSurfacePresentModesKHR(surface);
-	}
-	bool are_extensions_supported()
-	{
-		// required extensions which need to be present
-		std::vector<const char*> requiredDeviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
-		std::set<std::string> requiredExtensions(requiredDeviceExtensions.begin(), requiredDeviceExtensions.end());
-
-		// query available extensions in device directly
-		std::vector<vk::ExtensionProperties> availableExtensions = physicalDevice.enumerateDeviceExtensionProperties();
-
-		// determine which requested extensions are available in device
-		for (const auto& extension : availableExtensions) {
-			requiredExtensions.erase(extension.extensionName);
-		}
-
-		// when all required extensions are present, should be empty
-		return requiredExtensions.empty();
 	}
 
 public:
