@@ -171,8 +171,10 @@ private:
 		vk::AttachmentDescription depthAttachment = vk::AttachmentDescription()
 			.setFormat(vk::Format::eD24UnormS8Uint)
 			.setSamples(vk::SampleCountFlagBits::e1)
+			// depth
 			.setLoadOp(vk::AttachmentLoadOp::eClear)
 			.setStoreOp(vk::AttachmentStoreOp::eStore)
+			// stencil
 			.setStencilLoadOp(vk::AttachmentLoadOp::eClear)
 			.setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
 			.setInitialLayout(vk::ImageLayout::eUndefined)
@@ -185,34 +187,26 @@ private:
 			.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
 			.setColorAttachmentCount(1).setPColorAttachments(&colorAttachmentRef)
 			.setPDepthStencilAttachment(&depthAttachmentRef)
-			.setPInputAttachments(nullptr)
-			.setPResolveAttachments(nullptr)
-			.setPPreserveAttachments(nullptr);
+			// other:
+			.setInputAttachmentCount(0).setPInputAttachments(nullptr)
+			.setPreserveAttachmentCount(0).setPPreserveAttachments(nullptr)
+			.setPResolveAttachments(nullptr);
 
-		vk::SubpassDependency colorDependency = vk::SubpassDependency()
+		vk::SubpassDependency dependency = vk::SubpassDependency()
+			.setDependencyFlags(vk::DependencyFlagBits::eByRegion) // for tiled GPUs.. i think.
 			// src
 			.setSrcSubpass(VK_SUBPASS_EXTERNAL)
-			.setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
+			.setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eLateFragmentTests)
 			.setSrcAccessMask(vk::AccessFlagBits::eNoneKHR)
 			// dst
-			.setDstSubpass(0u)
-			.setDstStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
-			.setDstAccessMask(vk::AccessFlagBits::eColorAttachmentWrite);
-		vk::SubpassDependency depthDependency = vk::SubpassDependency()
-			// src
-			.setSrcSubpass(VK_SUBPASS_EXTERNAL)
-			.setSrcStageMask(vk::PipelineStageFlagBits::eEarlyFragmentTests | vk::PipelineStageFlagBits::eLateFragmentTests)
-			.setSrcAccessMask(vk::AccessFlagBits::eNoneKHR)
-			// dst
-			.setDstSubpass(0u)
-			.setDstStageMask(vk::PipelineStageFlagBits::eEarlyFragmentTests | vk::PipelineStageFlagBits::eLateFragmentTests)
-			.setDstAccessMask(vk::AccessFlagBits::eDepthStencilAttachmentWrite);
+			.setDstSubpass(0)
+			.setDstStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests)
+			.setDstAccessMask(vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentWrite);
 
-		std::array<vk::SubpassDependency, 2> dependencies = { colorDependency, depthDependency };
 		std::array<vk::AttachmentDescription, 2> attachments = { colorAttachment, depthAttachment };
 		vk::RenderPassCreateInfo renderPassInfo = vk::RenderPassCreateInfo()
-			.setDependencyCount(dependencies.size()).setPDependencies(dependencies.data())
 			.setAttachmentCount(attachments.size()).setPAttachments(attachments.data())
+			.setDependencyCount(1).setPDependencies(&dependency)
 			.setSubpassCount(1).setPSubpasses(&subpassDesc);
 
 		renderPass = deviceWrapper.logicalDevice.createRenderPass(renderPassInfo);
@@ -297,9 +291,11 @@ private:
 				vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
 				vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA) // theoretically no need to write transparency
 			.setBlendEnable(VK_FALSE)
+			// color blend
 			.setSrcColorBlendFactor(vk::BlendFactor::eOne)
 			.setDstColorBlendFactor(vk::BlendFactor::eZero)
 			.setColorBlendOp(vk::BlendOp::eAdd)
+			// alpha blend
 			.setSrcAlphaBlendFactor(vk::BlendFactor::eOne)
 			.setDstAlphaBlendFactor(vk::BlendFactor::eZero)
 			.setAlphaBlendOp(vk::BlendOp::eAdd);
@@ -449,7 +445,6 @@ private:
 	}
 	
 
-
 	// ImGui
 	void imgui_init_vulkan(DeviceWrapper& deviceWrapper, Window& window)
 	{
@@ -568,7 +563,7 @@ private:
 	UniformBufferWrapper<UniformBufferObject> mvpBuffer;
 	IndexedGeometry geometry;
 
-	// TODO: should have MAX_FRAMES_IN_FLIGHT depth buffers
+	// TODO: should have n = MAX_FRAMES_IN_FLIGHT depth buffers
 	std::pair<vk::Image, vma::Allocation> depthStencilAllocation;
 	//vk::Image depthStencil;
 	vk::ImageView depthStencilView;
