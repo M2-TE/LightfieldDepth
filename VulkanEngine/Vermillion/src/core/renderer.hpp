@@ -95,6 +95,7 @@ private:
 	}
 
 	// for swapchain builds/rebuilds
+	// TODO: create KHR wrapper?
 	void create_KHR(DeviceWrapper& deviceWrapper, Window& window)
 	{
 		swapchainWrapper.init(deviceWrapper, window);
@@ -468,8 +469,6 @@ private:
 	}
 
 private:
-	// TODO: create a wrapper for all per-frame and per-image objects (all the std::vectors)
-
 	vma::Allocator allocator;
 	SwapchainWrapper swapchainWrapper;
 
