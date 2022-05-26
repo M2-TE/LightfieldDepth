@@ -17,20 +17,20 @@ public:
 		create_image_views(deviceWrapper);
 		create_sync_objects(deviceWrapper);
 	}
-	void create_framebuffers(DeviceWrapper& deviceWrapper, vk::RenderPass& renderPass)
+	void create_framebuffers(DeviceWrapper& deviceWrapper, vk::RenderPass& renderPass, vk::ImageView& depthStencilView)
 	{
 		size_t size = images.size();
 		framebuffers.resize(size);
 
 		for (size_t i = 0; i < size; i++) {
+			std::array<vk::ImageView, 2> attachments = { imageViews[i], depthStencilView };
 			vk::FramebufferCreateInfo framebufferInfo = vk::FramebufferCreateInfo()
 				.setRenderPass(renderPass)
 				.setWidth(extent.width)
 				.setHeight(extent.height)
 				.setLayers(1)
 				// attachments
-				.setAttachmentCount(1)
-				.setPAttachments(&imageViews[i]);
+				.setAttachmentCount(attachments.size()).setPAttachments(attachments.data());
 
 			framebuffers[i] = deviceWrapper.logicalDevice.createFramebuffer(framebufferInfo);
 		}

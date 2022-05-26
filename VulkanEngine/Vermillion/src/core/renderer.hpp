@@ -99,17 +99,59 @@ private:
 	void create_KHR(DeviceWrapper& deviceWrapper, Window& window)
 	{
 		swapchainWrapper.init(deviceWrapper, window);
+		image_stuff(deviceWrapper);
 		create_render_pass(deviceWrapper);
 		create_graphics_pipeline(deviceWrapper);
-		swapchainWrapper.create_framebuffers(deviceWrapper, renderPass);
+		swapchainWrapper.create_framebuffers(deviceWrapper, renderPass, depthStencilView);
 	}
 	void destroy_KHR(DeviceWrapper& deviceWrapper)
 	{
 		swapchainWrapper.destroy(deviceWrapper);
 
+		allocator.destroyImage(depthStencilAllocation.first, depthStencilAllocation.second);
+		deviceWrapper.logicalDevice.destroyImageView(depthStencilView);
+
 		deviceWrapper.logicalDevice.destroyPipeline(graphicsPipeline);
 		deviceWrapper.logicalDevice.destroyPipelineLayout(pipelineLayout);
 		deviceWrapper.logicalDevice.destroyRenderPass(renderPass);
+	}
+	void image_stuff(DeviceWrapper& deviceWrapper)
+	{
+		// Image
+		vk::ImageCreateInfo imageCreateInfo;
+		{
+			imageCreateInfo = vk::ImageCreateInfo()
+				.setPNext(nullptr)
+				.setImageType(vk::ImageType::e2D)
+				.setFormat(vk::Format::eD24UnormS8Uint)
+				.setExtent(vk::Extent3D(swapchainWrapper.extent, 1)) // TODO: 1 or 0 in depth?
+				//
+				.setMipLevels(1)
+				.setArrayLayers(1)
+				.setSamples(vk::SampleCountFlagBits::e1)
+				.setTiling(vk::ImageTiling::eOptimal)
+				.setUsage(vk::ImageUsageFlagBits::eDepthStencilAttachment);
+
+			vma::AllocationCreateInfo allocCreateInfo = vma::AllocationCreateInfo()
+				.setUsage(vma::MemoryUsage::eAutoPreferDevice)
+				.setFlags(vma::AllocationCreateFlagBits::eDedicatedMemory);
+			depthStencilAllocation = allocator.createImage(imageCreateInfo, allocCreateInfo, nullptr);
+		}
+
+		// Image View
+		{
+			vk::ImageSubresourceRange subresourceRange = vk::ImageSubresourceRange()
+				.setAspectMask(vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil)
+				.setBaseMipLevel(0).setLevelCount(1)
+				.setBaseArrayLayer(0).setLayerCount(1);
+			vk::ImageViewCreateInfo imageViewInfo = vk::ImageViewCreateInfo()
+				.setPNext(nullptr)
+				.setViewType(vk::ImageViewType::e2D)
+				.setImage(depthStencilAllocation.first)
+				.setFormat(imageCreateInfo.format)
+				.setSubresourceRange(subresourceRange);
+			depthStencilView = deviceWrapper.logicalDevice.createImageView(imageViewInfo);
+		}
 	}
 	void create_render_pass(DeviceWrapper& deviceWrapper)
 	{
@@ -122,21 +164,32 @@ private:
 			.setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
 			.setInitialLayout(vk::ImageLayout::eUndefined)
 			.setFinalLayout(vk::ImageLayout::ePresentSrcKHR);
-
 		vk::AttachmentReference colorAttachmentRef = vk::AttachmentReference()
 			.setAttachment(0)
 			.setLayout(vk::ImageLayout::eColorAttachmentOptimal);
 
+		vk::AttachmentDescription depthAttachment = vk::AttachmentDescription()
+			.setFormat(vk::Format::eD24UnormS8Uint)
+			.setSamples(vk::SampleCountFlagBits::e1)
+			.setLoadOp(vk::AttachmentLoadOp::eClear)
+			.setStoreOp(vk::AttachmentStoreOp::eStore)
+			.setStencilLoadOp(vk::AttachmentLoadOp::eClear)
+			.setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
+			.setInitialLayout(vk::ImageLayout::eUndefined)
+			.setFinalLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal);
+		vk::AttachmentReference depthAttachmentRef = vk::AttachmentReference()
+			.setAttachment(1)
+			.setLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal);
+
 		vk::SubpassDescription subpassDesc = vk::SubpassDescription()
 			.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
-			.setColorAttachmentCount(1)
-			.setPColorAttachments(&colorAttachmentRef)
+			.setColorAttachmentCount(1).setPColorAttachments(&colorAttachmentRef)
+			.setPDepthStencilAttachment(&depthAttachmentRef)
 			.setPInputAttachments(nullptr)
 			.setPResolveAttachments(nullptr)
-			.setPDepthStencilAttachment(nullptr)
 			.setPPreserveAttachments(nullptr);
 
-		vk::SubpassDependency dependency = vk::SubpassDependency()
+		vk::SubpassDependency colorDependency = vk::SubpassDependency()
 			// src
 			.setSrcSubpass(VK_SUBPASS_EXTERNAL)
 			.setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
@@ -145,14 +198,22 @@ private:
 			.setDstSubpass(0u)
 			.setDstStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
 			.setDstAccessMask(vk::AccessFlagBits::eColorAttachmentWrite);
+		vk::SubpassDependency depthDependency = vk::SubpassDependency()
+			// src
+			.setSrcSubpass(VK_SUBPASS_EXTERNAL)
+			.setSrcStageMask(vk::PipelineStageFlagBits::eEarlyFragmentTests | vk::PipelineStageFlagBits::eLateFragmentTests)
+			.setSrcAccessMask(vk::AccessFlagBits::eNoneKHR)
+			// dst
+			.setDstSubpass(0u)
+			.setDstStageMask(vk::PipelineStageFlagBits::eEarlyFragmentTests | vk::PipelineStageFlagBits::eLateFragmentTests)
+			.setDstAccessMask(vk::AccessFlagBits::eDepthStencilAttachmentWrite);
 
+		std::array<vk::SubpassDependency, 2> dependencies = { colorDependency, depthDependency };
+		std::array<vk::AttachmentDescription, 2> attachments = { colorAttachment, depthAttachment };
 		vk::RenderPassCreateInfo renderPassInfo = vk::RenderPassCreateInfo()
-			.setAttachmentCount(1)
-			.setPAttachments(&colorAttachment)
-			.setSubpassCount(1)
-			.setPSubpasses(&subpassDesc)
-			.setDependencyCount(1)
-			.setPDependencies(&dependency);
+			.setDependencyCount(dependencies.size()).setPDependencies(dependencies.data())
+			.setAttachmentCount(attachments.size()).setPAttachments(attachments.data())
+			.setSubpassCount(1).setPSubpasses(&subpassDesc);
 
 		renderPass = deviceWrapper.logicalDevice.createRenderPass(renderPassInfo);
 	}
@@ -234,7 +295,7 @@ private:
 		vk::PipelineColorBlendAttachmentState colorBlendAttachment = vk::PipelineColorBlendAttachmentState()
 			.setColorWriteMask(
 				vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
-				vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA)
+				vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA) // theoretically no need to write transparency
 			.setBlendEnable(VK_FALSE)
 			.setSrcColorBlendFactor(vk::BlendFactor::eOne)
 			.setDstColorBlendFactor(vk::BlendFactor::eZero)
@@ -249,6 +310,18 @@ private:
 			.setAttachmentCount(1)
 			.setPAttachments(&colorBlendAttachment)
 			.setBlendConstants({ 0.0f, 0.0f, 0.0f, 0.0f });
+
+		vk::PipelineDepthStencilStateCreateInfo depthStencilInfo = vk::PipelineDepthStencilStateCreateInfo()
+			.setPNext(nullptr)
+			.setDepthTestEnable(VK_TRUE)
+			.setDepthWriteEnable(VK_TRUE)
+			.setDepthCompareOp(vk::CompareOp::eLessOrEqual)
+			// Depth bounds
+			.setDepthBoundsTestEnable(VK_FALSE)
+			.setMinDepthBounds(0.0f)
+			.setMaxDepthBounds(1.0f)
+			// Stencil
+			.setStencilTestEnable(VK_FALSE);
 
 		// Pipeline Layout
 		vk::PipelineLayoutCreateInfo pipelineLayoutInfo = vk::PipelineLayoutCreateInfo()
@@ -268,7 +341,7 @@ private:
 			.setPViewportState(&viewportStateInfo)
 			.setPRasterizationState(&rasterizerInfo)
 			.setPMultisampleState(&multisamplingInfo)
-			.setPDepthStencilState(nullptr)
+			.setPDepthStencilState(&depthStencilInfo)
 			.setPColorBlendState(&colorBlendInfo)
 			.setPDynamicState(nullptr)
 			// pipeline layout
@@ -375,6 +448,8 @@ private:
 		}
 	}
 	
+
+
 	// ImGui
 	void imgui_init_vulkan(DeviceWrapper& deviceWrapper, Window& window)
 	{
@@ -442,16 +517,20 @@ private:
 			.setPInheritanceInfo(nullptr);
 		commandBuffer.begin(beginInfo);
 
-		std::array<float, 4> clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
-		vk::ClearValue clearValue = vk::ClearValue().setColor(clearColor);
+		// clear color
+		vk::ClearColorValue clearColorValue = vk::ClearColorValue()
+			.setFloat32({ 0.0f, 0.0f, 0.0f, 1.0f });
+		vk::ClearDepthStencilValue clearDepthStencilValue = vk::ClearDepthStencilValue()
+			.setDepth(1.0f)
+			.setStencil(0);
+		std::array<vk::ClearValue, 2> clearValues = { vk::ClearValue(clearColorValue), vk::ClearValue(clearDepthStencilValue) };
 
 		vk::RenderPassBeginInfo renderPassBeginInfo = vk::RenderPassBeginInfo()
 			.setRenderPass(renderPass)
 			.setFramebuffer(swapchainWrapper.framebuffers[iImage])
 			.setRenderArea(vk::Rect2D({ 0, 0 }, swapchainWrapper.extent))
 			// clear value
-			.setClearValueCount(1)
-			.setPClearValues(&clearValue);
+			.setClearValueCount(clearValues.size()).setPClearValues(clearValues.data());
 
 		commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
 		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline);
@@ -469,6 +548,7 @@ private:
 	}
 
 private:
+	// TODO: encapsulate all per-frame objects in one collection (framebuffers, images, command pools, etc)
 	vma::Allocator allocator;
 	SwapchainWrapper swapchainWrapper;
 
@@ -487,4 +567,9 @@ private:
 
 	UniformBufferWrapper<UniformBufferObject> mvpBuffer;
 	IndexedGeometry geometry;
+
+	// TODO: should have MAX_FRAMES_IN_FLIGHT depth buffers
+	std::pair<vk::Image, vma::Allocation> depthStencilAllocation;
+	//vk::Image depthStencil;
+	vk::ImageView depthStencilView;
 };
