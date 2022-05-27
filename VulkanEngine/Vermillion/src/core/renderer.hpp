@@ -1,6 +1,7 @@
 #pragma once
 
 #include "vk_mem_alloc.hpp"
+#include "ring_buffer.hpp"
 #include "utils/types.hpp"
 #include "wrappers/swapchain_wrapper.hpp"
 #include "wrappers/shader_wrapper.hpp"
@@ -25,6 +26,8 @@ public:
 	void init(DeviceWrapper& deviceWrapper, Window& window)
 	{
 		create_allocator(deviceWrapper, window);
+		ringBuffer.init(nMaxFrames);
+
 		create_descriptor_pools(deviceWrapper);
 		create_command_pools(deviceWrapper);
 		create_command_buffers(deviceWrapper);
@@ -37,13 +40,6 @@ public:
 
 		imgui_init_vulkan(deviceWrapper, window);
 		imgui_upload_fonts(deviceWrapper);
-	}
-	void recreate_KHR(DeviceWrapper& deviceWrapper, Window& window) // TODO use better approach of recreating swapchain using old swapchain pointer
-	{
-		VMI_LOG("Rebuilding KHR");
-
-		destroy_KHR(deviceWrapper);
-		create_KHR(deviceWrapper, window);
 	}
 	void destroy(DeviceWrapper& deviceWrapper)
 	{
@@ -68,17 +64,72 @@ public:
 		mvpBuffer.deallocate(deviceWrapper, allocator);
 		allocator.destroy();
 	}
+	void recreate_KHR(DeviceWrapper& deviceWrapper, Window& window) // TODO use better approach of recreating swapchain using old swapchain pointer
+	{
+		VMI_LOG("Rebuilding KHR");
+
+		destroy_KHR(deviceWrapper);
+		create_KHR(deviceWrapper, window);
+	}
 
 	void render(DeviceWrapper& deviceWrapper)
 	{
-		uint32_t iImage = swapchainWrapper.acquire_image(deviceWrapper);
-		uint32_t iFrame = (uint32_t)swapchainWrapper.currentFrame;
+		//VMI_LOG(ringBuffer.currentFrame);
+		RingFrame& frameX = ringBuffer.frames[ringBuffer.currentFrame]; // tODO: selkect actual frame
 
+		// TODO: the image available semaphore here is not strictly correct!
+		vk::ResultValue imgResult = deviceWrapper.logicalDevice.acquireNextImageKHR(swapchainWrapper.swapchain, UINT64_MAX, frameX.imageAvailable);
+		switch (imgResult.result) {
+			case vk::Result::eSuccess: break;
+			case vk::Result::eSuboptimalKHR: VMI_LOG("Suboptimal image acquisition."); break;
+			case vk::Result::eErrorOutOfDateKHR: VMI_ERR("Swapchain: KHR out of date."); assert(false);
+			default: assert(false);
+		}
+
+		// select the corresponding frame
+		uint32_t iFrame = imgResult.value;
+		RingFrame& frame = ringBuffer.frames[imgResult.value];
+
+		// wait for fence of fetched frame before rendering to it
+		vk::Result result = deviceWrapper.logicalDevice.waitForFences(frame.fence, VK_TRUE, UINT64_MAX);
+		if (result != vk::Result::eSuccess) assert(false);
+
+		// reset command pool and then record into it (using command buffer)
 		deviceWrapper.logicalDevice.resetCommandPool(commandPools[iFrame]);
 		update_uniform_buffer(deviceWrapper, iFrame);
-		record_command_buffer(iFrame, iImage);
+		record_command_buffer(iFrame);
 
-		swapchainWrapper.present(deviceWrapper, commandBuffers[iFrame], iImage);
+
+		// Present
+		{
+			vk::PipelineStageFlags waitStages = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+			vk::SubmitInfo submitInfo = vk::SubmitInfo()
+				.setPWaitDstStageMask(&waitStages)
+				// semaphores
+				.setWaitSemaphoreCount(1)
+				.setPWaitSemaphores(&frame.imageAvailable)
+				.setSignalSemaphoreCount(1)
+				.setPSignalSemaphores(&frame.renderFinished)
+				// command buffers
+				.setCommandBufferCount(1)
+				.setPCommandBuffers(&commandBuffers[iFrame]);
+
+			deviceWrapper.logicalDevice.resetFences(frame.fence);
+			deviceWrapper.queue.submit(submitInfo, frame.fence);
+
+			vk::PresentInfoKHR presentInfo = vk::PresentInfoKHR()
+				.setPImageIndices(&iFrame)
+				// semaphores
+				.setWaitSemaphoreCount(1)
+				.setPWaitSemaphores(&frame.renderFinished)
+				// swapchains
+				.setSwapchainCount(1)
+				.setPSwapchains(&swapchainWrapper.swapchain);
+			result = deviceWrapper.queue.presentKHR(&presentInfo);
+			if (result != vk::Result::eSuccess) assert(false);
+		}
+
+		ringBuffer.currentFrame = (ringBuffer.currentFrame + 1) % nMaxFrames;
 	}
 
 private:
@@ -93,75 +144,24 @@ private:
 		allocator = vma::createAllocator(info);
 	}
 
-	// for swapchain builds/rebuilds
-	// TODO: create KHR wrapper?
 	void create_KHR(DeviceWrapper& deviceWrapper, Window& window)
 	{
 		swapchainWrapper.init(deviceWrapper, window, nMaxFrames);
-		create_depth_stencil(deviceWrapper);
+
 		create_render_pass(deviceWrapper);
 		create_graphics_pipeline(deviceWrapper);
-		swapchainWrapper.create_framebuffers(deviceWrapper, renderPass, depthStencilViews);
+
+		ringBuffer.create_all(deviceWrapper, allocator, renderPass, swapchainWrapper);
 	}
 	void destroy_KHR(DeviceWrapper& deviceWrapper)
 	{
-		swapchainWrapper.destroy(deviceWrapper);
-
-		for (size_t i = 0; i < nMaxFrames; i++) {
-			allocator.destroyImage(depthStencilAllocations[i].first, depthStencilAllocations[i].second);
-			deviceWrapper.logicalDevice.destroyImageView(depthStencilViews[i]);
-		}
-
+		deviceWrapper.logicalDevice.destroyRenderPass(renderPass);
 		deviceWrapper.logicalDevice.destroyPipeline(graphicsPipeline);
 		deviceWrapper.logicalDevice.destroyPipelineLayout(pipelineLayout);
-		deviceWrapper.logicalDevice.destroyRenderPass(renderPass);
-	}
-	void create_depth_stencil(DeviceWrapper& deviceWrapper)
-	{
-		// Image
-		vk::ImageCreateInfo imageCreateInfo;
-		{
-			imageCreateInfo = vk::ImageCreateInfo()
-				.setPNext(nullptr)
-				.setImageType(vk::ImageType::e2D)
-				.setFormat(vk::Format::eD24UnormS8Uint)
-				.setExtent(vk::Extent3D(swapchainWrapper.extent, 1)) // TODO: 1 or 0 in depth?
-				//
-				.setMipLevels(1)
-				.setArrayLayers(1)
-				.setSamples(vk::SampleCountFlagBits::e1)
-				.setTiling(vk::ImageTiling::eOptimal)
-				.setUsage(vk::ImageUsageFlagBits::eDepthStencilAttachment);
 
-			vma::AllocationCreateInfo allocCreateInfo = vma::AllocationCreateInfo()
-				.setUsage(vma::MemoryUsage::eAutoPreferDevice)
-				.setFlags(vma::AllocationCreateFlagBits::eDedicatedMemory);
+		ringBuffer.destroy_all(deviceWrapper, allocator);
 
-			depthStencilAllocations.resize(nMaxFrames);
-			for (size_t i = 0; i < nMaxFrames; i++) {
-				depthStencilAllocations[i] = allocator.createImage(imageCreateInfo, allocCreateInfo, nullptr);
-			}
-		}
-
-		// Image View
-		{
-			vk::ImageSubresourceRange subresourceRange = vk::ImageSubresourceRange()
-				.setAspectMask(vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil)
-				.setBaseMipLevel(0).setLevelCount(1)
-				.setBaseArrayLayer(0).setLayerCount(1);
-			
-
-			depthStencilViews.resize(nMaxFrames);
-			for (size_t i = 0; i < nMaxFrames; i++) {
-				vk::ImageViewCreateInfo imageViewInfo = vk::ImageViewCreateInfo()
-					.setPNext(nullptr)
-					.setViewType(vk::ImageViewType::e2D)
-					.setImage(depthStencilAllocations[i].first)
-					.setFormat(imageCreateInfo.format)
-					.setSubresourceRange(subresourceRange);
-				depthStencilViews[i] = deviceWrapper.logicalDevice.createImageView(imageViewInfo);
-			}
-		}
+		swapchainWrapper.destroy(deviceWrapper);
 	}
 	void create_render_pass(DeviceWrapper& deviceWrapper)
 	{
@@ -424,7 +424,6 @@ private:
 			imguiDescPool = deviceWrapper.logicalDevice.createDescriptorPool(info);
 		}
 	}
-
 	void create_command_pools(DeviceWrapper& deviceWrapper)
 	{
 		vk::CommandPoolCreateInfo commandPoolInfo;
@@ -465,8 +464,8 @@ private:
 		info.PipelineCache = pipelineCache;
 		info.DescriptorPool = imguiDescPool;
 		info.Subpass = 0;
-		info.MinImageCount = (uint32_t) swapchainWrapper.images.size();
-		info.ImageCount = (uint32_t) swapchainWrapper.images.size();
+		info.MinImageCount = (uint32_t) ringBuffer.frames.size(); // TODO: can prolly remove this one
+		info.ImageCount = (uint32_t)ringBuffer.frames.size();
 		info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
 
 		ImGui_ImplVulkan_Init(&info, renderPass);
@@ -507,15 +506,10 @@ private:
 
 		mvpBuffer.update(iCurrentFrame);
 	}
-	void record_command_buffer(uint32_t iFrame, uint32_t iImage)
+	void record_command_buffer(uint32_t iFrame)
 	{
 		vk::CommandBuffer& commandBuffer = commandBuffers[iFrame];
-
-
 		vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo()
-			// eOneTimeSubmit: The command buffer will be rerecorded right after executing it once.
-			// eRenderPassContinue: This is a secondary command buffer that will be entirely within a single render pass.
-			// eSimultaneousUse: The command buffer can be resubmitted while it is also already pending execution.
 			.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit)
 			.setPInheritanceInfo(nullptr);
 		commandBuffer.begin(beginInfo);
@@ -530,7 +524,7 @@ private:
 
 		vk::RenderPassBeginInfo renderPassBeginInfo = vk::RenderPassBeginInfo()
 			.setRenderPass(renderPass)
-			.setFramebuffer(swapchainWrapper.framebuffers[iImage])
+			.setFramebuffer(ringBuffer.frames[iFrame].swapchainFramebuffer)
 			.setRenderArea(vk::Rect2D({ 0, 0 }, swapchainWrapper.extent))
 			// clear value
 			.setClearValueCount(clearValues.size()).setPClearValues(clearValues.data());
@@ -540,7 +534,6 @@ private:
 
 		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, mvpBuffer.get_desc_set(iFrame), {});
 		geometry.draw(commandBuffer);
-
 
 		ImGui::Render();
 		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
@@ -553,9 +546,9 @@ private:
 private:
 	uint32_t nMaxFrames = 2; // max frames in flight
 
-	// TODO: encapsulate all per-frame objects in one collection (framebuffers, images, command pools, etc)
 	vma::Allocator allocator;
 	SwapchainWrapper swapchainWrapper;
+	RingBuffer ringBuffer;
 
 	vk::ShaderModule vs, ps;
 	vk::RenderPass renderPass;
@@ -567,14 +560,9 @@ private:
 	vk::DescriptorPool descPool;
 
 	vk::CommandPool transientCommandPool;
-	std::vector<vk::CommandPool> commandPools;
-	std::vector<vk::CommandBuffer> commandBuffers;
+	std::vector<vk::CommandPool> commandPools; // DEPR
+	std::vector<vk::CommandBuffer> commandBuffers; // DEPR
 
 	UniformBufferWrapper<UniformBufferObject> mvpBuffer;
 	IndexedGeometry geometry;
-
-	// TODO: should have n = MAX_FRAMES_IN_FLIGHT depth buffers
-	std::vector<std::pair<vk::Image, vma::Allocation>> depthStencilAllocations;
-	//vk::Image depthStencil;
-	std::vector<vk::ImageView> depthStencilViews;
 };

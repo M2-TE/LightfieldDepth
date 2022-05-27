@@ -14,91 +14,10 @@ public:
 		choose_extent(deviceWrapper, window);
 
 		create_swapchain(deviceWrapper, window, nImages);
-		create_image_views(deviceWrapper);
-		create_sync_objects(deviceWrapper);
-	}
-	void create_framebuffers(DeviceWrapper& deviceWrapper, vk::RenderPass& renderPass, std::vector<vk::ImageView>& depthStencilViews)
-	{
-		size_t size = images.size();
-		framebuffers.resize(size);
-
-		for (size_t i = 0; i < size; i++) {
-			std::array<vk::ImageView, 2> attachments = { imageViews[i], depthStencilViews[i]};
-			vk::FramebufferCreateInfo framebufferInfo = vk::FramebufferCreateInfo()
-				.setRenderPass(renderPass)
-				.setWidth(extent.width)
-				.setHeight(extent.height)
-				.setLayers(1)
-				// attachments
-				.setAttachmentCount(attachments.size()).setPAttachments(attachments.data());
-
-			framebuffers[i] = deviceWrapper.logicalDevice.createFramebuffer(framebufferInfo);
-		}
 	}
 	void destroy(DeviceWrapper& deviceWrapper)
 	{
-		auto& device = deviceWrapper.logicalDevice;
-
-		for (uint32_t i = 0; i < images.size(); i++) {
-			device.destroyImageView(imageViews[i]);
-			device.destroyFramebuffer(framebuffers[i]);
-		}
-
-		for (uint32_t i = 0; i < images.size(); i++) {
-			device.destroySemaphore(imageAvailableSemaphores[i]);
-			device.destroySemaphore(renderFinishedSemaphores[i]);
-			device.destroyFence(inFlightFences[i]);
-		}
-		device.destroySwapchainKHR(swapchain);
-	}
-
-	uint32_t acquire_image(DeviceWrapper& deviceWrapper)
-	{
-		// wait for fence of current frame before going any further
-		vk::Result result = deviceWrapper.logicalDevice.waitForFences(inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
-		if (result != vk::Result::eSuccess) assert(false);
-
-		// TODO: check which array index actually needs either imgResult.value (image index) or currentFrame
-		vk::ResultValue imgResult = deviceWrapper.logicalDevice.acquireNextImageKHR(swapchain, UINT64_MAX, imageAvailableSemaphores[currentFrame], nullptr);
-		switch (imgResult.result) {
-			case vk::Result::eSuccess: break;
-			case vk::Result::eSuboptimalKHR: VMI_LOG("Suboptimal image acquisition."); break;
-			case vk::Result::eErrorOutOfDateKHR: VMI_ERR("Swapchain: KHR out of date."); assert(false);
-			default: assert(false);
-		}
-
-		return imgResult.value;
-	}
-	void present(DeviceWrapper& deviceWrapper, vk::CommandBuffer& commandBuffer, uint32_t iImage)
-	{
-		vk::PipelineStageFlags waitStages = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-		vk::SubmitInfo submitInfo = vk::SubmitInfo()
-			.setPWaitDstStageMask(&waitStages)
-			// semaphores
-			.setWaitSemaphoreCount(1)
-			.setPWaitSemaphores(&imageAvailableSemaphores[currentFrame])
-			.setSignalSemaphoreCount(1)
-			.setPSignalSemaphores(&renderFinishedSemaphores[currentFrame])
-			// command buffers
-			.setCommandBufferCount(1)
-			.setPCommandBuffers(&commandBuffer);
-		deviceWrapper.logicalDevice.resetFences(inFlightFences[currentFrame]); // FENCE
-		deviceWrapper.queue.submit(submitInfo, inFlightFences[currentFrame]);
-
-
-		vk::PresentInfoKHR presentInfo = vk::PresentInfoKHR()
-			.setPImageIndices(&iImage)
-			// semaphores
-			.setWaitSemaphoreCount(1)
-			.setPWaitSemaphores(&renderFinishedSemaphores[currentFrame])
-			// swapchains
-			.setSwapchainCount(1)
-			.setPSwapchains(&swapchain);
-		vk::Result result = deviceWrapper.queue.presentKHR(&presentInfo);
-		if (result != vk::Result::eSuccess) assert(false);
-
-		// advance frame index
-		currentFrame = (currentFrame + 1) % images.size();
+		deviceWrapper.logicalDevice.destroySwapchainKHR(swapchain);
 	}
 
 private:
@@ -139,7 +58,6 @@ private:
 			.setWidth(width)
 			.setHeight(height);
 	}
-	
 	void create_swapchain(DeviceWrapper& deviceWrapper, Window& window, uint32_t nImages)
 	{
 		if (deviceWrapper.capabilities.minImageCount > nImages) VMI_ERR("Swapchain has higher minimum image count requirement");
@@ -171,51 +89,6 @@ private:
 
 		// finally, create swapchain
 		swapchain = deviceWrapper.logicalDevice.createSwapchainKHR(swapchainInfo);
-
-		// obtain swapchain images
-		images = deviceWrapper.logicalDevice.getSwapchainImagesKHR(swapchain);
-	}
-	void create_image_views(DeviceWrapper& deviceWrapper)
-	{
-		vk::ComponentMapping mapping = vk::ComponentMapping()
-			.setR(vk::ComponentSwizzle::eIdentity)
-			.setG(vk::ComponentSwizzle::eIdentity)
-			.setB(vk::ComponentSwizzle::eIdentity)
-			.setA(vk::ComponentSwizzle::eIdentity);
-
-		vk::ImageSubresourceRange subrange = vk::ImageSubresourceRange()
-			.setAspectMask(vk::ImageAspectFlagBits::eColor)
-			.setBaseMipLevel(0)
-			.setLevelCount(1)
-			.setBaseArrayLayer(0)
-			.setLayerCount(1);
-
-		imageViews.resize(images.size());
-		for (size_t i = 0; i < images.size(); i++) {
-			vk::ImageViewCreateInfo imageInfo = vk::ImageViewCreateInfo()
-				.setImage(images[i])
-				.setViewType(vk::ImageViewType::e2D)
-				.setFormat(surfaceFormat.format)
-				.setComponents(mapping)
-				.setSubresourceRange(subrange);
-
-			imageViews[i] = deviceWrapper.logicalDevice.createImageView(imageInfo);
-		}
-	}
-	void create_sync_objects(DeviceWrapper& deviceWrapper)
-	{
-		vk::Device& device = deviceWrapper.logicalDevice;
-
-		imageAvailableSemaphores.resize(images.size());
-		renderFinishedSemaphores.resize(images.size());
-		inFlightFences.resize(images.size());
-		vk::SemaphoreCreateInfo semaphoreInfo = vk::SemaphoreCreateInfo();
-		vk::FenceCreateInfo fenceInfo = vk::FenceCreateInfo().setFlags(vk::FenceCreateFlagBits::eSignaled);
-		for (size_t i = 0; i < images.size(); i++) {
-			imageAvailableSemaphores[i] = device.createSemaphore(semaphoreInfo);
-			renderFinishedSemaphores[i] = device.createSemaphore(semaphoreInfo);
-			inFlightFences[i] = device.createFence(fenceInfo);
-		}
 	}
 
 private:
@@ -223,19 +96,11 @@ private:
 	static constexpr vk::ColorSpaceKHR targetColorSpace = vk::ColorSpaceKHR::eSrgbNonlinear;
 	static constexpr vk::PresentModeKHR targetPresentMode = vk::PresentModeKHR::eFifo; // vsync
 
+	// TODO: make private
 public:
-	// TODO: move all the per-frame stuff out of swapchain and into a different wrapper
-	size_t currentFrame = 0; // DEPRECATE
-	std::vector<vk::Semaphore> imageAvailableSemaphores;
-	std::vector<vk::Semaphore> renderFinishedSemaphores;
-	std::vector<vk::Fence> inFlightFences;
-
-	vk::Extent2D extent;
+	vk::SwapchainKHR swapchain;
 	vk::SurfaceFormatKHR surfaceFormat;
 	vk::PresentModeKHR presentMode;
+	vk::Extent2D extent;
 
-	vk::SwapchainKHR swapchain;
-	std::vector<vk::Image> images;
-	std::vector<vk::ImageView> imageViews;
-	std::vector<vk::Framebuffer> framebuffers;
 };
