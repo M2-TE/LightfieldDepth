@@ -1,6 +1,5 @@
 #pragma once
 
-//tODO: remove this cyclic include
 #include "wrappers/swapchain_wrapper.hpp"
 
 struct SyncFrame
@@ -28,6 +27,14 @@ struct RingFrame
 	vk::Image swapchainImage;
 	vk::ImageView swapchainImageView;
 	vk::Framebuffer swapchainFramebuffer;
+
+	// gbuffer images
+	std::pair<vk::Image, vma::Allocation> gColAlloc;
+	std::pair<vk::Image, vma::Allocation> gPosAlloc;
+	std::pair<vk::Image, vma::Allocation> gNormAlloc;
+	vk::ImageView gColImageView;
+	vk::ImageView gPosImageView;
+	vk::ImageView gNormImageView;
 };
 
 class RingBuffer
@@ -50,10 +57,16 @@ public:
 	}
 	void create_all(DeviceWrapper& deviceWrapper, vma::Allocator& allocator, vk::RenderPass& renderPass, SwapchainWrapper& swapchainWrapper)
 	{
-		create_depth_stencils(deviceWrapper, allocator, swapchainWrapper);
+		create_depth_stencils(allocator, swapchainWrapper);
+		create_depth_stencil_views(deviceWrapper);
+
+		create_gbuffer_images(allocator, swapchainWrapper);
+		create_gbuffer_image_views(deviceWrapper);
+
 		create_swapchain_images(deviceWrapper, swapchainWrapper);
 		create_swapchain_image_views(deviceWrapper, swapchainWrapper);
 		create_swapchain_framebuffers(deviceWrapper, swapchainWrapper, renderPass);
+
 		create_sync_objects(deviceWrapper);
 		create_command_pools(deviceWrapper);
 		create_command_buffers(deviceWrapper);
@@ -61,6 +74,7 @@ public:
 	void destroy_all(DeviceWrapper& deviceWrapper, vma::Allocator& allocator)
 	{
 		destroy_depth_stencils(deviceWrapper, allocator);
+		destroy_gbuffer(deviceWrapper, allocator);
 		destroy_swapchain_image_views(deviceWrapper);
 		destroy_swapchain_framebuffers(deviceWrapper);
 		destroy_sync_objects(deviceWrapper);
@@ -78,51 +92,121 @@ public:
 
 private:
 	// create ring frame resources
-	void create_depth_stencils(DeviceWrapper& deviceWrapper, vma::Allocator& allocator, SwapchainWrapper& swapchainWrapper)
+
+	void create_depth_stencils(vma::Allocator& allocator, SwapchainWrapper& swapchainWrapper)
 	{
-		// Image
-		vk::ImageCreateInfo imageCreateInfo;
-		{
-			imageCreateInfo = vk::ImageCreateInfo()
-				.setPNext(nullptr)
-				.setImageType(vk::ImageType::e2D)
-				.setFormat(vk::Format::eD24UnormS8Uint)
-				.setExtent(vk::Extent3D(swapchainWrapper.extent, 1)) // TODO: 1 or 0 in depth?
-				//
-				.setMipLevels(1)
-				.setArrayLayers(1)
-				.setSamples(vk::SampleCountFlagBits::e1)
-				.setTiling(vk::ImageTiling::eOptimal)
-				.setUsage(vk::ImageUsageFlagBits::eDepthStencilAttachment);
+		vk::ImageCreateInfo imageCreateInfo = vk::ImageCreateInfo()
+			.setPNext(nullptr)
+			.setImageType(vk::ImageType::e2D)
+			.setFormat(vk::Format::eD24UnormS8Uint)
+			.setExtent(vk::Extent3D(swapchainWrapper.extent, 1))
+			//
+			.setMipLevels(1)
+			.setArrayLayers(1)
+			.setSamples(vk::SampleCountFlagBits::e1)
+			.setTiling(vk::ImageTiling::eOptimal)
+			.setUsage(vk::ImageUsageFlagBits::eDepthStencilAttachment);
 
-			vma::AllocationCreateInfo allocCreateInfo = vma::AllocationCreateInfo()
-				.setUsage(vma::MemoryUsage::eAutoPreferDevice)
-				.setFlags(vma::AllocationCreateFlagBits::eDedicatedMemory);
+		vma::AllocationCreateInfo allocCreateInfo = vma::AllocationCreateInfo()
+			.setUsage(vma::MemoryUsage::eAutoPreferDevice)
+			.setFlags(vma::AllocationCreateFlagBits::eDedicatedMemory);
 
-			for (size_t i = 0; i < frames.size(); i++) {
-				frames[i].depthStencilAllocation = allocator.createImage(imageCreateInfo, allocCreateInfo, nullptr);
-			}
-		}
-
-		// Image View
-		{
-			vk::ImageSubresourceRange subresourceRange = vk::ImageSubresourceRange()
-				.setAspectMask(vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil)
-				.setBaseMipLevel(0).setLevelCount(1)
-				.setBaseArrayLayer(0).setLayerCount(1);
-
-
-			for (size_t i = 0; i < frames.size(); i++) {
-				vk::ImageViewCreateInfo imageViewInfo = vk::ImageViewCreateInfo()
-					.setPNext(nullptr)
-					.setViewType(vk::ImageViewType::e2D)
-					.setImage(frames[i].depthStencilAllocation.first)
-					.setFormat(imageCreateInfo.format)
-					.setSubresourceRange(subresourceRange);
-				frames[i].depthStencilView = deviceWrapper.logicalDevice.createImageView(imageViewInfo);
-			}
+		for (size_t i = 0; i < frames.size(); i++) {
+			frames[i].depthStencilAllocation = allocator.createImage(imageCreateInfo, allocCreateInfo, nullptr);
 		}
 	}
+	void create_depth_stencil_views(DeviceWrapper& deviceWrapper)
+	{
+		vk::ImageSubresourceRange subresourceRange = vk::ImageSubresourceRange()
+			.setAspectMask(vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil)
+			.setBaseMipLevel(0).setLevelCount(1)
+			.setBaseArrayLayer(0).setLayerCount(1);
+
+		vk::ImageViewCreateInfo imageViewInfo = vk::ImageViewCreateInfo()
+			.setPNext(nullptr)
+			.setViewType(vk::ImageViewType::e2D)
+			.setFormat(vk::Format::eD24UnormS8Uint)
+			.setSubresourceRange(subresourceRange);
+
+		for (size_t i = 0; i < frames.size(); i++) {
+			imageViewInfo.setImage(frames[i].depthStencilAllocation.first);
+			frames[i].depthStencilView = deviceWrapper.logicalDevice.createImageView(imageViewInfo);
+		}
+	}
+
+	void create_gbuffer_images(vma::Allocator& allocator, SwapchainWrapper& swapchainWrapper)
+	{
+		vk::ImageCreateInfo imageCreateInfo = vk::ImageCreateInfo()
+			.setPNext(nullptr)
+			.setImageType(vk::ImageType::e2D)
+			.setFormat(vk::Format::eR8G8B8A8Srgb)
+			.setExtent(vk::Extent3D(swapchainWrapper.extent, 1))
+			//
+			.setMipLevels(1)
+			.setArrayLayers(1)
+			.setSamples(vk::SampleCountFlagBits::e1)
+			.setTiling(vk::ImageTiling::eOptimal)
+			.setUsage(vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment);
+
+		vma::AllocationCreateInfo allocCreateInfo = vma::AllocationCreateInfo()
+			.setUsage(vma::MemoryUsage::eAutoPreferDevice)
+			.setFlags(vma::AllocationCreateFlagBits::eDedicatedMemory);
+
+		// gColBuffer
+		for (size_t i = 0; i < frames.size(); i++) {
+			frames[i].gColAlloc = allocator.createImage(imageCreateInfo, allocCreateInfo, nullptr);
+		}
+
+		// gPosBuffer
+		imageCreateInfo.setFormat(vk::Format::eR16G16B16A16Sfloat); // 16-bit signed float
+		imageCreateInfo.setFormat(vk::Format::eR32G32B32A32Sfloat); // 32-bit signed float
+			//.setUsage()  // TODO: might need to set different usage flags
+		for (size_t i = 0; i < frames.size(); i++) {
+			frames[i].gPosAlloc = allocator.createImage(imageCreateInfo, allocCreateInfo, nullptr);
+		}
+
+		// gNormBuffer
+		imageCreateInfo.setFormat(vk::Format::eR8G8B8A8Snorm); // normalized between -1 and 1
+			//.setUsage()  // TODO: might need to set different usage flags
+		for (size_t i = 0; i < frames.size(); i++) {
+			frames[i].gNormAlloc = allocator.createImage(imageCreateInfo, allocCreateInfo, nullptr);
+		}
+	}
+	void create_gbuffer_image_views(DeviceWrapper& deviceWrapper)
+	{
+		vk::ImageSubresourceRange subresourceRange = vk::ImageSubresourceRange()
+			.setAspectMask(vk::ImageAspectFlagBits::eColor)
+			.setBaseMipLevel(0).setLevelCount(1)
+			.setBaseArrayLayer(0).setLayerCount(1);
+
+		vk::ImageViewCreateInfo imageViewInfo = vk::ImageViewCreateInfo()
+			.setPNext(nullptr)
+			.setViewType(vk::ImageViewType::e2D)
+			.setFormat(vk::Format::eR8G8B8A8Srgb)
+			.setSubresourceRange(subresourceRange);
+
+		// gColImageView
+		for (size_t i = 0; i < frames.size(); i++) {
+			imageViewInfo.setImage(frames[i].gColAlloc.first);
+			frames[i].gColImageView = deviceWrapper.logicalDevice.createImageView(imageViewInfo);
+		}
+
+		// gPosImageView
+		imageViewInfo.setFormat(vk::Format::eR16G16B16A16Sfloat); // 16-bit signed float
+		imageViewInfo.setFormat(vk::Format::eR32G32B32A32Sfloat); // 32-bit signed float
+		for (size_t i = 0; i < frames.size(); i++) {
+			imageViewInfo.setImage(frames[i].gPosAlloc.first);
+			frames[i].gPosImageView = deviceWrapper.logicalDevice.createImageView(imageViewInfo);
+		}
+
+		// gNormImageView
+		imageViewInfo.setFormat(vk::Format::eR8G8B8A8Snorm); // normalized between -1 and 1
+		for (size_t i = 0; i < frames.size(); i++) {
+			imageViewInfo.setImage(frames[i].gNormAlloc.first);
+			frames[i].gNormImageView = deviceWrapper.logicalDevice.createImageView(imageViewInfo);
+		}
+	}
+	
 	void create_swapchain_images(DeviceWrapper& deviceWrapper, SwapchainWrapper& swapchainWrapper)
 	{
 		std::vector<vk::Image> images = deviceWrapper.logicalDevice.getSwapchainImagesKHR(swapchainWrapper.swapchain);
@@ -159,19 +243,28 @@ private:
 	{
 		size_t size = frames.size();
 
+		VMI_LOG("TODO: adjust attachment size of framebuffer");
 		for (size_t i = 0; i < size; i++) {
-			std::array<vk::ImageView, 2> attachments = { frames[i].swapchainImageView, frames[i].depthStencilView };
+			std::array<vk::ImageView, 5> attachments = { 
+				frames[i].swapchainImageView, 
+				frames[i].depthStencilView,
+				frames[i].gColImageView,
+				frames[i].gPosImageView,
+				frames[i].gNormImageView
+			};
+
 			vk::FramebufferCreateInfo framebufferInfo = vk::FramebufferCreateInfo()
 				.setRenderPass(renderPass)
 				.setWidth(swapchainWrapper.extent.width)
 				.setHeight(swapchainWrapper.extent.height)
 				.setLayers(1)
 				// attachments
-				.setAttachmentCount(attachments.size()).setPAttachments(attachments.data());
+				.setAttachmentCount(/*attachments.size()*/2).setPAttachments(attachments.data());
 
 			frames[i].swapchainFramebuffer = deviceWrapper.logicalDevice.createFramebuffer(framebufferInfo);
 		}
 	}
+	
 	void create_sync_objects(DeviceWrapper& deviceWrapper)
 	{
 		vk::Device& device = deviceWrapper.logicalDevice;
@@ -213,6 +306,17 @@ private:
 		for (size_t i = 0; i < frames.size(); i++) {
 			allocator.destroyImage(frames[i].depthStencilAllocation.first, frames[i].depthStencilAllocation.second);
 			deviceWrapper.logicalDevice.destroyImageView(frames[i].depthStencilView);
+		}
+	}
+	void destroy_gbuffer(DeviceWrapper& deviceWrapper, vma::Allocator& allocator)
+	{
+		for (size_t i = 0; i < frames.size(); i++) {
+			allocator.destroyImage(frames[i].gColAlloc.first, frames[i].gColAlloc.second);
+			allocator.destroyImage(frames[i].gPosAlloc.first, frames[i].gPosAlloc.second);
+			allocator.destroyImage(frames[i].gNormAlloc.first, frames[i].gNormAlloc.second);
+			deviceWrapper.logicalDevice.destroyImageView(frames[i].gColImageView);
+			deviceWrapper.logicalDevice.destroyImageView(frames[i].gPosImageView);
+			deviceWrapper.logicalDevice.destroyImageView(frames[i].gNormImageView);
 		}
 	}
 	void destroy_swapchain_image_views(DeviceWrapper& deviceWrapper)
