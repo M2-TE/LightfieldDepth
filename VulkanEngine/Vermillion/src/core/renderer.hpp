@@ -29,8 +29,7 @@ public:
 		create_command_pools(deviceWrapper);
 		create_command_buffers(deviceWrapper);
 
-		uint32_t nFrames = swapchainWrapper.MAX_FRAMES_IN_FLIGHT;
-		mvpBuffer.allocate(deviceWrapper, allocator, descPool, 0, vk::ShaderStageFlagBits::eVertex, nFrames);
+		mvpBuffer.allocate(deviceWrapper, allocator, descPool, 0, vk::ShaderStageFlagBits::eVertex, nMaxFrames);
 		geometry.allocate(allocator, transientCommandPool, deviceWrapper);
 
 		create_shader_modules(deviceWrapper);
@@ -52,7 +51,7 @@ public:
 
 		destroy_KHR(deviceWrapper);
 
-		for (size_t i = 0; i < swapchainWrapper.MAX_FRAMES_IN_FLIGHT; i++) {
+		for (size_t i = 0; i < nMaxFrames; i++) {
 			device.destroyCommandPool(commandPools[i]);
 		}
 		device.destroyCommandPool(transientCommandPool);
@@ -98,24 +97,26 @@ private:
 	// TODO: create KHR wrapper?
 	void create_KHR(DeviceWrapper& deviceWrapper, Window& window)
 	{
-		swapchainWrapper.init(deviceWrapper, window);
-		image_stuff(deviceWrapper);
+		swapchainWrapper.init(deviceWrapper, window, nMaxFrames);
+		create_depth_stencil(deviceWrapper);
 		create_render_pass(deviceWrapper);
 		create_graphics_pipeline(deviceWrapper);
-		swapchainWrapper.create_framebuffers(deviceWrapper, renderPass, depthStencilView);
+		swapchainWrapper.create_framebuffers(deviceWrapper, renderPass, depthStencilViews);
 	}
 	void destroy_KHR(DeviceWrapper& deviceWrapper)
 	{
 		swapchainWrapper.destroy(deviceWrapper);
 
-		allocator.destroyImage(depthStencilAllocation.first, depthStencilAllocation.second);
-		deviceWrapper.logicalDevice.destroyImageView(depthStencilView);
+		for (size_t i = 0; i < nMaxFrames; i++) {
+			allocator.destroyImage(depthStencilAllocations[i].first, depthStencilAllocations[i].second);
+			deviceWrapper.logicalDevice.destroyImageView(depthStencilViews[i]);
+		}
 
 		deviceWrapper.logicalDevice.destroyPipeline(graphicsPipeline);
 		deviceWrapper.logicalDevice.destroyPipelineLayout(pipelineLayout);
 		deviceWrapper.logicalDevice.destroyRenderPass(renderPass);
 	}
-	void image_stuff(DeviceWrapper& deviceWrapper)
+	void create_depth_stencil(DeviceWrapper& deviceWrapper)
 	{
 		// Image
 		vk::ImageCreateInfo imageCreateInfo;
@@ -135,7 +136,11 @@ private:
 			vma::AllocationCreateInfo allocCreateInfo = vma::AllocationCreateInfo()
 				.setUsage(vma::MemoryUsage::eAutoPreferDevice)
 				.setFlags(vma::AllocationCreateFlagBits::eDedicatedMemory);
-			depthStencilAllocation = allocator.createImage(imageCreateInfo, allocCreateInfo, nullptr);
+
+			depthStencilAllocations.resize(nMaxFrames);
+			for (size_t i = 0; i < nMaxFrames; i++) {
+				depthStencilAllocations[i] = allocator.createImage(imageCreateInfo, allocCreateInfo, nullptr);
+			}
 		}
 
 		// Image View
@@ -144,13 +149,18 @@ private:
 				.setAspectMask(vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil)
 				.setBaseMipLevel(0).setLevelCount(1)
 				.setBaseArrayLayer(0).setLayerCount(1);
-			vk::ImageViewCreateInfo imageViewInfo = vk::ImageViewCreateInfo()
-				.setPNext(nullptr)
-				.setViewType(vk::ImageViewType::e2D)
-				.setImage(depthStencilAllocation.first)
-				.setFormat(imageCreateInfo.format)
-				.setSubresourceRange(subresourceRange);
-			depthStencilView = deviceWrapper.logicalDevice.createImageView(imageViewInfo);
+			
+
+			depthStencilViews.resize(nMaxFrames);
+			for (size_t i = 0; i < nMaxFrames; i++) {
+				vk::ImageViewCreateInfo imageViewInfo = vk::ImageViewCreateInfo()
+					.setPNext(nullptr)
+					.setViewType(vk::ImageViewType::e2D)
+					.setImage(depthStencilAllocations[i].first)
+					.setFormat(imageCreateInfo.format)
+					.setSubresourceRange(subresourceRange);
+				depthStencilViews[i] = deviceWrapper.logicalDevice.createImageView(imageViewInfo);
+			}
 		}
 	}
 	void create_render_pass(DeviceWrapper& deviceWrapper)
@@ -367,7 +377,6 @@ private:
 		vs = create_shader_module(deviceWrapper, shader_vs, shader_vs_size);
 		ps = create_shader_module(deviceWrapper, shader_ps, shader_ps_size);
 	}
-
 	void create_descriptor_pools(DeviceWrapper& deviceWrapper)
 	{
 		// standard desc pool
@@ -422,7 +431,7 @@ private:
 
 		commandPoolInfo = vk::CommandPoolCreateInfo()
 			.setQueueFamilyIndex(deviceWrapper.iQueue);
-		commandPools.resize(swapchainWrapper.MAX_FRAMES_IN_FLIGHT);
+		commandPools.resize(nMaxFrames);
 		for (uint32_t i = 0; i < commandPools.size(); i++) {
 			commandPools[i] = deviceWrapper.logicalDevice.createCommandPool(commandPoolInfo);
 		}
@@ -434,7 +443,7 @@ private:
 	}
 	void create_command_buffers(DeviceWrapper& deviceWrapper)
 	{
-		commandBuffers.resize(swapchainWrapper.MAX_FRAMES_IN_FLIGHT);
+		commandBuffers.resize(nMaxFrames);
 		for (uint32_t i = 0; i < commandPools.size(); i++) {
 			vk::CommandBufferAllocateInfo commandBufferInfo = vk::CommandBufferAllocateInfo()
 				.setCommandPool(commandPools[i])
@@ -444,7 +453,6 @@ private:
 		}
 	}
 	
-
 	// ImGui
 	void imgui_init_vulkan(DeviceWrapper& deviceWrapper, Window& window)
 	{
@@ -543,6 +551,8 @@ private:
 	}
 
 private:
+	uint32_t nMaxFrames = 2; // max frames in flight
+
 	// TODO: encapsulate all per-frame objects in one collection (framebuffers, images, command pools, etc)
 	vma::Allocator allocator;
 	SwapchainWrapper swapchainWrapper;
@@ -564,7 +574,7 @@ private:
 	IndexedGeometry geometry;
 
 	// TODO: should have n = MAX_FRAMES_IN_FLIGHT depth buffers
-	std::pair<vk::Image, vma::Allocation> depthStencilAllocation;
+	std::vector<std::pair<vk::Image, vma::Allocation>> depthStencilAllocations;
 	//vk::Image depthStencil;
-	vk::ImageView depthStencilView;
+	std::vector<vk::ImageView> depthStencilViews;
 };

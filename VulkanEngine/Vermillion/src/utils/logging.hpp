@@ -3,7 +3,7 @@
 // temporary solution for logging
 #define CODE_LOCATION __FUNCTION__ << " on line " << __LINE__ << " in file " << __FILE__
 #define VMI_LOG(msg) std::cout << msg << std::endl
-#define VMI_ERR(msg) std::cerr << msg << std::endl
+#define VMI_ERR(msg) throw std::exception(msg)
 #define VMI_SDL_ERR() VMI_LOG("Error: " << std::string(SDL_GetError()) << std::endl << CODE_LOCATION)
 
 #ifdef _DEBUG

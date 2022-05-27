@@ -7,23 +7,23 @@ public:
 	~SwapchainWrapper() = default;
 	ROF_COPY_MOVE_DELETE(SwapchainWrapper)
 
-	void init(DeviceWrapper& deviceWrapper, Window& window)
+	void init(DeviceWrapper& deviceWrapper, Window& window, uint32_t nImages)
 	{
 		choose_surface_format(deviceWrapper);
 		choose_present_mode(deviceWrapper);
 		choose_extent(deviceWrapper, window);
 
-		create_swapchain(deviceWrapper, window);
+		create_swapchain(deviceWrapper, window, nImages);
 		create_image_views(deviceWrapper);
 		create_sync_objects(deviceWrapper);
 	}
-	void create_framebuffers(DeviceWrapper& deviceWrapper, vk::RenderPass& renderPass, vk::ImageView& depthStencilView)
+	void create_framebuffers(DeviceWrapper& deviceWrapper, vk::RenderPass& renderPass, std::vector<vk::ImageView>& depthStencilViews)
 	{
 		size_t size = images.size();
 		framebuffers.resize(size);
 
 		for (size_t i = 0; i < size; i++) {
-			std::array<vk::ImageView, 2> attachments = { imageViews[i], depthStencilView };
+			std::array<vk::ImageView, 2> attachments = { imageViews[i], depthStencilViews[i]};
 			vk::FramebufferCreateInfo framebufferInfo = vk::FramebufferCreateInfo()
 				.setRenderPass(renderPass)
 				.setWidth(extent.width)
@@ -44,7 +44,7 @@ public:
 			device.destroyFramebuffer(framebuffers[i]);
 		}
 
-		for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		for (uint32_t i = 0; i < images.size(); i++) {
 			device.destroySemaphore(imageAvailableSemaphores[i]);
 			device.destroySemaphore(renderFinishedSemaphores[i]);
 			device.destroyFence(inFlightFences[i]);
@@ -98,7 +98,7 @@ public:
 		if (result != vk::Result::eSuccess) assert(false);
 
 		// advance frame index
-		currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+		currentFrame = (currentFrame + 1) % images.size();
 	}
 
 private:
@@ -140,18 +140,13 @@ private:
 			.setHeight(height);
 	}
 	
-	void create_swapchain(DeviceWrapper& deviceWrapper, Window& window)
+	void create_swapchain(DeviceWrapper& deviceWrapper, Window& window, uint32_t nImages)
 	{
-		// set number of images in the swapchain buffer
-		// the driver needs minImageCount - 1 for itself, so we add one extra to ensure we have at least two
-		uint32_t imageCount = deviceWrapper.capabilities.minImageCount + 1u;
-		if (deviceWrapper.capabilities.maxImageCount > 0 && imageCount > deviceWrapper.capabilities.maxImageCount) {
-			imageCount = deviceWrapper.capabilities.maxImageCount;
-		}
+		if (deviceWrapper.capabilities.minImageCount > nImages) VMI_ERR("Swapchain has higher minimum image count requirement");
 
 		vk::SwapchainCreateInfoKHR swapchainInfo = vk::SwapchainCreateInfoKHR()
 			// image settings
-			.setMinImageCount(imageCount)
+			.setMinImageCount(nImages)
 			.setImageFormat(surfaceFormat.format)
 			.setImageColorSpace(surfaceFormat.colorSpace)
 			.setImageExtent(extent)
@@ -211,32 +206,31 @@ private:
 	{
 		vk::Device& device = deviceWrapper.logicalDevice;
 
-		imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-		renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-		inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
+		imageAvailableSemaphores.resize(images.size());
+		renderFinishedSemaphores.resize(images.size());
+		inFlightFences.resize(images.size());
 		vk::SemaphoreCreateInfo semaphoreInfo = vk::SemaphoreCreateInfo();
 		vk::FenceCreateInfo fenceInfo = vk::FenceCreateInfo().setFlags(vk::FenceCreateFlagBits::eSignaled);
-		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		for (size_t i = 0; i < images.size(); i++) {
 			imageAvailableSemaphores[i] = device.createSemaphore(semaphoreInfo);
 			renderFinishedSemaphores[i] = device.createSemaphore(semaphoreInfo);
 			inFlightFences[i] = device.createFence(fenceInfo);
 		}
 	}
+
 private:
 	static constexpr vk::Format targetFormat = vk::Format::eR8G8B8A8Srgb;
 	static constexpr vk::ColorSpaceKHR targetColorSpace = vk::ColorSpaceKHR::eSrgbNonlinear;
 	static constexpr vk::PresentModeKHR targetPresentMode = vk::PresentModeKHR::eFifo; // vsync
-	//static constexpr vk::PresentModeKHR targetPresentMode = vk::PresentModeKHR::eMailbox;
-
 
 public:
-	static constexpr int32_t MAX_FRAMES_IN_FLIGHT = 2;
-	size_t currentFrame = 0;
+	// TODO: move all the per-frame stuff out of swapchain and into a different wrapper
+	size_t currentFrame = 0; // DEPRECATE
 	std::vector<vk::Semaphore> imageAvailableSemaphores;
 	std::vector<vk::Semaphore> renderFinishedSemaphores;
 	std::vector<vk::Fence> inFlightFences;
 
-	vk::Extent2D extent; 
+	vk::Extent2D extent;
 	vk::SurfaceFormatKHR surfaceFormat;
 	vk::PresentModeKHR presentMode;
 
