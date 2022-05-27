@@ -70,7 +70,7 @@ public:
 	void render(DeviceWrapper& deviceWrapper)
 	{
 		// track sync frames separately, since we need a semaphore even before acquiring an image index
-		SyncFrame& syncFrame = ringBuffer.advance_and_get_sync_frame();
+		SyncFrame& syncFrame = ringBuffer.advance().get_sync_frame();
 
 		uint32_t iFrame;
 		// Acquire image

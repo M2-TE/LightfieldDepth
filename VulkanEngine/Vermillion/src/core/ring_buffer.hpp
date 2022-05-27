@@ -66,16 +66,17 @@ public:
 		destroy_sync_objects(deviceWrapper);
 		destroy_command_pools(deviceWrapper);
 	}
-	SyncFrame& advance_and_get_sync_frame()
+	RingBuffer& advance()
 	{
 		iSyncFrame = (iSyncFrame + 1) % frames.size();
-		return syncFrames[iSyncFrame];
+		return *this;
 	}
 	SyncFrame& get_sync_frame()
 	{
 		return syncFrames[iSyncFrame];
 	}
 
+private:
 	// create ring frame resources
 	void create_depth_stencils(DeviceWrapper& deviceWrapper, vma::Allocator& allocator, SwapchainWrapper& swapchainWrapper)
 	{
