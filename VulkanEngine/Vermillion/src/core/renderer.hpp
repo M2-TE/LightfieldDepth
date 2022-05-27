@@ -69,31 +69,34 @@ public:
 
 	void render(DeviceWrapper& deviceWrapper)
 	{
-		//VMI_LOG(ringBuffer.currentFrame);
-		RingFrame& frameX = ringBuffer.frames[ringBuffer.currentFrame]; // tODO: selkect actual frame
+		// track sync frames separately, since we need a semaphore even before acquiring an image index
+		SyncFrame& syncFrame = ringBuffer.advance_and_get_sync_frame();
 
-		// TODO: the image available semaphore here is not strictly correct!
-		vk::ResultValue imgResult = deviceWrapper.logicalDevice.acquireNextImageKHR(swapchainWrapper.swapchain, UINT64_MAX, frameX.imageAvailable);
-		switch (imgResult.result) {
-			case vk::Result::eSuccess: break;
-			case vk::Result::eSuboptimalKHR: VMI_LOG("Suboptimal image acquisition."); break;
-			case vk::Result::eErrorOutOfDateKHR: VMI_ERR("Swapchain: KHR out of date."); assert(false);
-			default: assert(false);
+		uint32_t iFrame;
+		// Acquire image
+		{
+			vk::ResultValue imgResult = deviceWrapper.logicalDevice.acquireNextImageKHR(swapchainWrapper.swapchain, UINT64_MAX, syncFrame.imageAvailable);
+			switch (imgResult.result) {
+				case vk::Result::eSuccess: break;
+				case vk::Result::eSuboptimalKHR: VMI_LOG("Suboptimal image acquisition."); break;
+				case vk::Result::eErrorOutOfDateKHR: VMI_ERR("Swapchain: KHR out of date."); assert(false);
+				default: assert(false);
+			}
+			iFrame = imgResult.value;
 		}
+		RingFrame& frame = ringBuffer.frames[iFrame];
 
-		// select the corresponding frame
-		uint32_t iFrame = imgResult.value;
-		RingFrame& frame = ringBuffer.frames[imgResult.value];
+		// Render
+		{
+			// wait for fence of fetched frame before rendering to it
+			vk::Result result = deviceWrapper.logicalDevice.waitForFences(syncFrame.fence, VK_TRUE, UINT64_MAX);
+			if (result != vk::Result::eSuccess) assert(false);
 
-		// wait for fence of fetched frame before rendering to it
-		vk::Result result = deviceWrapper.logicalDevice.waitForFences(frame.fence, VK_TRUE, UINT64_MAX);
-		if (result != vk::Result::eSuccess) assert(false);
-
-		// reset command pool and then record into it (using command buffer)
-		deviceWrapper.logicalDevice.resetCommandPool(frame.commandPool);
-		update_uniform_buffer(deviceWrapper, iFrame);
-		record_command_buffer(iFrame);
-
+			// reset command pool and then record into it (using command buffer)
+			deviceWrapper.logicalDevice.resetCommandPool(frame.commandPool);
+			update_uniform_buffer(deviceWrapper, iFrame);
+			record_command_buffer(iFrame);
+		}
 
 		// Present
 		{
@@ -101,25 +104,23 @@ public:
 			vk::SubmitInfo submitInfo = vk::SubmitInfo()
 				.setPWaitDstStageMask(&waitStages)
 				// semaphores
-				.setWaitSemaphoreCount(1).setPWaitSemaphores(&frame.imageAvailable)
-				.setSignalSemaphoreCount(1).setPSignalSemaphores(&frame.renderFinished)
+				.setWaitSemaphoreCount(1).setPWaitSemaphores(&syncFrame.imageAvailable)
+				.setSignalSemaphoreCount(1).setPSignalSemaphores(&syncFrame.renderFinished)
 				// command buffers
 				.setCommandBufferCount(1).setPCommandBuffers(&frame.commandBuffer);
 
-			deviceWrapper.logicalDevice.resetFences(frame.fence);
-			deviceWrapper.queue.submit(submitInfo, frame.fence);
+			deviceWrapper.logicalDevice.resetFences(syncFrame.fence);
+			deviceWrapper.queue.submit(submitInfo, syncFrame.fence);
 
 			vk::PresentInfoKHR presentInfo = vk::PresentInfoKHR()
 				.setPImageIndices(&iFrame)
 				// semaphores
-				.setWaitSemaphoreCount(1).setPWaitSemaphores(&frame.renderFinished)
+				.setWaitSemaphoreCount(1).setPWaitSemaphores(&syncFrame.renderFinished)
 				// swapchains
 				.setSwapchainCount(1).setPSwapchains(&swapchainWrapper.swapchain);
-			result = deviceWrapper.queue.presentKHR(&presentInfo);
+			vk::Result result = deviceWrapper.queue.presentKHR(&presentInfo);
 			if (result != vk::Result::eSuccess) assert(false);
 		}
-
-		ringBuffer.currentFrame = (ringBuffer.currentFrame + 1) % nMaxFrames;
 	}
 
 private:
@@ -478,7 +479,8 @@ private:
 	}
 	void record_command_buffer(uint32_t iFrame)
 	{
-		vk::CommandBuffer& commandBuffer = ringBuffer.frames[iFrame].commandBuffer;
+		RingFrame& frame = ringBuffer.frames[iFrame];
+		vk::CommandBuffer& commandBuffer = frame.commandBuffer;
 		vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo()
 			.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit)
 			.setPInheritanceInfo(nullptr);
@@ -494,7 +496,7 @@ private:
 
 		vk::RenderPassBeginInfo renderPassBeginInfo = vk::RenderPassBeginInfo()
 			.setRenderPass(renderPass)
-			.setFramebuffer(ringBuffer.frames[iFrame].swapchainFramebuffer)
+			.setFramebuffer(frame.swapchainFramebuffer)
 			.setRenderArea(vk::Rect2D({ 0, 0 }, swapchainWrapper.extent))
 			// clear value
 			.setClearValueCount(clearValues.size()).setPClearValues(clearValues.data());
@@ -526,10 +528,9 @@ private:
 	vk::PipelineLayout pipelineLayout;
 	vk::PipelineCache pipelineCache;
 
+	vk::CommandPool transientCommandPool;
 	vk::DescriptorPool imguiDescPool;
 	vk::DescriptorPool descPool;
-
-	vk::CommandPool transientCommandPool;
 
 	UniformBufferWrapper<UniformBufferObject> mvpBuffer;
 	IndexedGeometry geometry;

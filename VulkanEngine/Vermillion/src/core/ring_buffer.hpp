@@ -3,16 +3,22 @@
 //tODO: remove this cyclic include
 #include "wrappers/swapchain_wrapper.hpp"
 
-struct RingFrame
+struct SyncFrame
 {
-	// command pools/buffers
-	vk::CommandPool commandPool;
-	vk::CommandBuffer commandBuffer;
+	uint32_t index;
 
 	// sync objects
 	vk::Semaphore imageAvailable;
 	vk::Semaphore renderFinished;
 	vk::Fence fence;
+};
+struct RingFrame
+{
+	uint32_t index;
+
+	// command pools/buffers
+	vk::CommandPool commandPool;
+	vk::CommandBuffer commandBuffer;
 
 	// depth stencil
 	std::pair<vk::Image, vma::Allocation> depthStencilAllocation;
@@ -35,6 +41,12 @@ public:
 	void init(size_t nFrames) 
 	{
 		frames.resize(nFrames);
+		syncFrames.resize(nFrames);
+
+		for (size_t i = 0; i < frames.size(); i++) {
+			frames[i].index = i;
+			syncFrames[i].index = i;
+		}
 	}
 	void create_all(DeviceWrapper& deviceWrapper, vma::Allocator& allocator, vk::RenderPass& renderPass, SwapchainWrapper& swapchainWrapper)
 	{
@@ -53,6 +65,15 @@ public:
 		destroy_swapchain_framebuffers(deviceWrapper);
 		destroy_sync_objects(deviceWrapper);
 		destroy_command_pools(deviceWrapper);
+	}
+	SyncFrame& advance_and_get_sync_frame()
+	{
+		iSyncFrame = (iSyncFrame + 1) % frames.size();
+		return syncFrames[iSyncFrame];
+	}
+	SyncFrame& get_sync_frame()
+	{
+		return syncFrames[iSyncFrame];
 	}
 
 	// create ring frame resources
@@ -157,7 +178,7 @@ public:
 		vk::SemaphoreCreateInfo semaphoreInfo = vk::SemaphoreCreateInfo();
 		vk::FenceCreateInfo fenceInfo = vk::FenceCreateInfo().setFlags(vk::FenceCreateFlagBits::eSignaled);
 		for (size_t i = 0; i < frames.size(); i++) {
-			RingFrame& frame = frames[i];
+			SyncFrame& frame = syncFrames[i];
 			frame.imageAvailable = device.createSemaphore(semaphoreInfo);
 			frame.renderFinished = device.createSemaphore(semaphoreInfo);
 			frame.fence = device.createFence(fenceInfo);
@@ -209,7 +230,7 @@ public:
 	{
 		vk::Device& device = deviceWrapper.logicalDevice;
 		for (size_t i = 0; i < frames.size(); i++) {
-			RingFrame& frame = frames[i];
+			SyncFrame& frame = syncFrames[i];
 			device.destroySemaphore(frame.imageAvailable);
 			device.destroySemaphore(frame.renderFinished);
 			device.destroyFence(frame.fence);
@@ -224,6 +245,7 @@ public:
 
 public:
 	std::vector<RingFrame> frames;
-	// TEMPTEMPTEMP:
-	uint32_t currentFrame = 0;
+private:
+	std::vector<SyncFrame> syncFrames;
+	size_t iSyncFrame = 0;
 };
