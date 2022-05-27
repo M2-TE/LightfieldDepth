@@ -96,11 +96,9 @@ private:
 	static constexpr vk::ColorSpaceKHR targetColorSpace = vk::ColorSpaceKHR::eSrgbNonlinear;
 	static constexpr vk::PresentModeKHR targetPresentMode = vk::PresentModeKHR::eFifo; // vsync
 
-	// TODO: make private
 public:
 	vk::SwapchainKHR swapchain;
 	vk::SurfaceFormatKHR surfaceFormat;
 	vk::PresentModeKHR presentMode;
 	vk::Extent2D extent;
-
 };

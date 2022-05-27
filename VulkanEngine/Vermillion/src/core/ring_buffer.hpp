@@ -6,8 +6,8 @@
 struct RingFrame
 {
 	// command pools/buffers
-	vk::CommandPool commandPools;
-	vk::CommandBuffer commandBuffers;
+	vk::CommandPool commandPool;
+	vk::CommandBuffer commandBuffer;
 
 	// sync objects
 	vk::Semaphore imageAvailable;
@@ -43,6 +43,8 @@ public:
 		create_swapchain_image_views(deviceWrapper, swapchainWrapper);
 		create_swapchain_framebuffers(deviceWrapper, swapchainWrapper, renderPass);
 		create_sync_objects(deviceWrapper);
+		create_command_pools(deviceWrapper);
+		create_command_buffers(deviceWrapper);
 	}
 	void destroy_all(DeviceWrapper& deviceWrapper, vma::Allocator& allocator)
 	{
@@ -50,6 +52,7 @@ public:
 		destroy_swapchain_image_views(deviceWrapper);
 		destroy_swapchain_framebuffers(deviceWrapper);
 		destroy_sync_objects(deviceWrapper);
+		destroy_command_pools(deviceWrapper);
 	}
 
 	// create ring frame resources
@@ -160,6 +163,27 @@ public:
 			frame.fence = device.createFence(fenceInfo);
 		}
 	}
+	void create_command_pools(DeviceWrapper& deviceWrapper)
+	{
+		vk::CommandPoolCreateInfo commandPoolInfo;
+
+		commandPoolInfo = vk::CommandPoolCreateInfo()
+			.setQueueFamilyIndex(deviceWrapper.iQueue);
+		for (uint32_t i = 0; i < frames.size(); i++) {
+			frames[i].commandPool = deviceWrapper.logicalDevice.createCommandPool(commandPoolInfo);
+		}
+
+	}
+	void create_command_buffers(DeviceWrapper& deviceWrapper)
+	{
+		for (uint32_t i = 0; i < frames.size(); i++) {
+			vk::CommandBufferAllocateInfo commandBufferInfo = vk::CommandBufferAllocateInfo()
+				.setCommandPool(frames[i].commandPool)
+				.setLevel(vk::CommandBufferLevel::ePrimary) // secondary are used by primary command buffers for e.g. common operations
+				.setCommandBufferCount(1);
+			frames[i].commandBuffer = deviceWrapper.logicalDevice.allocateCommandBuffers(commandBufferInfo)[0];
+		}
+	}
 
 	// destroy ring frame resources
 	void destroy_depth_stencils(DeviceWrapper& deviceWrapper, vma::Allocator& allocator)
@@ -189,6 +213,12 @@ public:
 			device.destroySemaphore(frame.imageAvailable);
 			device.destroySemaphore(frame.renderFinished);
 			device.destroyFence(frame.fence);
+		}
+	}
+	void destroy_command_pools(DeviceWrapper& deviceWrapper)
+	{
+		for (size_t i = 0; i < frames.size(); i++) {
+			deviceWrapper.logicalDevice.destroyCommandPool(frames[i].commandPool);
 		}
 	}
 

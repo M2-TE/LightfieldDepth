@@ -30,7 +30,6 @@ public:
 
 		create_descriptor_pools(deviceWrapper);
 		create_command_pools(deviceWrapper);
-		create_command_buffers(deviceWrapper);
 
 		mvpBuffer.allocate(deviceWrapper, allocator, descPool, 0, vk::ShaderStageFlagBits::eVertex, nMaxFrames);
 		geometry.allocate(allocator, transientCommandPool, deviceWrapper);
@@ -47,14 +46,10 @@ public:
 
 		destroy_KHR(deviceWrapper);
 
-		for (size_t i = 0; i < nMaxFrames; i++) {
-			device.destroyCommandPool(commandPools[i]);
-		}
-		device.destroyCommandPool(transientCommandPool);
-
 		device.destroyShaderModule(vs);
 		device.destroyShaderModule(ps);
 
+		device.destroyCommandPool(transientCommandPool);
 		device.destroyDescriptorPool(imguiDescPool);
 		device.destroyDescriptorPool(descPool);
 
@@ -95,7 +90,7 @@ public:
 		if (result != vk::Result::eSuccess) assert(false);
 
 		// reset command pool and then record into it (using command buffer)
-		deviceWrapper.logicalDevice.resetCommandPool(commandPools[iFrame]);
+		deviceWrapper.logicalDevice.resetCommandPool(frame.commandPool);
 		update_uniform_buffer(deviceWrapper, iFrame);
 		record_command_buffer(iFrame);
 
@@ -106,13 +101,10 @@ public:
 			vk::SubmitInfo submitInfo = vk::SubmitInfo()
 				.setPWaitDstStageMask(&waitStages)
 				// semaphores
-				.setWaitSemaphoreCount(1)
-				.setPWaitSemaphores(&frame.imageAvailable)
-				.setSignalSemaphoreCount(1)
-				.setPSignalSemaphores(&frame.renderFinished)
+				.setWaitSemaphoreCount(1).setPWaitSemaphores(&frame.imageAvailable)
+				.setSignalSemaphoreCount(1).setPSignalSemaphores(&frame.renderFinished)
 				// command buffers
-				.setCommandBufferCount(1)
-				.setPCommandBuffers(&commandBuffers[iFrame]);
+				.setCommandBufferCount(1).setPCommandBuffers(&frame.commandBuffer);
 
 			deviceWrapper.logicalDevice.resetFences(frame.fence);
 			deviceWrapper.queue.submit(submitInfo, frame.fence);
@@ -120,11 +112,9 @@ public:
 			vk::PresentInfoKHR presentInfo = vk::PresentInfoKHR()
 				.setPImageIndices(&iFrame)
 				// semaphores
-				.setWaitSemaphoreCount(1)
-				.setPWaitSemaphores(&frame.renderFinished)
+				.setWaitSemaphoreCount(1).setPWaitSemaphores(&frame.renderFinished)
 				// swapchains
-				.setSwapchainCount(1)
-				.setPSwapchains(&swapchainWrapper.swapchain);
+				.setSwapchainCount(1).setPSwapchains(&swapchainWrapper.swapchain);
 			result = deviceWrapper.queue.presentKHR(&presentInfo);
 			if (result != vk::Result::eSuccess) assert(false);
 		}
@@ -426,30 +416,10 @@ private:
 	}
 	void create_command_pools(DeviceWrapper& deviceWrapper)
 	{
-		vk::CommandPoolCreateInfo commandPoolInfo;
-
-		commandPoolInfo = vk::CommandPoolCreateInfo()
-			.setQueueFamilyIndex(deviceWrapper.iQueue);
-		commandPools.resize(nMaxFrames);
-		for (uint32_t i = 0; i < commandPools.size(); i++) {
-			commandPools[i] = deviceWrapper.logicalDevice.createCommandPool(commandPoolInfo);
-		}
-
-		commandPoolInfo = vk::CommandPoolCreateInfo()
+		vk::CommandPoolCreateInfo commandPoolInfo = vk::CommandPoolCreateInfo()
 			.setQueueFamilyIndex(deviceWrapper.iQueue)
 			.setFlags(vk::CommandPoolCreateFlagBits::eTransient);
 		transientCommandPool = deviceWrapper.logicalDevice.createCommandPool(commandPoolInfo);
-	}
-	void create_command_buffers(DeviceWrapper& deviceWrapper)
-	{
-		commandBuffers.resize(nMaxFrames);
-		for (uint32_t i = 0; i < commandPools.size(); i++) {
-			vk::CommandBufferAllocateInfo commandBufferInfo = vk::CommandBufferAllocateInfo()
-				.setCommandPool(commandPools[i])
-				.setLevel(vk::CommandBufferLevel::ePrimary) // secondary are used by primary command buffers for e.g. common operations
-				.setCommandBufferCount(1);
-			commandBuffers[i] = deviceWrapper.logicalDevice.allocateCommandBuffers(commandBufferInfo)[0];
-		}
 	}
 	
 	// ImGui
@@ -472,8 +442,8 @@ private:
 	}
 	void imgui_upload_fonts(DeviceWrapper& deviceWrapper)
 	{
-		vk::CommandBuffer commandBuffer = commandBuffers[0];
-		deviceWrapper.logicalDevice.resetCommandPool(commandPools[0]);
+		vk::CommandBuffer commandBuffer = ringBuffer.frames[0].commandBuffer;
+		deviceWrapper.logicalDevice.resetCommandPool(ringBuffer.frames[0].commandPool);
 
 		vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo()
 			.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
@@ -508,7 +478,7 @@ private:
 	}
 	void record_command_buffer(uint32_t iFrame)
 	{
-		vk::CommandBuffer& commandBuffer = commandBuffers[iFrame];
+		vk::CommandBuffer& commandBuffer = ringBuffer.frames[iFrame].commandBuffer;
 		vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo()
 			.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit)
 			.setPInheritanceInfo(nullptr);
@@ -560,8 +530,6 @@ private:
 	vk::DescriptorPool descPool;
 
 	vk::CommandPool transientCommandPool;
-	std::vector<vk::CommandPool> commandPools; // DEPR
-	std::vector<vk::CommandBuffer> commandBuffers; // DEPR
 
 	UniformBufferWrapper<UniformBufferObject> mvpBuffer;
 	IndexedGeometry geometry;
