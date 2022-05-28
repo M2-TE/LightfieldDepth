@@ -3,7 +3,7 @@
 // temporary solution for logging
 #define CODE_LOCATION __FUNCTION__ << " on line " << __LINE__ << " in file " << __FILE__
 #define VMI_LOG(msg) std::cout << msg << std::endl
-#define VMI_WARN(msg) std::cout << "WARNING: " << msg << std::endl
+#define VMI_WARN(msg) std::cout << "--> WARNING: " << msg << std::endl
 #define VMI_ERR(msg) throw std::exception(msg)
 #define VMI_SDL_ERR() VMI_LOG("Error: " << std::string(SDL_GetError()) << std::endl << CODE_LOCATION)
 
@@ -21,7 +21,7 @@ public:
 		VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType,
 		const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
 	{
-		if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) VMI_WARN(pCallbackData->pMessage);
+		if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) VMI_WARN("\n" << pCallbackData->pMessage);
 		else VMI_LOG(pCallbackData->pMessage);
 
 		return VK_FALSE;

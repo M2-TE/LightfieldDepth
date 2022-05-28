@@ -259,7 +259,7 @@ private:
 				.setHeight(swapchainWrapper.extent.height)
 				.setLayers(1)
 				// attachments
-				.setAttachmentCount(/*attachments.size()*/2).setPAttachments(attachments.data());
+				.setAttachmentCount(attachments.size()).setPAttachments(attachments.data());
 
 			frames[i].swapchainFramebuffer = deviceWrapper.logicalDevice.createFramebuffer(framebufferInfo);
 		}

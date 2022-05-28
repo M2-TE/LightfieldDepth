@@ -156,42 +156,110 @@ private:
 	}
 	void create_render_pass(DeviceWrapper& deviceWrapper)
 	{
-		vk::AttachmentDescription colorAttachment = vk::AttachmentDescription()
-			.setFormat(swapchainWrapper.surfaceFormat.format)
-			.setSamples(vk::SampleCountFlagBits::e1)
-			.setLoadOp(vk::AttachmentLoadOp::eClear)
-			.setStoreOp(vk::AttachmentStoreOp::eStore)
-			.setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
-			.setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
-			.setInitialLayout(vk::ImageLayout::eUndefined)
-			.setFinalLayout(vk::ImageLayout::ePresentSrcKHR);
-		vk::AttachmentReference colorAttachmentRef = vk::AttachmentReference()
-			.setAttachment(0)
-			.setLayout(vk::ImageLayout::eColorAttachmentOptimal);
+		std::array<vk::AttachmentDescription, 5> attachments;
+		{
+			// color attachment
+			{
+				attachments[0] = vk::AttachmentDescription()
+					.setFormat(swapchainWrapper.surfaceFormat.format)
+					.setSamples(vk::SampleCountFlagBits::e1)
+					.setLoadOp(vk::AttachmentLoadOp::eClear)
+					.setStoreOp(vk::AttachmentStoreOp::eStore)
+					.setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
+					.setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
+					.setInitialLayout(vk::ImageLayout::eUndefined)
+					.setFinalLayout(vk::ImageLayout::ePresentSrcKHR);
+			}
+			// depth stencil attachment
+			{
+				attachments[1] = vk::AttachmentDescription()
+					.setFormat(vk::Format::eD24UnormS8Uint)
+					.setSamples(vk::SampleCountFlagBits::e1)
+					// depth
+					.setLoadOp(vk::AttachmentLoadOp::eClear)
+					.setStoreOp(vk::AttachmentStoreOp::eStore)
+					// stencil
+					.setStencilLoadOp(vk::AttachmentLoadOp::eClear)
+					.setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
+					.setInitialLayout(vk::ImageLayout::eUndefined)
+					.setFinalLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal);
+			}
+			// gbuffer col attachment
+			{
+				attachments[2] = vk::AttachmentDescription()
+					.setFormat(vk::Format::eR8G8B8A8Srgb)
+					.setSamples(vk::SampleCountFlagBits::e1)
+					.setLoadOp(vk::AttachmentLoadOp::eClear)
+					.setStoreOp(vk::AttachmentStoreOp::eStore)
+					.setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
+					.setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
+					.setInitialLayout(vk::ImageLayout::eUndefined)
+					.setFinalLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
+			}
+			// gbuffer pos attachment
+			{
+				attachments[3] = vk::AttachmentDescription()
+					.setFormat(vk::Format::eR32G32B32A32Sfloat)
+					.setSamples(vk::SampleCountFlagBits::e1)
+					.setLoadOp(vk::AttachmentLoadOp::eClear)
+					.setStoreOp(vk::AttachmentStoreOp::eStore)
+					.setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
+					.setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
+					.setInitialLayout(vk::ImageLayout::eUndefined)
+					.setFinalLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
+			}
+			// gbuffer norm attachment
+			{
+				attachments[4] = vk::AttachmentDescription()
+					.setFormat(vk::Format::eR8G8B8A8Snorm)
+					.setSamples(vk::SampleCountFlagBits::e1)
+					.setLoadOp(vk::AttachmentLoadOp::eClear)
+					.setStoreOp(vk::AttachmentStoreOp::eStore)
+					.setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
+					.setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
+					.setInitialLayout(vk::ImageLayout::eUndefined)
+					.setFinalLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
+			}
+		}
+		
+		std::array<vk::SubpassDescription, 1> subpasses;
+		{
+			// first subpass (write to gbuffer and depth)
+			{
+				vk::AttachmentReference colorAttachmentRef = vk::AttachmentReference(0, vk::ImageLayout::eColorAttachmentOptimal);
+				vk::AttachmentReference depthAttachmentRef = vk::AttachmentReference(1, vk::ImageLayout::eDepthStencilAttachmentOptimal);
 
-		vk::AttachmentDescription depthAttachment = vk::AttachmentDescription()
-			.setFormat(vk::Format::eD24UnormS8Uint)
-			.setSamples(vk::SampleCountFlagBits::e1)
-			// depth
-			.setLoadOp(vk::AttachmentLoadOp::eClear)
-			.setStoreOp(vk::AttachmentStoreOp::eStore)
-			// stencil
-			.setStencilLoadOp(vk::AttachmentLoadOp::eClear)
-			.setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
-			.setInitialLayout(vk::ImageLayout::eUndefined)
-			.setFinalLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal);
-		vk::AttachmentReference depthAttachmentRef = vk::AttachmentReference()
-			.setAttachment(1)
-			.setLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal);
+				subpasses[0] = vk::SubpassDescription()
+					.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
+					.setPDepthStencilAttachment(&depthAttachmentRef)
+					.setColorAttachmentCount(1).setPColorAttachments(&colorAttachmentRef)
+					.setInputAttachmentCount(0).setPInputAttachments(nullptr)
+					// misc other:
+					.setPreserveAttachmentCount(0).setPPreserveAttachments(nullptr)
+					.setPResolveAttachments(nullptr);
+			}
 
-		vk::SubpassDescription subpassDesc = vk::SubpassDescription()
-			.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
-			.setColorAttachmentCount(1).setPColorAttachments(&colorAttachmentRef)
-			.setPDepthStencilAttachment(&depthAttachmentRef)
-			// other:
-			.setInputAttachmentCount(0).setPInputAttachments(nullptr)
-			.setPreserveAttachmentCount(0).setPPreserveAttachments(nullptr)
-			.setPResolveAttachments(nullptr);
+			// second subpass (read gbuffer, write to swapchain)
+			if(false)
+			{
+				std::array<vk::AttachmentReference, 4> input = {
+					vk::AttachmentReference(999, vk::ImageLayout::eShaderReadOnlyOptimal), // gCol
+					vk::AttachmentReference(999, vk::ImageLayout::eShaderReadOnlyOptimal), // gPos
+					vk::AttachmentReference(999, vk::ImageLayout::eShaderReadOnlyOptimal), // gNorm
+					vk::AttachmentReference(999, vk::ImageLayout::eShaderReadOnlyOptimal), // depth
+				};
+				vk::AttachmentReference swapchainRef = vk::AttachmentReference(0, vk::ImageLayout::eColorAttachmentOptimal);
+
+				subpasses[1] = vk::SubpassDescription()
+					.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
+					.setPDepthStencilAttachment(nullptr)
+					.setColorAttachmentCount(1).setPColorAttachments(&swapchainRef)
+					.setInputAttachmentCount(input.size()).setPInputAttachments(input.data())
+					// misc other:
+					.setPreserveAttachmentCount(0).setPPreserveAttachments(nullptr)
+					.setPResolveAttachments(nullptr);
+			}
+		}
 
 		vk::SubpassDependency dependency = vk::SubpassDependency()
 			.setDependencyFlags(vk::DependencyFlagBits::eByRegion) // for tiled GPUs.. i think.
@@ -204,11 +272,10 @@ private:
 			.setDstStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests)
 			.setDstAccessMask(vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentWrite);
 
-		std::array<vk::AttachmentDescription, 2> attachments = { colorAttachment, depthAttachment };
 		vk::RenderPassCreateInfo renderPassInfo = vk::RenderPassCreateInfo()
 			.setAttachmentCount(attachments.size()).setPAttachments(attachments.data())
-			.setDependencyCount(1).setPDependencies(&dependency)
-			.setSubpassCount(1).setPSubpasses(&subpassDesc);
+			.setSubpassCount(subpasses.size()).setPSubpasses(subpasses.data())
+			.setDependencyCount(1).setPDependencies(&dependency);
 
 		renderPass = deviceWrapper.logicalDevice.createRenderPass(renderPassInfo);
 	}
@@ -487,12 +554,13 @@ private:
 		commandBuffer.begin(beginInfo);
 
 		// clear color
-		vk::ClearColorValue clearColorValue = vk::ClearColorValue()
-			.setFloat32({ 0.0f, 0.0f, 0.0f, 1.0f });
-		vk::ClearDepthStencilValue clearDepthStencilValue = vk::ClearDepthStencilValue()
-			.setDepth(1.0f)
-			.setStencil(0);
-		std::array<vk::ClearValue, 2> clearValues = { vk::ClearValue(clearColorValue), vk::ClearValue(clearDepthStencilValue) };
+		std::array<vk::ClearValue, 5> clearValues = { 
+			vk::ClearValue(vk::ClearColorValue().setFloat32({ 0.0f, 0.0f, 0.0f, 1.0f })),
+			vk::ClearValue(vk::ClearDepthStencilValue().setDepth(1.0f).setStencil(0)),
+			vk::ClearValue(vk::ClearColorValue().setFloat32({ 0.0f, 0.0f, 0.0f, 0.0f })),
+			vk::ClearValue(vk::ClearColorValue().setFloat32({ 0.0f, 0.0f, 0.0f, 0.0f })),
+			vk::ClearValue(vk::ClearColorValue().setFloat32({ 0.0f, 0.0f, 0.0f, 0.0f }))
+		};
 
 		vk::RenderPassBeginInfo renderPassBeginInfo = vk::RenderPassBeginInfo()
 			.setRenderPass(renderPass)
