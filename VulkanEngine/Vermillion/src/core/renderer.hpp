@@ -49,6 +49,10 @@ public:
 
 		device.destroyShaderModule(vs);
 		device.destroyShaderModule(ps);
+		device.destroyShaderModule(geometry_vs);
+		device.destroyShaderModule(geometry_ps);
+		device.destroyShaderModule(lighting_vs);
+		device.destroyShaderModule(lighting_ps);
 
 		device.destroyCommandPool(transientCommandPool);
 		device.destroyDescriptorPool(imguiDescPool);
@@ -141,18 +145,24 @@ private:
 		swapchainWrapper.init(deviceWrapper, window, nMaxFrames);
 
 		create_render_pass(deviceWrapper);
+		ringBuffer.create_all(deviceWrapper, allocator, renderPass, swapchainWrapper, descPool);
+
 		create_graphics_pipeline(deviceWrapper);
 
 		create_geometry_pass_graphics_pipeline(deviceWrapper);
 		create_lighting_pass_graphics_pipeline(deviceWrapper);
 
-		ringBuffer.create_all(deviceWrapper, allocator, renderPass, swapchainWrapper, descPool);
 	}
 	void destroy_KHR(DeviceWrapper& deviceWrapper)
 	{
 		deviceWrapper.logicalDevice.destroyRenderPass(renderPass);
 		deviceWrapper.logicalDevice.destroyPipeline(graphicsPipeline);
 		deviceWrapper.logicalDevice.destroyPipelineLayout(pipelineLayout);
+
+		deviceWrapper.logicalDevice.destroyPipeline(geometryPassPipeline);
+		deviceWrapper.logicalDevice.destroyPipeline(lightingPassPipeline);
+		deviceWrapper.logicalDevice.destroyPipelineLayout(geometryPassPipelineLayout);
+		deviceWrapper.logicalDevice.destroyPipelineLayout(lightingPassPipelineLayout);
 
 		ringBuffer.destroy_all(deviceWrapper, allocator);
 
@@ -537,7 +547,7 @@ private:
 			.setSetLayoutCount(1).setPSetLayouts(&mvpBuffer.get_desc_set_layout())
 			.setPushConstantRangeCount(0)
 			.setPushConstantRanges(nullptr);
-		pipelineLayout = deviceWrapper.logicalDevice.createPipelineLayout(pipelineLayoutInfo);
+		geometryPassPipelineLayout = deviceWrapper.logicalDevice.createPipelineLayout(pipelineLayoutInfo);
 
 		// Finally, create actual render pipeline
 		vk::GraphicsPipelineCreateInfo graphicsPipelineInfo = vk::GraphicsPipelineCreateInfo()
@@ -553,13 +563,12 @@ private:
 			.setPColorBlendState(&colorBlendInfo)
 			.setPDynamicState(nullptr)
 			// pipeline layout
-			.setLayout(pipelineLayout)
+			.setLayout(geometryPassPipelineLayout)
 			// render pass
 			.setRenderPass(renderPass)
 			.setSubpass(0);
 
 		auto result = deviceWrapper.logicalDevice.createGraphicsPipeline(nullptr, graphicsPipelineInfo);
-		geometryPassPipeline = result.value;
 		switch (result.result)
 		{
 			case vk::Result::eSuccess: break;
@@ -568,6 +577,7 @@ private:
 				break;
 			default: assert(false);
 		}
+		geometryPassPipeline = result.value;
 	}
 	void create_lighting_pass_graphics_pipeline(DeviceWrapper& deviceWrapper)
 	{
@@ -586,13 +596,11 @@ private:
 		vk::PipelineShaderStageCreateInfo shaderStages[] = { vertStageInfo, fragStageInfo };
 
 		// Vertex Input descriptor
-		auto bindingDesc = Vertex::get_binding_desc();
-		auto attrDesc = Vertex::get_attr_desc();
 		vk::PipelineVertexInputStateCreateInfo vertexInputInfo = vk::PipelineVertexInputStateCreateInfo()
-			.setVertexBindingDescriptionCount(1)
-			.setVertexBindingDescriptions(bindingDesc)
-			.setVertexAttributeDescriptionCount(static_cast<uint32_t>(attrDesc.size()))
-			.setVertexAttributeDescriptions(attrDesc);
+			.setVertexBindingDescriptionCount(0)
+			.setVertexBindingDescriptions(nullptr)
+			.setVertexAttributeDescriptionCount(0)
+			.setVertexAttributeDescriptions(nullptr);
 
 		// Input Assembly
 		vk::PipelineInputAssemblyStateCreateInfo inputAssemplyInfo = vk::PipelineInputAssemblyStateCreateInfo()
@@ -642,7 +650,7 @@ private:
 			.setAlphaToOneEnable(VK_FALSE);
 
 		// Color Blending:
-		// 
+		//
 		// -> for each color attachment
 		vk::PipelineColorBlendAttachmentState colorBlendAttachment = vk::PipelineColorBlendAttachmentState()
 			.setColorWriteMask(
@@ -657,14 +665,11 @@ private:
 			.setSrcAlphaBlendFactor(vk::BlendFactor::eOne)
 			.setDstAlphaBlendFactor(vk::BlendFactor::eZero)
 			.setAlphaBlendOp(vk::BlendOp::eAdd);
-		std::array<vk::PipelineColorBlendAttachmentState, 3> gbufferBlendAttachments = {
-			colorBlendAttachment, colorBlendAttachment, colorBlendAttachment
-		};
 		//
 		// -> global
 		vk::PipelineColorBlendStateCreateInfo colorBlendInfo = vk::PipelineColorBlendStateCreateInfo()
 			.setLogicOpEnable(VK_FALSE).setLogicOp(vk::LogicOp::eCopy)
-			.setAttachmentCount(gbufferBlendAttachments.size()).setPAttachments(gbufferBlendAttachments.data())
+			.setAttachmentCount(1).setPAttachments(&colorBlendAttachment)
 			.setBlendConstants({ 0.0f, 0.0f, 0.0f, 0.0f });
 
 		vk::PipelineDepthStencilStateCreateInfo depthStencilInfo = vk::PipelineDepthStencilStateCreateInfo()
@@ -687,7 +692,7 @@ private:
 			.setSetLayoutCount(3).setPSetLayouts(layouts.data())
 			.setPushConstantRangeCount(0)
 			.setPushConstantRanges(nullptr);
-		pipelineLayout = deviceWrapper.logicalDevice.createPipelineLayout(pipelineLayoutInfo);
+		lightingPassPipelineLayout = deviceWrapper.logicalDevice.createPipelineLayout(pipelineLayoutInfo);
 
 		// Finally, create actual render pipeline
 		vk::GraphicsPipelineCreateInfo graphicsPipelineInfo = vk::GraphicsPipelineCreateInfo()
@@ -703,13 +708,12 @@ private:
 			.setPColorBlendState(&colorBlendInfo)
 			.setPDynamicState(nullptr)
 			// pipeline layout
-			.setLayout(pipelineLayout)
+			.setLayout(lightingPassPipelineLayout)
 			// render pass
 			.setRenderPass(renderPass)
 			.setSubpass(1);
 
 		auto result = deviceWrapper.logicalDevice.createGraphicsPipeline(nullptr, graphicsPipelineInfo);
-		geometryPassPipeline = result.value;
 		switch (result.result)
 		{
 			case vk::Result::eSuccess: break;
@@ -718,6 +722,7 @@ private:
 				break;
 			default: assert(false);
 		}
+		lightingPassPipeline = result.value;
 	}
 
 
@@ -725,6 +730,11 @@ private:
 	{
 		vs = create_shader_module(deviceWrapper, shader_vs, shader_vs_size);
 		ps = create_shader_module(deviceWrapper, shader_ps, shader_ps_size);
+
+		geometry_vs = create_shader_module(deviceWrapper, geometry_pass_vs, geometry_pass_vs_size);
+		geometry_ps = create_shader_module(deviceWrapper, geometry_pass_ps, geometry_pass_ps_size);
+		lighting_vs = create_shader_module(deviceWrapper, lighting_pass_vs, lighting_pass_vs_size);
+		lighting_ps = create_shader_module(deviceWrapper, lighting_pass_ps, lighting_pass_ps_size);
 	}
 	void create_descriptor_pools(DeviceWrapper& deviceWrapper)
 	{
@@ -888,6 +898,8 @@ private:
 	vk::ShaderModule lighting_vs, lighting_ps;
 	vk::Pipeline geometryPassPipeline;
 	vk::Pipeline lightingPassPipeline;
+	vk::PipelineLayout geometryPassPipelineLayout;
+	vk::PipelineLayout lightingPassPipelineLayout;
 
 	vk::RenderPass renderPass;
 	vk::Pipeline graphicsPipeline;
