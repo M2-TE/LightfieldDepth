@@ -28,6 +28,7 @@ struct RingFrame
 	vk::ImageView swapchainImageView;
 	vk::Framebuffer swapchainFramebuffer;
 
+	// TODO: encapsulate image in image_wrapper.hpp or something
 	// gbuffer images
 	std::pair<vk::Image, vma::Allocation> gPosAlloc;
 	std::pair<vk::Image, vma::Allocation> gColAlloc;
@@ -35,6 +36,12 @@ struct RingFrame
 	vk::ImageView gPosImageView;
 	vk::ImageView gColImageView;
 	vk::ImageView gNormImageView;
+	vk::DescriptorSet gPosDescSet;
+	vk::DescriptorSet gColDescSet;
+	vk::DescriptorSet gNormDescSet;
+	vk::DescriptorSetLayout gPosDescSetLayout;
+	vk::DescriptorSetLayout gColDescSetLayout;
+	vk::DescriptorSetLayout gNormDescSetLayout;
 };
 
 class RingBuffer
@@ -55,13 +62,14 @@ public:
 			syncFrames[i].index = i;
 		}
 	}
-	void create_all(DeviceWrapper& deviceWrapper, vma::Allocator& allocator, vk::RenderPass& renderPass, SwapchainWrapper& swapchainWrapper)
+	void create_all(DeviceWrapper& deviceWrapper, vma::Allocator& allocator, vk::RenderPass& renderPass, SwapchainWrapper& swapchainWrapper, vk::DescriptorPool& descPool)
 	{
 		create_depth_stencils(allocator, swapchainWrapper);
 		create_depth_stencil_views(deviceWrapper);
 
 		create_gbuffer_images(allocator, swapchainWrapper);
 		create_gbuffer_image_views(deviceWrapper);
+		create_gbuffer_descriptor_sets(deviceWrapper, descPool);
 
 		create_swapchain_images(deviceWrapper, swapchainWrapper);
 		create_swapchain_image_views(deviceWrapper, swapchainWrapper);
@@ -209,7 +217,125 @@ private:
 			frames[i].gNormImageView = deviceWrapper.logicalDevice.createImageView(imageViewInfo);
 		}
 	}
-	
+	void create_gbuffer_descriptor_sets(DeviceWrapper& deviceWrapper, vk::DescriptorPool& descPool)
+	{
+
+		std::array<vk::DescriptorSetLayoutBinding, 3> setLayoutBindings;
+		for (size_t i = 0; i < setLayoutBindings.size(); i++)
+		{
+			setLayoutBindings[i]
+				.setBinding(i)
+				.setDescriptorCount(1)
+				.setDescriptorType(vk::DescriptorType::eInputAttachment)
+				.setStageFlags(vk::ShaderStageFlagBits::eFragment);
+		}
+
+
+		// update descriptor sets
+		for (size_t i = 0; i < frames.size(); i++) {
+
+			// allocate desc sets
+			{
+				// gPos image
+				{
+					// create descriptor set layout from all the bindings
+					vk::DescriptorSetLayoutCreateInfo createInfo = vk::DescriptorSetLayoutCreateInfo()
+						.setBindingCount(1)
+						.setBindings(setLayoutBindings[0]);
+					frames[i].gPosDescSetLayout = deviceWrapper.logicalDevice.createDescriptorSetLayout(createInfo);
+
+					// allocate the descriptor sets using descriptor pool
+					vk::DescriptorSetAllocateInfo allocInfo = vk::DescriptorSetAllocateInfo()
+						.setDescriptorPool(descPool)
+						.setDescriptorSetCount(1).setPSetLayouts(&frames[i].gPosDescSetLayout);
+					frames[i].gPosDescSet = deviceWrapper.logicalDevice.allocateDescriptorSets(allocInfo)[0];
+				}
+				// gCol image
+				{
+					// create descriptor set layout from all the bindings
+					vk::DescriptorSetLayoutCreateInfo createInfo = vk::DescriptorSetLayoutCreateInfo()
+						.setBindingCount(1)
+						.setBindings(setLayoutBindings[1]);
+					frames[i].gColDescSetLayout = deviceWrapper.logicalDevice.createDescriptorSetLayout(createInfo);
+
+					// allocate the descriptor sets using descriptor pool
+					vk::DescriptorSetAllocateInfo allocInfo = vk::DescriptorSetAllocateInfo()
+						.setDescriptorPool(descPool)
+						.setDescriptorSetCount(1).setPSetLayouts(&frames[i].gColDescSetLayout);
+					frames[i].gColDescSet = deviceWrapper.logicalDevice.allocateDescriptorSets(allocInfo)[0];
+				}
+				// gNorm image
+				{
+					// create descriptor set layout from all the bindings
+					vk::DescriptorSetLayoutCreateInfo createInfo = vk::DescriptorSetLayoutCreateInfo()
+						.setBindingCount(1)
+						.setBindings(setLayoutBindings[0]);
+					frames[i].gNormDescSetLayout = deviceWrapper.logicalDevice.createDescriptorSetLayout(createInfo);
+
+					// allocate the descriptor sets using descriptor pool
+					vk::DescriptorSetAllocateInfo allocInfo = vk::DescriptorSetAllocateInfo()
+						.setDescriptorPool(descPool)
+						.setDescriptorSetCount(1).setPSetLayouts(&frames[i].gNormDescSetLayout);
+					frames[i].gNormDescSet = deviceWrapper.logicalDevice.allocateDescriptorSets(allocInfo)[0];
+				}
+			}
+
+			std::array<vk::DescriptorImageInfo, 3> descriptors;
+			// gPos image
+			descriptors[0]
+				.setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
+				.setImageView(frames[i].gPosImageView)
+				.setSampler(nullptr);
+			// gCol image
+			descriptors[1]
+				.setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
+				.setImageView(frames[i].gColImageView)
+				.setSampler(nullptr);
+			// gNorm image
+			descriptors[2]
+				.setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
+				.setImageView(frames[i].gNormImageView)
+				.setSampler(nullptr);
+
+			std::array<vk::WriteDescriptorSet, 3> descBufferWrites;
+			// gPos desc set
+			descBufferWrites[0] = vk::WriteDescriptorSet()
+				.setDstSet(frames[i].gPosDescSet)
+				.setDstBinding(0)
+				.setDstArrayElement(0)
+				.setDescriptorType(setLayoutBindings[0].descriptorType)
+				.setDescriptorCount(setLayoutBindings[0].descriptorCount)
+				//
+				.setPBufferInfo(nullptr)
+				.setPImageInfo(&descriptors[0])
+				.setPTexelBufferView(nullptr);
+			// gCol desc set
+			descBufferWrites[1] = vk::WriteDescriptorSet()
+				.setDstSet(frames[i].gPosDescSet)
+				.setDstBinding(0)
+				.setDstArrayElement(0)
+				.setDescriptorType(setLayoutBindings[1].descriptorType)
+				.setDescriptorCount(setLayoutBindings[1].descriptorCount)
+				//
+				.setPBufferInfo(nullptr)
+				.setPImageInfo(&descriptors[1])
+				.setPTexelBufferView(nullptr);
+			// gNorm desc set
+			descBufferWrites[2] = vk::WriteDescriptorSet()
+				.setDstSet(frames[i].gPosDescSet)
+				.setDstBinding(0)
+				.setDstArrayElement(0)
+				.setDescriptorType(setLayoutBindings[2].descriptorType)
+				.setDescriptorCount(setLayoutBindings[2].descriptorCount)
+				//
+				.setPBufferInfo(nullptr)
+				.setPImageInfo(&descriptors[2])
+				.setPTexelBufferView(nullptr);
+
+			deviceWrapper.logicalDevice.updateDescriptorSets(descBufferWrites, {});
+		}
+	}
+
 	void create_swapchain_images(DeviceWrapper& deviceWrapper, SwapchainWrapper& swapchainWrapper)
 	{
 		std::vector<vk::Image> images = deviceWrapper.logicalDevice.getSwapchainImagesKHR(swapchainWrapper.swapchain);
@@ -311,6 +437,7 @@ private:
 			deviceWrapper.logicalDevice.destroyImageView(frames[i].depthStencilView);
 		}
 	}
+
 	void destroy_gbuffer(DeviceWrapper& deviceWrapper, vma::Allocator& allocator)
 	{
 		for (size_t i = 0; i < frames.size(); i++) {
@@ -320,8 +447,12 @@ private:
 			deviceWrapper.logicalDevice.destroyImageView(frames[i].gColImageView);
 			deviceWrapper.logicalDevice.destroyImageView(frames[i].gPosImageView);
 			deviceWrapper.logicalDevice.destroyImageView(frames[i].gNormImageView);
+			deviceWrapper.logicalDevice.destroyDescriptorSetLayout(frames[i].gPosDescSetLayout);
+			deviceWrapper.logicalDevice.destroyDescriptorSetLayout(frames[i].gColDescSetLayout);
+			deviceWrapper.logicalDevice.destroyDescriptorSetLayout(frames[i].gNormDescSetLayout);
 		}
 	}
+
 	void destroy_swapchain_image_views(DeviceWrapper& deviceWrapper)
 	{
 		for (size_t i = 0; i < frames.size(); i++) {
@@ -334,6 +465,7 @@ private:
 			deviceWrapper.logicalDevice.destroyFramebuffer(frames[i].swapchainFramebuffer);
 		}
 	}
+
 	void destroy_sync_objects(DeviceWrapper& deviceWrapper)
 	{
 		vk::Device& device = deviceWrapper.logicalDevice;

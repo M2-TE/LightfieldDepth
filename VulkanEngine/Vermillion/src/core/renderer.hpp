@@ -142,7 +142,7 @@ private:
 		create_render_pass(deviceWrapper);
 		create_graphics_pipeline(deviceWrapper);
 
-		ringBuffer.create_all(deviceWrapper, allocator, renderPass, swapchainWrapper);
+		ringBuffer.create_all(deviceWrapper, allocator, renderPass, swapchainWrapper, descPool);
 	}
 	void destroy_KHR(DeviceWrapper& deviceWrapper)
 	{
@@ -430,10 +430,6 @@ private:
 		}
 	}
 
-	void create_gbuffer_desc_stuff()
-	{
-		// TODO
-	}
 	void create_gbuffer_graphics_pipeline()
 	{
 		// TODO
