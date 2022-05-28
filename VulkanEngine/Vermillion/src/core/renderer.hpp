@@ -184,10 +184,10 @@ private:
 					.setInitialLayout(vk::ImageLayout::eUndefined)
 					.setFinalLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal);
 			}
-			// gbuffer col attachment
+			// gbuffer pos attachment
 			{
 				attachments[2] = vk::AttachmentDescription()
-					.setFormat(vk::Format::eR8G8B8A8Srgb)
+					.setFormat(vk::Format::eR32G32B32A32Sfloat)
 					.setSamples(vk::SampleCountFlagBits::e1)
 					.setLoadOp(vk::AttachmentLoadOp::eClear)
 					.setStoreOp(vk::AttachmentStoreOp::eStore)
@@ -196,10 +196,10 @@ private:
 					.setInitialLayout(vk::ImageLayout::eUndefined)
 					.setFinalLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
 			}
-			// gbuffer pos attachment
+			// gbuffer col attachment
 			{
 				attachments[3] = vk::AttachmentDescription()
-					.setFormat(vk::Format::eR32G32B32A32Sfloat)
+					.setFormat(vk::Format::eR8G8B8A8Srgb)
 					.setSamples(vk::SampleCountFlagBits::e1)
 					.setLoadOp(vk::AttachmentLoadOp::eClear)
 					.setStoreOp(vk::AttachmentStoreOp::eStore)
@@ -244,8 +244,8 @@ private:
 			{
 				std::array<vk::AttachmentReference, 4> input = {
 					vk::AttachmentReference(1, vk::ImageLayout::eShaderReadOnlyOptimal), // depth
-					vk::AttachmentReference(2, vk::ImageLayout::eShaderReadOnlyOptimal), // gCol
-					vk::AttachmentReference(3, vk::ImageLayout::eShaderReadOnlyOptimal), // gPos
+					vk::AttachmentReference(2, vk::ImageLayout::eShaderReadOnlyOptimal), // gPos
+					vk::AttachmentReference(3, vk::ImageLayout::eShaderReadOnlyOptimal), // gCol
 					vk::AttachmentReference(4, vk::ImageLayout::eShaderReadOnlyOptimal), // gNorm
 				};
 				vk::AttachmentReference swapchainRef = vk::AttachmentReference(0, vk::ImageLayout::eColorAttachmentOptimal);

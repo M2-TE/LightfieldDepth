@@ -29,11 +29,11 @@ struct RingFrame
 	vk::Framebuffer swapchainFramebuffer;
 
 	// gbuffer images
-	std::pair<vk::Image, vma::Allocation> gColAlloc;
 	std::pair<vk::Image, vma::Allocation> gPosAlloc;
+	std::pair<vk::Image, vma::Allocation> gColAlloc;
 	std::pair<vk::Image, vma::Allocation> gNormAlloc;
-	vk::ImageView gColImageView;
 	vk::ImageView gPosImageView;
+	vk::ImageView gColImageView;
 	vk::ImageView gNormImageView;
 };
 
@@ -139,7 +139,6 @@ private:
 		vk::ImageCreateInfo imageCreateInfo = vk::ImageCreateInfo()
 			.setPNext(nullptr)
 			.setImageType(vk::ImageType::e2D)
-			.setFormat(vk::Format::eR8G8B8A8Srgb)
 			.setExtent(vk::Extent3D(swapchainWrapper.extent, 1))
 			//
 			.setMipLevels(1)
@@ -152,10 +151,6 @@ private:
 			.setUsage(vma::MemoryUsage::eAutoPreferDevice)
 			.setFlags(vma::AllocationCreateFlagBits::eDedicatedMemory);
 
-		// gColBuffer
-		for (size_t i = 0; i < frames.size(); i++) {
-			frames[i].gColAlloc = allocator.createImage(imageCreateInfo, allocCreateInfo, nullptr);
-		}
 
 		// gPosBuffer
 		imageCreateInfo.setFormat(vk::Format::eR16G16B16A16Sfloat); // 16-bit signed float
@@ -163,6 +158,12 @@ private:
 			//.setUsage()  // TODO: might need to set different usage flags
 		for (size_t i = 0; i < frames.size(); i++) {
 			frames[i].gPosAlloc = allocator.createImage(imageCreateInfo, allocCreateInfo, nullptr);
+		}
+
+		// gColBuffer
+		imageCreateInfo.setFormat(vk::Format::eR8G8B8A8Srgb);
+		for (size_t i = 0; i < frames.size(); i++) {
+			frames[i].gColAlloc = allocator.createImage(imageCreateInfo, allocCreateInfo, nullptr);
 		}
 
 		// gNormBuffer
@@ -185,12 +186,6 @@ private:
 			.setFormat(vk::Format::eR8G8B8A8Srgb)
 			.setSubresourceRange(subresourceRange);
 
-		// gColImageView
-		for (size_t i = 0; i < frames.size(); i++) {
-			imageViewInfo.setImage(frames[i].gColAlloc.first);
-			frames[i].gColImageView = deviceWrapper.logicalDevice.createImageView(imageViewInfo);
-		}
-
 		// gPosImageView
 		imageViewInfo.setFormat(vk::Format::eR16G16B16A16Sfloat); // 16-bit signed float
 		imageViewInfo.setFormat(vk::Format::eR32G32B32A32Sfloat); // 32-bit signed float
@@ -198,6 +193,14 @@ private:
 			imageViewInfo.setImage(frames[i].gPosAlloc.first);
 			frames[i].gPosImageView = deviceWrapper.logicalDevice.createImageView(imageViewInfo);
 		}
+
+		// gColImageView
+		imageViewInfo.setFormat(vk::Format::eR8G8B8A8Srgb);
+		for (size_t i = 0; i < frames.size(); i++) {
+			imageViewInfo.setImage(frames[i].gColAlloc.first);
+			frames[i].gColImageView = deviceWrapper.logicalDevice.createImageView(imageViewInfo);
+		}
+
 
 		// gNormImageView
 		imageViewInfo.setFormat(vk::Format::eR8G8B8A8Snorm); // normalized between -1 and 1
@@ -248,8 +251,8 @@ private:
 			std::array<vk::ImageView, 5> attachments = { 
 				frames[i].swapchainImageView, 
 				frames[i].depthStencilView,
-				frames[i].gColImageView,
 				frames[i].gPosImageView,
+				frames[i].gColImageView,
 				frames[i].gNormImageView
 			};
 

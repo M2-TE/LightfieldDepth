@@ -1,4 +1,21 @@
-float4 main() : SV_TARGET
+struct Input
 {
-	return float4(1.0f, 1.0f, 1.0f, 1.0f);
+    float4 worldPos : WorldPos;
+    float4 color : Color;
+};
+struct Output
+{
+    float4 position : SV_Target0;
+    float4 color : SV_Target1;
+    float4 normal : SV_Target2;
+};
+
+Output main(Input input)
+{
+    Output output;
+    output.position = input.worldPos;
+    output.color = input.color;
+    output.normal = float4(1.0f, 0.0f, 0.0f, 0.0f);
+
+    return output;
 }
