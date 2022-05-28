@@ -109,6 +109,8 @@
     <ClInclude Include="src\core\wrappers\device_wrapper.hpp" />
     <ClInclude Include="src\core\renderer.hpp" />
     <ClInclude Include="src\core\window.hpp" />
+    <ClInclude Include="src\core\wrappers\image_wrapper.hpp" />
+    <ClInclude Include="src\core\wrappers\render_pass_wrapper.hpp" />
     <ClInclude Include="src\core\wrappers\shader_wrapper.hpp" />
     <ClInclude Include="src\core\wrappers\swapchain_wrapper.hpp" />
     <ClInclude Include="src\core\wrappers\uniform_buffer_wrapper.hpp" />

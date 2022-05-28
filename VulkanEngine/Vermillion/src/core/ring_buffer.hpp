@@ -30,18 +30,10 @@ struct RingFrame
 
 	// TODO: encapsulate image in image_wrapper.hpp or something
 	// gbuffer images
-	std::pair<vk::Image, vma::Allocation> gPosAlloc;
-	std::pair<vk::Image, vma::Allocation> gColAlloc;
-	std::pair<vk::Image, vma::Allocation> gNormAlloc;
-	vk::ImageView gPosImageView;
-	vk::ImageView gColImageView;
-	vk::ImageView gNormImageView;
-	vk::DescriptorSet gPosDescSet;
-	vk::DescriptorSet gColDescSet;
-	vk::DescriptorSet gNormDescSet;
-	vk::DescriptorSetLayout gPosDescSetLayout;
-	vk::DescriptorSetLayout gColDescSetLayout;
-	vk::DescriptorSetLayout gNormDescSetLayout;
+	std::pair<vk::Image, vma::Allocation> gPosAlloc, gColAlloc, gNormAlloc;
+	vk::ImageView gPosImageView, gColImageView, gNormImageView;
+	vk::DescriptorSet gPosDescSet, gColDescSet, gNormDescSet;
+	vk::DescriptorSetLayout gPosDescSetLayout, gColDescSetLayout, gNormDescSetLayout;
 };
 
 class RingBuffer

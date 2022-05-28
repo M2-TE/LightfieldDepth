@@ -6,6 +6,7 @@
 #include "wrappers/swapchain_wrapper.hpp"
 #include "wrappers/shader_wrapper.hpp"
 #include "wrappers/uniform_buffer_wrapper.hpp"
+#include "wrappers/render_pass_wrapper.hpp"
 #include "geometry/indexed_geometry.hpp"
 
 struct UniformBufferObject 
@@ -141,6 +142,9 @@ private:
 
 		create_render_pass(deviceWrapper);
 		create_graphics_pipeline(deviceWrapper);
+
+		create_geometry_pass_graphics_pipeline(deviceWrapper);
+		create_lighting_pass_graphics_pipeline(deviceWrapper);
 
 		ringBuffer.create_all(deviceWrapper, allocator, renderPass, swapchainWrapper, descPool);
 	}
