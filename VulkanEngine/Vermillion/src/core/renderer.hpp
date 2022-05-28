@@ -353,7 +353,7 @@ private:
 
 		// Color Blending:
 		
-		// -> per-framebuffer
+		// -> for each color attachment
 		vk::PipelineColorBlendAttachmentState colorBlendAttachment = vk::PipelineColorBlendAttachmentState()
 			.setColorWriteMask(
 				vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
@@ -369,28 +369,168 @@ private:
 			.setAlphaBlendOp(vk::BlendOp::eAdd);
 		// -> global
 		vk::PipelineColorBlendStateCreateInfo colorBlendInfo = vk::PipelineColorBlendStateCreateInfo()
-			.setLogicOpEnable(VK_FALSE)
-			.setLogicOp(vk::LogicOp::eCopy)
-			.setAttachmentCount(1)
-			.setPAttachments(&colorBlendAttachment)
+			.setLogicOpEnable(VK_FALSE).setLogicOp(vk::LogicOp::eCopy)
+			.setAttachmentCount(1).setPAttachments(&colorBlendAttachment)
 			.setBlendConstants({ 0.0f, 0.0f, 0.0f, 0.0f });
 
 		vk::PipelineDepthStencilStateCreateInfo depthStencilInfo = vk::PipelineDepthStencilStateCreateInfo()
-			.setPNext(nullptr)
 			.setDepthTestEnable(VK_TRUE)
 			.setDepthWriteEnable(VK_TRUE)
 			.setDepthCompareOp(vk::CompareOp::eLessOrEqual)
 			// Depth bounds
 			.setDepthBoundsTestEnable(VK_FALSE)
-			.setMinDepthBounds(0.0f)
-			.setMaxDepthBounds(1.0f)
+			.setMinDepthBounds(0.0f).setMaxDepthBounds(1.0f)
 			// Stencil
 			.setStencilTestEnable(VK_FALSE);
 
 		// Pipeline Layout
 		vk::PipelineLayoutCreateInfo pipelineLayoutInfo = vk::PipelineLayoutCreateInfo()
-			.setSetLayoutCount(1)
-			.setSetLayouts(mvpBuffer.get_desc_set_layout())
+			.setSetLayoutCount(1).setSetLayouts(mvpBuffer.get_desc_set_layout())
+			.setPushConstantRangeCount(0).setPushConstantRanges(nullptr);
+		pipelineLayout = deviceWrapper.logicalDevice.createPipelineLayout(pipelineLayoutInfo);
+
+		// Finally, create actual render pipeline
+		vk::GraphicsPipelineCreateInfo graphicsPipelineInfo = vk::GraphicsPipelineCreateInfo()
+			.setStageCount(2)
+			.setPStages(shaderStages)
+			// fixed-function stages
+			.setPVertexInputState(&vertexInputInfo)
+			.setPInputAssemblyState(&inputAssemplyInfo)
+			.setPViewportState(&viewportStateInfo)
+			.setPRasterizationState(&rasterizerInfo)
+			.setPMultisampleState(&multisamplingInfo)
+			.setPDepthStencilState(&depthStencilInfo)
+			.setPColorBlendState(&colorBlendInfo)
+			.setPDynamicState(nullptr)
+			// pipeline layout
+			.setLayout(pipelineLayout)
+			// render pass
+			.setRenderPass(renderPass)
+			.setSubpass(0); // index for the subpass this render pipeline will use
+
+		vk::Result result;
+		std::tie(result, graphicsPipeline) = deviceWrapper.logicalDevice.createGraphicsPipeline(nullptr, graphicsPipelineInfo);
+		switch (result)
+		{
+			case vk::Result::eSuccess: break;
+			case vk::Result::ePipelineCompileRequiredEXT:
+				VMI_LOG("Graphics pipeline creation: PipelineCompileRequiredEXT");
+				break;
+			default: assert(false);
+		}
+	}
+
+	void create_geometry_pass_graphics_pipeline(DeviceWrapper& deviceWrapper)
+	{
+		vk::PipelineShaderStageCreateInfo vertStageInfo = vk::PipelineShaderStageCreateInfo()
+			.setStage(vk::ShaderStageFlagBits::eVertex)
+			.setModule(geometry_vs)
+			// entrypoint (one shader module with multiple entry points for different shading stages?)
+			.setPName("main")
+			.setPSpecializationInfo(nullptr); // constants for optimization
+
+		vk::PipelineShaderStageCreateInfo fragStageInfo = vk::PipelineShaderStageCreateInfo()
+			.setStage(vk::ShaderStageFlagBits::eFragment) // fragment == pixel shader in hlsl
+			.setModule(geometry_ps)
+			.setPName("main")
+			.setPSpecializationInfo(nullptr);
+		vk::PipelineShaderStageCreateInfo shaderStages[] = { vertStageInfo, fragStageInfo };
+
+		// Vertex Input descriptor
+		auto bindingDesc = Vertex::get_binding_desc();
+		auto attrDesc = Vertex::get_attr_desc();
+		vk::PipelineVertexInputStateCreateInfo vertexInputInfo = vk::PipelineVertexInputStateCreateInfo()
+			.setVertexBindingDescriptionCount(1)
+			.setVertexBindingDescriptions(bindingDesc)
+			.setVertexAttributeDescriptionCount(static_cast<uint32_t>(attrDesc.size()))
+			.setVertexAttributeDescriptions(attrDesc);
+
+		// Input Assembly
+		vk::PipelineInputAssemblyStateCreateInfo inputAssemplyInfo = vk::PipelineInputAssemblyStateCreateInfo()
+			.setTopology(vk::PrimitiveTopology::eTriangleList)
+			.setPrimitiveRestartEnable(VK_FALSE);
+
+		// Scissor Rect
+		vk::Rect2D scissorRect = vk::Rect2D()
+			.setOffset({ 0, 0 })
+			.setExtent(swapchainWrapper.extent);
+		// Viewport
+		vk::Viewport viewport = vk::Viewport()
+			.setX(0.0f)
+			.setY(0.0f)
+			.setWidth(static_cast<float>(swapchainWrapper.extent.width))
+			.setHeight(static_cast<float>(swapchainWrapper.extent.height))
+			.setMinDepth(0.0f)
+			.setMaxDepth(1.0f);
+
+		// Viewport state creation (viewport + scissor rect)
+		vk::PipelineViewportStateCreateInfo viewportStateInfo = vk::PipelineViewportStateCreateInfo()
+			.setViewportCount(1)
+			.setPViewports(&viewport)
+			.setScissorCount(1)
+			.setPScissors(&scissorRect);
+
+		// Rasterizer
+		vk::PipelineRasterizationStateCreateInfo rasterizerInfo = vk::PipelineRasterizationStateCreateInfo()
+			.setDepthClampEnable(VK_FALSE)
+			.setRasterizerDiscardEnable(VK_FALSE)
+			.setPolygonMode(vk::PolygonMode::eFill)
+			.setLineWidth(1.0f)
+			.setCullMode(vk::CullModeFlagBits::eBack)
+			.setFrontFace(vk::FrontFace::eClockwise)
+			.setDepthBiasEnable(VK_FALSE)
+			.setDepthBiasConstantFactor(0.0f)
+			.setDepthBiasClamp(0.0f)
+			.setDepthBiasSlopeFactor(0.0f);
+
+		// Multisampling
+		vk::PipelineMultisampleStateCreateInfo multisamplingInfo = vk::PipelineMultisampleStateCreateInfo()
+			.setSampleShadingEnable(VK_FALSE)
+			.setRasterizationSamples(vk::SampleCountFlagBits::e1)
+			.setMinSampleShading(1.0f)
+			.setPSampleMask(nullptr)
+			.setAlphaToCoverageEnable(VK_FALSE)
+			.setAlphaToOneEnable(VK_FALSE);
+
+		// Color Blending:
+		// 
+		// -> for each color attachment
+		vk::PipelineColorBlendAttachmentState colorBlendAttachment = vk::PipelineColorBlendAttachmentState()
+			.setColorWriteMask(
+				vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
+				vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA) // theoretically no need to write transparency
+			.setBlendEnable(VK_FALSE)
+			// color blend
+			.setSrcColorBlendFactor(vk::BlendFactor::eOne)
+			.setDstColorBlendFactor(vk::BlendFactor::eZero)
+			.setColorBlendOp(vk::BlendOp::eAdd)
+			// alpha blend
+			.setSrcAlphaBlendFactor(vk::BlendFactor::eOne)
+			.setDstAlphaBlendFactor(vk::BlendFactor::eZero)
+			.setAlphaBlendOp(vk::BlendOp::eAdd);
+		std::array<vk::PipelineColorBlendAttachmentState, 3> gbufferBlendAttachments = {
+			colorBlendAttachment, colorBlendAttachment, colorBlendAttachment
+		};
+		//
+		// -> global
+		vk::PipelineColorBlendStateCreateInfo colorBlendInfo = vk::PipelineColorBlendStateCreateInfo()
+			.setLogicOpEnable(VK_FALSE).setLogicOp(vk::LogicOp::eCopy)
+			.setAttachmentCount(gbufferBlendAttachments.size()).setPAttachments(gbufferBlendAttachments.data())
+			.setBlendConstants({ 0.0f, 0.0f, 0.0f, 0.0f });
+
+		vk::PipelineDepthStencilStateCreateInfo depthStencilInfo = vk::PipelineDepthStencilStateCreateInfo()
+			.setDepthTestEnable(VK_TRUE)
+			.setDepthWriteEnable(VK_TRUE)
+			.setDepthCompareOp(vk::CompareOp::eLessOrEqual)
+			// Depth bounds
+			.setDepthBoundsTestEnable(VK_FALSE)
+			.setMinDepthBounds(0.0f).setMaxDepthBounds(1.0f)
+			// Stencil
+			.setStencilTestEnable(VK_FALSE);
+
+		// Pipeline Layout
+		vk::PipelineLayoutCreateInfo pipelineLayoutInfo = vk::PipelineLayoutCreateInfo()
+			.setSetLayoutCount(1).setPSetLayouts(&mvpBuffer.get_desc_set_layout())
 			.setPushConstantRangeCount(0)
 			.setPushConstantRanges(nullptr);
 		pipelineLayout = deviceWrapper.logicalDevice.createPipelineLayout(pipelineLayoutInfo);
@@ -412,15 +552,11 @@ private:
 			.setLayout(pipelineLayout)
 			// render pass
 			.setRenderPass(renderPass)
-			.setSubpass(0) // index for the subpass this render pipeline will use
-			// parent pipeline
-			//.setFlags(vk::PipelineCreateFlagBits::eDerivative) // would be required for deriving from base pipelines
-			.setBasePipelineHandle(nullptr)
-			.setBasePipelineIndex(-1);
+			.setSubpass(0);
 
-		vk::Result result;
-		std::tie(result, graphicsPipeline) = deviceWrapper.logicalDevice.createGraphicsPipeline(nullptr, graphicsPipelineInfo);
-		switch (result)
+		auto result = deviceWrapper.logicalDevice.createGraphicsPipeline(nullptr, graphicsPipelineInfo);
+		geometryPassPipeline = result.value;
+		switch (result.result)
 		{
 			case vk::Result::eSuccess: break;
 			case vk::Result::ePipelineCompileRequiredEXT:
@@ -429,10 +565,155 @@ private:
 			default: assert(false);
 		}
 	}
-
-	void create_gbuffer_graphics_pipeline()
+	void create_lighting_pass_graphics_pipeline(DeviceWrapper& deviceWrapper)
 	{
-		// TODO
+		vk::PipelineShaderStageCreateInfo vertStageInfo = vk::PipelineShaderStageCreateInfo()
+			.setStage(vk::ShaderStageFlagBits::eVertex)
+			.setModule(lighting_vs)
+			// entrypoint (one shader module with multiple entry points for different shading stages?)
+			.setPName("main")
+			.setPSpecializationInfo(nullptr); // constants for optimization
+
+		vk::PipelineShaderStageCreateInfo fragStageInfo = vk::PipelineShaderStageCreateInfo()
+			.setStage(vk::ShaderStageFlagBits::eFragment) // fragment == pixel shader in hlsl
+			.setModule(lighting_ps)
+			.setPName("main")
+			.setPSpecializationInfo(nullptr);
+		vk::PipelineShaderStageCreateInfo shaderStages[] = { vertStageInfo, fragStageInfo };
+
+		// Vertex Input descriptor
+		auto bindingDesc = Vertex::get_binding_desc();
+		auto attrDesc = Vertex::get_attr_desc();
+		vk::PipelineVertexInputStateCreateInfo vertexInputInfo = vk::PipelineVertexInputStateCreateInfo()
+			.setVertexBindingDescriptionCount(1)
+			.setVertexBindingDescriptions(bindingDesc)
+			.setVertexAttributeDescriptionCount(static_cast<uint32_t>(attrDesc.size()))
+			.setVertexAttributeDescriptions(attrDesc);
+
+		// Input Assembly
+		vk::PipelineInputAssemblyStateCreateInfo inputAssemplyInfo = vk::PipelineInputAssemblyStateCreateInfo()
+			.setTopology(vk::PrimitiveTopology::eTriangleList)
+			.setPrimitiveRestartEnable(VK_FALSE);
+
+		// Scissor Rect
+		vk::Rect2D scissorRect = vk::Rect2D()
+			.setOffset({ 0, 0 })
+			.setExtent(swapchainWrapper.extent);
+		// Viewport
+		vk::Viewport viewport = vk::Viewport()
+			.setX(0.0f)
+			.setY(0.0f)
+			.setWidth(static_cast<float>(swapchainWrapper.extent.width))
+			.setHeight(static_cast<float>(swapchainWrapper.extent.height))
+			.setMinDepth(0.0f)
+			.setMaxDepth(1.0f);
+
+		// Viewport state creation (viewport + scissor rect)
+		vk::PipelineViewportStateCreateInfo viewportStateInfo = vk::PipelineViewportStateCreateInfo()
+			.setViewportCount(1)
+			.setPViewports(&viewport)
+			.setScissorCount(1)
+			.setPScissors(&scissorRect);
+
+		// Rasterizer
+		vk::PipelineRasterizationStateCreateInfo rasterizerInfo = vk::PipelineRasterizationStateCreateInfo()
+			.setDepthClampEnable(VK_FALSE)
+			.setRasterizerDiscardEnable(VK_FALSE)
+			.setPolygonMode(vk::PolygonMode::eFill)
+			.setLineWidth(1.0f)
+			.setCullMode(vk::CullModeFlagBits::eBack)
+			.setFrontFace(vk::FrontFace::eClockwise)
+			.setDepthBiasEnable(VK_FALSE)
+			.setDepthBiasConstantFactor(0.0f)
+			.setDepthBiasClamp(0.0f)
+			.setDepthBiasSlopeFactor(0.0f);
+
+		// Multisampling
+		vk::PipelineMultisampleStateCreateInfo multisamplingInfo = vk::PipelineMultisampleStateCreateInfo()
+			.setSampleShadingEnable(VK_FALSE)
+			.setRasterizationSamples(vk::SampleCountFlagBits::e1)
+			.setMinSampleShading(1.0f)
+			.setPSampleMask(nullptr)
+			.setAlphaToCoverageEnable(VK_FALSE)
+			.setAlphaToOneEnable(VK_FALSE);
+
+		// Color Blending:
+		// 
+		// -> for each color attachment
+		vk::PipelineColorBlendAttachmentState colorBlendAttachment = vk::PipelineColorBlendAttachmentState()
+			.setColorWriteMask(
+				vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
+				vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA) // theoretically no need to write transparency
+			.setBlendEnable(VK_FALSE)
+			// color blend
+			.setSrcColorBlendFactor(vk::BlendFactor::eOne)
+			.setDstColorBlendFactor(vk::BlendFactor::eZero)
+			.setColorBlendOp(vk::BlendOp::eAdd)
+			// alpha blend
+			.setSrcAlphaBlendFactor(vk::BlendFactor::eOne)
+			.setDstAlphaBlendFactor(vk::BlendFactor::eZero)
+			.setAlphaBlendOp(vk::BlendOp::eAdd);
+		std::array<vk::PipelineColorBlendAttachmentState, 3> gbufferBlendAttachments = {
+			colorBlendAttachment, colorBlendAttachment, colorBlendAttachment
+		};
+		//
+		// -> global
+		vk::PipelineColorBlendStateCreateInfo colorBlendInfo = vk::PipelineColorBlendStateCreateInfo()
+			.setLogicOpEnable(VK_FALSE).setLogicOp(vk::LogicOp::eCopy)
+			.setAttachmentCount(gbufferBlendAttachments.size()).setPAttachments(gbufferBlendAttachments.data())
+			.setBlendConstants({ 0.0f, 0.0f, 0.0f, 0.0f });
+
+		vk::PipelineDepthStencilStateCreateInfo depthStencilInfo = vk::PipelineDepthStencilStateCreateInfo()
+			.setDepthTestEnable(VK_FALSE)
+			.setDepthWriteEnable(VK_FALSE)
+			.setDepthCompareOp(vk::CompareOp::eLessOrEqual)
+			// Depth bounds
+			.setDepthBoundsTestEnable(VK_FALSE)
+			.setMinDepthBounds(0.0f).setMaxDepthBounds(1.0f)
+			// Stencil
+			.setStencilTestEnable(VK_FALSE);
+
+		// Pipeline Layout
+		std::array<vk::DescriptorSetLayout, 3> layouts = {
+			ringBuffer.frames[0].gPosDescSetLayout,
+			ringBuffer.frames[0].gColDescSetLayout,
+			ringBuffer.frames[0].gNormDescSetLayout
+		};
+		vk::PipelineLayoutCreateInfo pipelineLayoutInfo = vk::PipelineLayoutCreateInfo()
+			.setSetLayoutCount(3).setPSetLayouts(layouts.data())
+			.setPushConstantRangeCount(0)
+			.setPushConstantRanges(nullptr);
+		pipelineLayout = deviceWrapper.logicalDevice.createPipelineLayout(pipelineLayoutInfo);
+
+		// Finally, create actual render pipeline
+		vk::GraphicsPipelineCreateInfo graphicsPipelineInfo = vk::GraphicsPipelineCreateInfo()
+			.setStageCount(2)
+			.setPStages(shaderStages)
+			// fixed-function stages
+			.setPVertexInputState(&vertexInputInfo)
+			.setPInputAssemblyState(&inputAssemplyInfo)
+			.setPViewportState(&viewportStateInfo)
+			.setPRasterizationState(&rasterizerInfo)
+			.setPMultisampleState(&multisamplingInfo)
+			.setPDepthStencilState(&depthStencilInfo)
+			.setPColorBlendState(&colorBlendInfo)
+			.setPDynamicState(nullptr)
+			// pipeline layout
+			.setLayout(pipelineLayout)
+			// render pass
+			.setRenderPass(renderPass)
+			.setSubpass(1);
+
+		auto result = deviceWrapper.logicalDevice.createGraphicsPipeline(nullptr, graphicsPipelineInfo);
+		geometryPassPipeline = result.value;
+		switch (result.result)
+		{
+			case vk::Result::eSuccess: break;
+			case vk::Result::ePipelineCompileRequiredEXT:
+				VMI_LOG("Graphics pipeline creation: PipelineCompileRequiredEXT");
+				break;
+			default: assert(false);
+		}
 	}
 
 
@@ -589,6 +870,7 @@ private:
 		commandBuffer.end();
 	}
 
+	// TODO: create render pass wrapper for geometry and lighting pass
 private:
 	uint32_t nMaxFrames = 2; // max frames in flight
 
@@ -596,7 +878,13 @@ private:
 	SwapchainWrapper swapchainWrapper;
 	RingBuffer ringBuffer;
 
+	// todo: shove to render pass wrapper
 	vk::ShaderModule vs, ps;
+	vk::ShaderModule geometry_vs, geometry_ps;
+	vk::ShaderModule lighting_vs, lighting_ps;
+	vk::Pipeline geometryPassPipeline;
+	vk::Pipeline lightingPassPipeline;
+
 	vk::RenderPass renderPass;
 	vk::Pipeline graphicsPipeline;
 	vk::PipelineLayout pipelineLayout;
