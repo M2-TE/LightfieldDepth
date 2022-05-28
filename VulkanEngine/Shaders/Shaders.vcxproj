@@ -84,27 +84,31 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <None Include="src\dxc\dxc.targets" />
+    <DXCShaderPS Include="src\gbuffer\gbuffer_read.ps" />
+    <DXCShaderPS Include="src\gbuffer\gbuffer_write.ps" />
     <DXCShaderPS Include="src\shader.ps">
       <FileType>Document</FileType>
     </DXCShaderPS>
+    <DXCShaderVS Include="src\gbuffer\gbuffer_read.vs" />
+    <DXCShaderVS Include="src\gbuffer\gbuffer_write.vs" />
     <DXCShaderVS Include="src\shader.vs">
       <FileType>Document</FileType>
     </DXCShaderVS>
   </ItemGroup>
   <ItemGroup>
-    <Xml Include="src\dxc\dxc.xml" />
+    <ClCompile Include="include\shaders.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\include\shaders.cpp" />
+    <ClInclude Include="include\shaders.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\headers\shader.ps.hpp" />
-    <ClInclude Include="src\headers\shader.vs.hpp" />
-    <ClInclude Include="src\include\shaders.hpp" />
+    <Xml Include="dxc\dxc.xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="dxc\dxc.targets" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
-    <Import Project="src\dxc\dxc.targets" />
+    <Import Project="dxc\dxc.targets" />
   </ImportGroup>
 </Project>

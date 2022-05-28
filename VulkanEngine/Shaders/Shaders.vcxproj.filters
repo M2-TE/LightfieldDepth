@@ -15,31 +15,29 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="src\dxc\dxc.targets" />
-  </ItemGroup>
-  <ItemGroup>
-    <Xml Include="src\dxc\dxc.xml" />
-  </ItemGroup>
-  <ItemGroup>
     <DXCShaderPS Include="src\shader.ps" />
+    <DXCShaderPS Include="src\gbuffer\gbuffer_read.ps" />
+    <DXCShaderPS Include="src\gbuffer\gbuffer_write.ps" />
   </ItemGroup>
   <ItemGroup>
     <DXCShaderVS Include="src\shader.vs" />
+    <DXCShaderVS Include="src\gbuffer\gbuffer_read.vs" />
+    <DXCShaderVS Include="src\gbuffer\gbuffer_write.vs" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\include\shaders.cpp">
+    <ClCompile Include="include\shaders.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\include\shaders.hpp">
+    <ClInclude Include="include\shaders.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\headers\shader.ps.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\headers\shader.vs.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Xml Include="dxc\dxc.xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="dxc\dxc.targets" />
   </ItemGroup>
 </Project>

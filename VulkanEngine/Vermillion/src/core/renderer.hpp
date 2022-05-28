@@ -243,10 +243,10 @@ private:
 			if(false)
 			{
 				std::array<vk::AttachmentReference, 4> input = {
-					vk::AttachmentReference(999, vk::ImageLayout::eShaderReadOnlyOptimal), // gCol
-					vk::AttachmentReference(999, vk::ImageLayout::eShaderReadOnlyOptimal), // gPos
-					vk::AttachmentReference(999, vk::ImageLayout::eShaderReadOnlyOptimal), // gNorm
-					vk::AttachmentReference(999, vk::ImageLayout::eShaderReadOnlyOptimal), // depth
+					vk::AttachmentReference(1, vk::ImageLayout::eShaderReadOnlyOptimal), // depth
+					vk::AttachmentReference(2, vk::ImageLayout::eShaderReadOnlyOptimal), // gCol
+					vk::AttachmentReference(3, vk::ImageLayout::eShaderReadOnlyOptimal), // gPos
+					vk::AttachmentReference(4, vk::ImageLayout::eShaderReadOnlyOptimal), // gNorm
 				};
 				vk::AttachmentReference swapchainRef = vk::AttachmentReference(0, vk::ImageLayout::eColorAttachmentOptimal);
 
@@ -429,6 +429,16 @@ private:
 			default: assert(false);
 		}
 	}
+
+	void create_gbuffer_desc_stuff()
+	{
+		// TODO
+	}
+	void create_gbuffer_graphics_pipeline()
+	{
+		// TODO
+	}
+
 
 	void create_shader_modules(DeviceWrapper& deviceWrapper)
 	{
