@@ -5,13 +5,13 @@ extern const unsigned char shader_ps[];
 extern const size_t shader_vs_size;
 extern const size_t shader_ps_size;
 
-// gbuffer write
-extern const unsigned char gbuffer_write_vs[];
-extern const unsigned char gbuffer_write_ps[];
-extern const size_t gbuffer_write_vs_size;
-extern const size_t gbuffer_write_ps_size;
-// gbuffer read
-extern const unsigned char gbuffer_read_vs[];
-extern const unsigned char gbuffer_read_ps[];
-extern const size_t gbuffer_read_vs_size;
-extern const size_t gbuffer_read_ps_size;
+// GBuffer: geometry pass
+extern const unsigned char geometry_pass_vs[];
+extern const unsigned char geometry_pass_ps[];
+extern const size_t geometry_pass_vs_size;
+extern const size_t geometry_pass_ps_size;
+// GBuffer: lighting pass
+extern const unsigned char lighting_pass_vs[];
+extern const unsigned char lighting_pass_ps[];
+extern const size_t lighting_pass_vs_size;
+extern const size_t lighting_pass_ps_size;

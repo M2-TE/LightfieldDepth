@@ -16,13 +16,13 @@
   </ItemGroup>
   <ItemGroup>
     <DXCShaderPS Include="src\shader.ps" />
-    <DXCShaderPS Include="src\gbuffer\gbuffer_read.ps" />
-    <DXCShaderPS Include="src\gbuffer\gbuffer_write.ps" />
+    <DXCShaderPS Include="src\gbuffer\lighting_pass.ps" />
+    <DXCShaderPS Include="src\gbuffer\geometry_pass.ps" />
   </ItemGroup>
   <ItemGroup>
     <DXCShaderVS Include="src\shader.vs" />
-    <DXCShaderVS Include="src\gbuffer\gbuffer_read.vs" />
-    <DXCShaderVS Include="src\gbuffer\gbuffer_write.vs" />
+    <DXCShaderVS Include="src\gbuffer\lighting_pass.vs" />
+    <DXCShaderVS Include="src\gbuffer\geometry_pass.vs" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="include\shaders.cpp">

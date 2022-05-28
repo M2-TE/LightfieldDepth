@@ -84,13 +84,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <DXCShaderPS Include="src\gbuffer\gbuffer_read.ps" />
-    <DXCShaderPS Include="src\gbuffer\gbuffer_write.ps" />
+    <DXCShaderPS Include="src\gbuffer\lighting_pass.ps" />
+    <DXCShaderPS Include="src\gbuffer\geometry_pass.ps" />
     <DXCShaderPS Include="src\shader.ps">
       <FileType>Document</FileType>
     </DXCShaderPS>
-    <DXCShaderVS Include="src\gbuffer\gbuffer_read.vs" />
-    <DXCShaderVS Include="src\gbuffer\gbuffer_write.vs" />
+    <DXCShaderVS Include="src\gbuffer\lighting_pass.vs" />
+    <DXCShaderVS Include="src\gbuffer\geometry_pass.vs" />
     <DXCShaderVS Include="src\shader.vs">
       <FileType>Document</FileType>
     </DXCShaderVS>
