@@ -1,6 +1,6 @@
-[[vk::input_attachment_index(0)]] SubpassInput<float4> gPos;
-[[vk::input_attachment_index(1)]] SubpassInput<float4> gCol;
-[[vk::input_attachment_index(2)]] SubpassInput<float4> gNorm;
+[[vk::input_attachment_index(0)]] SubpassInput gPos;
+[[vk::input_attachment_index(1)]] SubpassInput gCol;
+[[vk::input_attachment_index(2)]] SubpassInput gNorm;
 
 float4 main(float4 screenPos : SV_Position) : SV_Target
 {

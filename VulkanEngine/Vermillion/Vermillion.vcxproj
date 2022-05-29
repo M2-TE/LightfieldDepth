@@ -102,6 +102,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\core\application.hpp" />
+    <ClInclude Include="src\core\deferred_rendering\deferred_renderpass.hpp" />
+    <ClInclude Include="src\core\deferred_rendering\gbuffer.hpp" />
     <ClInclude Include="src\core\device_manager.hpp" />
     <ClInclude Include="src\core\ring_buffer.hpp" />
     <ClInclude Include="src\core\geometry\indexed_geometry.hpp" />

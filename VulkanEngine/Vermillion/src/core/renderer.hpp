@@ -8,6 +8,7 @@
 #include "wrappers/uniform_buffer_wrapper.hpp"
 #include "wrappers/render_pass_wrapper.hpp"
 #include "geometry/indexed_geometry.hpp"
+#include "deferred_rendering/deferred_renderpass.hpp"
 
 struct UniformBufferObject 
 {
