@@ -2,6 +2,12 @@
 
 #include "wrappers/swapchain_wrapper.hpp"
 
+
+
+
+// TODO: have only a single buffer and offset into it depending on iFrame instead of all these vectors?
+
+
 struct SyncFrame
 {
 	uint32_t index;
@@ -32,8 +38,9 @@ struct RingFrame
 	// gbuffer images
 	std::pair<vk::Image, vma::Allocation> gPosAlloc, gColAlloc, gNormAlloc;
 	vk::ImageView gPosImageView, gColImageView, gNormImageView;
-	vk::DescriptorSet gPosDescSet, gColDescSet, gNormDescSet;
-	vk::DescriptorSetLayout gPosDescSetLayout, gColDescSetLayout, gNormDescSetLayout;
+
+	vk::DescriptorSet gDescSet;
+	vk::DescriptorSetLayout gDescSetLayout;
 };
 
 class RingBuffer
@@ -201,7 +208,6 @@ private:
 			frames[i].gColImageView = deviceWrapper.logicalDevice.createImageView(imageViewInfo);
 		}
 
-
 		// gNormImageView
 		imageViewInfo.setFormat(vk::Format::eR8G8B8A8Snorm); // normalized between -1 and 1
 		for (size_t i = 0; i < frames.size(); i++) {
@@ -227,50 +233,18 @@ private:
 		for (size_t i = 0; i < frames.size(); i++) {
 
 			// allocate desc sets
-			{
-				// gPos image
-				{
-					// create descriptor set layout from all the bindings
-					vk::DescriptorSetLayoutCreateInfo createInfo = vk::DescriptorSetLayoutCreateInfo()
-						.setBindingCount(1)
-						.setBindings(setLayoutBindings[0]);
-					frames[i].gPosDescSetLayout = deviceWrapper.logicalDevice.createDescriptorSetLayout(createInfo);
+			
+			// create descriptor set layout from all the bindings
+			vk::DescriptorSetLayoutCreateInfo createInfo = vk::DescriptorSetLayoutCreateInfo()
+				.setBindingCount(3)
+				.setPBindings(setLayoutBindings.data());
+			frames[i].gDescSetLayout = deviceWrapper.logicalDevice.createDescriptorSetLayout(createInfo);
 
-					// allocate the descriptor sets using descriptor pool
-					vk::DescriptorSetAllocateInfo allocInfo = vk::DescriptorSetAllocateInfo()
-						.setDescriptorPool(descPool)
-						.setDescriptorSetCount(1).setPSetLayouts(&frames[i].gPosDescSetLayout);
-					frames[i].gPosDescSet = deviceWrapper.logicalDevice.allocateDescriptorSets(allocInfo)[0];
-				}
-				// gCol image
-				{
-					// create descriptor set layout from all the bindings
-					vk::DescriptorSetLayoutCreateInfo createInfo = vk::DescriptorSetLayoutCreateInfo()
-						.setBindingCount(1)
-						.setBindings(setLayoutBindings[1]);
-					frames[i].gColDescSetLayout = deviceWrapper.logicalDevice.createDescriptorSetLayout(createInfo);
-
-					// allocate the descriptor sets using descriptor pool
-					vk::DescriptorSetAllocateInfo allocInfo = vk::DescriptorSetAllocateInfo()
-						.setDescriptorPool(descPool)
-						.setDescriptorSetCount(1).setPSetLayouts(&frames[i].gColDescSetLayout);
-					frames[i].gColDescSet = deviceWrapper.logicalDevice.allocateDescriptorSets(allocInfo)[0];
-				}
-				// gNorm image
-				{
-					// create descriptor set layout from all the bindings
-					vk::DescriptorSetLayoutCreateInfo createInfo = vk::DescriptorSetLayoutCreateInfo()
-						.setBindingCount(1)
-						.setBindings(setLayoutBindings[0]);
-					frames[i].gNormDescSetLayout = deviceWrapper.logicalDevice.createDescriptorSetLayout(createInfo);
-
-					// allocate the descriptor sets using descriptor pool
-					vk::DescriptorSetAllocateInfo allocInfo = vk::DescriptorSetAllocateInfo()
-						.setDescriptorPool(descPool)
-						.setDescriptorSetCount(1).setPSetLayouts(&frames[i].gNormDescSetLayout);
-					frames[i].gNormDescSet = deviceWrapper.logicalDevice.allocateDescriptorSets(allocInfo)[0];
-				}
-			}
+			// allocate the descriptor sets using descriptor pool
+			vk::DescriptorSetAllocateInfo allocInfo = vk::DescriptorSetAllocateInfo()
+				.setDescriptorPool(descPool)
+				.setDescriptorSetCount(1).setPSetLayouts(&frames[i].gDescSetLayout);
+			frames[i].gDescSet = deviceWrapper.logicalDevice.allocateDescriptorSets(allocInfo)[0];
 
 			std::array<vk::DescriptorImageInfo, 3> descriptors;
 			// gPos image
@@ -289,39 +263,17 @@ private:
 				.setImageView(frames[i].gNormImageView)
 				.setSampler(nullptr);
 
-			std::array<vk::WriteDescriptorSet, 3> descBufferWrites;
+			std::array<vk::WriteDescriptorSet, 1> descBufferWrites;
 			// gPos desc set
 			descBufferWrites[0] = vk::WriteDescriptorSet()
-				.setDstSet(frames[i].gPosDescSet)
+				.setDstSet(frames[i].gDescSet)
 				.setDstBinding(0)
 				.setDstArrayElement(0)
-				.setDescriptorType(setLayoutBindings[0].descriptorType)
-				.setDescriptorCount(setLayoutBindings[0].descriptorCount)
+				.setDescriptorType(vk::DescriptorType::eInputAttachment)
+				.setDescriptorCount(3)
 				//
 				.setPBufferInfo(nullptr)
-				.setPImageInfo(&descriptors[0])
-				.setPTexelBufferView(nullptr);
-			// gCol desc set
-			descBufferWrites[1] = vk::WriteDescriptorSet()
-				.setDstSet(frames[i].gPosDescSet)
-				.setDstBinding(0)
-				.setDstArrayElement(0)
-				.setDescriptorType(setLayoutBindings[1].descriptorType)
-				.setDescriptorCount(setLayoutBindings[1].descriptorCount)
-				//
-				.setPBufferInfo(nullptr)
-				.setPImageInfo(&descriptors[1])
-				.setPTexelBufferView(nullptr);
-			// gNorm desc set
-			descBufferWrites[2] = vk::WriteDescriptorSet()
-				.setDstSet(frames[i].gPosDescSet)
-				.setDstBinding(0)
-				.setDstArrayElement(0)
-				.setDescriptorType(setLayoutBindings[2].descriptorType)
-				.setDescriptorCount(setLayoutBindings[2].descriptorCount)
-				//
-				.setPBufferInfo(nullptr)
-				.setPImageInfo(&descriptors[2])
+				.setPImageInfo(descriptors.data())
 				.setPTexelBufferView(nullptr);
 
 			deviceWrapper.logicalDevice.updateDescriptorSets(descBufferWrites, {});
@@ -364,7 +316,6 @@ private:
 	{
 		size_t size = frames.size();
 
-		VMI_LOG("TODO: adjust attachment size of framebuffer");
 		for (size_t i = 0; i < size; i++) {
 			std::array<vk::ImageView, 5> attachments = { 
 				frames[i].swapchainImageView, 
@@ -439,9 +390,7 @@ private:
 			deviceWrapper.logicalDevice.destroyImageView(frames[i].gColImageView);
 			deviceWrapper.logicalDevice.destroyImageView(frames[i].gPosImageView);
 			deviceWrapper.logicalDevice.destroyImageView(frames[i].gNormImageView);
-			deviceWrapper.logicalDevice.destroyDescriptorSetLayout(frames[i].gPosDescSetLayout);
-			deviceWrapper.logicalDevice.destroyDescriptorSetLayout(frames[i].gColDescSetLayout);
-			deviceWrapper.logicalDevice.destroyDescriptorSetLayout(frames[i].gNormDescSetLayout);
+			deviceWrapper.logicalDevice.destroyDescriptorSetLayout(frames[i].gDescSetLayout);
 		}
 	}
 
@@ -476,6 +425,7 @@ private:
 	}
 
 public:
+
 	std::vector<RingFrame> frames;
 private:
 	std::vector<SyncFrame> syncFrames;

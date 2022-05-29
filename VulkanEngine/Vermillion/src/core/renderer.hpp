@@ -147,8 +147,6 @@ private:
 		create_render_pass(deviceWrapper);
 		ringBuffer.create_all(deviceWrapper, allocator, renderPass, swapchainWrapper, descPool);
 
-		create_graphics_pipeline(deviceWrapper);
-
 		create_geometry_pass_graphics_pipeline(deviceWrapper);
 		create_lighting_pass_graphics_pipeline(deviceWrapper);
 
@@ -156,8 +154,6 @@ private:
 	void destroy_KHR(DeviceWrapper& deviceWrapper)
 	{
 		deviceWrapper.logicalDevice.destroyRenderPass(renderPass);
-		deviceWrapper.logicalDevice.destroyPipeline(graphicsPipeline);
-		deviceWrapper.logicalDevice.destroyPipelineLayout(pipelineLayout);
 
 		deviceWrapper.logicalDevice.destroyPipeline(geometryPassPipeline);
 		deviceWrapper.logicalDevice.destroyPipeline(lightingPassPipeline);
@@ -236,202 +232,86 @@ private:
 			}
 		}
 		
-		std::array<vk::SubpassDescription, 1> subpasses;
+		std::array<vk::SubpassDescription, 2> subpasses;
 		{
 			// first subpass (write to gbuffer and depth)
 			{
-				vk::AttachmentReference colorAttachmentRef = vk::AttachmentReference(0, vk::ImageLayout::eColorAttachmentOptimal);
 				vk::AttachmentReference depthAttachmentRef = vk::AttachmentReference(1, vk::ImageLayout::eDepthStencilAttachmentOptimal);
+
+				std::array<vk::AttachmentReference, 0> input = {
+				};
+
+				std::array<vk::AttachmentReference, 3> output = {
+					vk::AttachmentReference(2, vk::ImageLayout::eColorAttachmentOptimal), // gPos
+					vk::AttachmentReference(3, vk::ImageLayout::eColorAttachmentOptimal), // gCol
+					vk::AttachmentReference(4, vk::ImageLayout::eColorAttachmentOptimal), // gNorm
+				};
 
 				subpasses[0] = vk::SubpassDescription()
 					.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
 					.setPDepthStencilAttachment(&depthAttachmentRef)
-					.setColorAttachmentCount(1).setPColorAttachments(&colorAttachmentRef)
-					.setInputAttachmentCount(0).setPInputAttachments(nullptr)
+					.setInputAttachmentCount(input.size()).setPInputAttachments(input.data())
+					.setColorAttachmentCount(output.size()).setPColorAttachments(output.data())
 					// misc other:
 					.setPreserveAttachmentCount(0).setPPreserveAttachments(nullptr)
 					.setPResolveAttachments(nullptr);
 			}
 
 			// second subpass (read gbuffer, write to swapchain)
-			if(false)
 			{
-				std::array<vk::AttachmentReference, 4> input = {
-					vk::AttachmentReference(1, vk::ImageLayout::eShaderReadOnlyOptimal), // depth
+				std::array<vk::AttachmentReference, 3> input = {
 					vk::AttachmentReference(2, vk::ImageLayout::eShaderReadOnlyOptimal), // gPos
 					vk::AttachmentReference(3, vk::ImageLayout::eShaderReadOnlyOptimal), // gCol
 					vk::AttachmentReference(4, vk::ImageLayout::eShaderReadOnlyOptimal), // gNorm
 				};
-				vk::AttachmentReference swapchainRef = vk::AttachmentReference(0, vk::ImageLayout::eColorAttachmentOptimal);
+
+				std::array<vk::AttachmentReference, 1> output = {
+					vk::AttachmentReference(0, vk::ImageLayout::eColorAttachmentOptimal), // swapchain image
+				};
 
 				subpasses[1] = vk::SubpassDescription()
 					.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
 					.setPDepthStencilAttachment(nullptr)
-					.setColorAttachmentCount(1).setPColorAttachments(&swapchainRef)
 					.setInputAttachmentCount(input.size()).setPInputAttachments(input.data())
+					.setColorAttachmentCount(output.size()).setPColorAttachments(output.data())
 					// misc other:
 					.setPreserveAttachmentCount(0).setPPreserveAttachments(nullptr)
 					.setPResolveAttachments(nullptr);
 			}
 		}
 
-		vk::SubpassDependency dependency = vk::SubpassDependency()
+		std::array<vk::SubpassDependency, 2> dependencies;
+
+		// geometry pass
+		dependencies[0] = vk::SubpassDependency()
 			.setDependencyFlags(vk::DependencyFlagBits::eByRegion) // for tiled GPUs.. i think.
 			// src (when/what to wait on)
 			.setSrcSubpass(VK_SUBPASS_EXTERNAL)
-			.setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eLateFragmentTests)
+			.setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
 			.setSrcAccessMask(vk::AccessFlagBits::eNoneKHR)
 			// dst (when/what to write to)
 			.setDstSubpass(0)
 			.setDstStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests)
 			.setDstAccessMask(vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentWrite);
 
+		// lighting pass
+		dependencies[1] = vk::SubpassDependency()
+			.setDependencyFlags(vk::DependencyFlagBits::eByRegion) // for tiled GPUs.. i think.
+			// src (when/what to wait on)
+			.setSrcSubpass(0)
+			.setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
+			.setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentRead)
+			// dst (when/what to write to)
+			.setDstSubpass(1)
+			.setDstStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
+			.setDstAccessMask(vk::AccessFlagBits::eColorAttachmentWrite);
+
 		vk::RenderPassCreateInfo renderPassInfo = vk::RenderPassCreateInfo()
 			.setAttachmentCount(attachments.size()).setPAttachments(attachments.data())
 			.setSubpassCount(subpasses.size()).setPSubpasses(subpasses.data())
-			.setDependencyCount(1).setPDependencies(&dependency);
+			.setDependencyCount(dependencies.size()).setPDependencies(dependencies.data());
 
 		renderPass = deviceWrapper.logicalDevice.createRenderPass(renderPassInfo);
-	}
-	void create_graphics_pipeline(DeviceWrapper& deviceWrapper)
-	{
-		vk::PipelineShaderStageCreateInfo vertStageInfo = vk::PipelineShaderStageCreateInfo()
-			.setStage(vk::ShaderStageFlagBits::eVertex)
-			.setModule(vs)
-			// entrypoint (one shader module with multiple entry points for different shading stages?)
-			.setPName("main")
-			.setPSpecializationInfo(nullptr); // constants for optimization
-
-		vk::PipelineShaderStageCreateInfo fragStageInfo = vk::PipelineShaderStageCreateInfo()
-			.setStage(vk::ShaderStageFlagBits::eFragment) // fragment == pixel shader in hlsl
-			.setModule(ps)
-			.setPName("main")
-			.setPSpecializationInfo(nullptr);
-		vk::PipelineShaderStageCreateInfo shaderStages[] = { vertStageInfo, fragStageInfo };
-
-		// Vertex Input descriptor
-		auto bindingDesc = Vertex::get_binding_desc();
-		auto attrDesc = Vertex::get_attr_desc();
-		vk::PipelineVertexInputStateCreateInfo vertexInputInfo = vk::PipelineVertexInputStateCreateInfo()
-			.setVertexBindingDescriptionCount(1)
-			.setVertexBindingDescriptions(bindingDesc)
-			.setVertexAttributeDescriptionCount(static_cast<uint32_t>(attrDesc.size()))
-			.setVertexAttributeDescriptions(attrDesc);
-
-		// Input Assembly
-		vk::PipelineInputAssemblyStateCreateInfo inputAssemplyInfo = vk::PipelineInputAssemblyStateCreateInfo()
-			.setTopology(vk::PrimitiveTopology::eTriangleList)
-			.setPrimitiveRestartEnable(VK_FALSE);
-
-		// Scissor Rect
-		vk::Rect2D scissorRect = vk::Rect2D()
-			.setOffset({ 0, 0 })
-			.setExtent(swapchainWrapper.extent);
-		// Viewport
-		vk::Viewport viewport = vk::Viewport()
-			.setX(0.0f)
-			.setY(0.0f)
-			.setWidth(static_cast<float>(swapchainWrapper.extent.width))
-			.setHeight(static_cast<float>(swapchainWrapper.extent.height))
-			.setMinDepth(0.0f)
-			.setMaxDepth(1.0f);
-
-		// Viewport state creation (viewport + scissor rect)
-		vk::PipelineViewportStateCreateInfo viewportStateInfo = vk::PipelineViewportStateCreateInfo()
-			.setViewportCount(1)
-			.setPViewports(&viewport)
-			.setScissorCount(1)
-			.setPScissors(&scissorRect);
-
-		// Rasterizer
-		vk::PipelineRasterizationStateCreateInfo rasterizerInfo = vk::PipelineRasterizationStateCreateInfo()
-			.setDepthClampEnable(VK_FALSE)
-			.setRasterizerDiscardEnable(VK_FALSE)
-			.setPolygonMode(vk::PolygonMode::eFill)
-			.setLineWidth(1.0f)
-			.setCullMode(vk::CullModeFlagBits::eBack)
-			.setFrontFace(vk::FrontFace::eClockwise)
-			.setDepthBiasEnable(VK_FALSE)
-			.setDepthBiasConstantFactor(0.0f)
-			.setDepthBiasClamp(0.0f)
-			.setDepthBiasSlopeFactor(0.0f);
-
-		// Multisampling
-		vk::PipelineMultisampleStateCreateInfo multisamplingInfo = vk::PipelineMultisampleStateCreateInfo()
-			.setSampleShadingEnable(VK_FALSE)
-			.setRasterizationSamples(vk::SampleCountFlagBits::e1)
-			.setMinSampleShading(1.0f)
-			.setPSampleMask(nullptr)
-			.setAlphaToCoverageEnable(VK_FALSE)
-			.setAlphaToOneEnable(VK_FALSE);
-
-		// Color Blending:
-		
-		// -> for each color attachment
-		vk::PipelineColorBlendAttachmentState colorBlendAttachment = vk::PipelineColorBlendAttachmentState()
-			.setColorWriteMask(
-				vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
-				vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA) // theoretically no need to write transparency
-			.setBlendEnable(VK_FALSE)
-			// color blend
-			.setSrcColorBlendFactor(vk::BlendFactor::eOne)
-			.setDstColorBlendFactor(vk::BlendFactor::eZero)
-			.setColorBlendOp(vk::BlendOp::eAdd)
-			// alpha blend
-			.setSrcAlphaBlendFactor(vk::BlendFactor::eOne)
-			.setDstAlphaBlendFactor(vk::BlendFactor::eZero)
-			.setAlphaBlendOp(vk::BlendOp::eAdd);
-		// -> global
-		vk::PipelineColorBlendStateCreateInfo colorBlendInfo = vk::PipelineColorBlendStateCreateInfo()
-			.setLogicOpEnable(VK_FALSE).setLogicOp(vk::LogicOp::eCopy)
-			.setAttachmentCount(1).setPAttachments(&colorBlendAttachment)
-			.setBlendConstants({ 0.0f, 0.0f, 0.0f, 0.0f });
-
-		vk::PipelineDepthStencilStateCreateInfo depthStencilInfo = vk::PipelineDepthStencilStateCreateInfo()
-			.setDepthTestEnable(VK_TRUE)
-			.setDepthWriteEnable(VK_TRUE)
-			.setDepthCompareOp(vk::CompareOp::eLessOrEqual)
-			// Depth bounds
-			.setDepthBoundsTestEnable(VK_FALSE)
-			.setMinDepthBounds(0.0f).setMaxDepthBounds(1.0f)
-			// Stencil
-			.setStencilTestEnable(VK_FALSE);
-
-		// Pipeline Layout
-		vk::PipelineLayoutCreateInfo pipelineLayoutInfo = vk::PipelineLayoutCreateInfo()
-			.setSetLayoutCount(1).setSetLayouts(mvpBuffer.get_desc_set_layout())
-			.setPushConstantRangeCount(0).setPushConstantRanges(nullptr);
-		pipelineLayout = deviceWrapper.logicalDevice.createPipelineLayout(pipelineLayoutInfo);
-
-		// Finally, create actual render pipeline
-		vk::GraphicsPipelineCreateInfo graphicsPipelineInfo = vk::GraphicsPipelineCreateInfo()
-			.setStageCount(2)
-			.setPStages(shaderStages)
-			// fixed-function stages
-			.setPVertexInputState(&vertexInputInfo)
-			.setPInputAssemblyState(&inputAssemplyInfo)
-			.setPViewportState(&viewportStateInfo)
-			.setPRasterizationState(&rasterizerInfo)
-			.setPMultisampleState(&multisamplingInfo)
-			.setPDepthStencilState(&depthStencilInfo)
-			.setPColorBlendState(&colorBlendInfo)
-			.setPDynamicState(nullptr)
-			// pipeline layout
-			.setLayout(pipelineLayout)
-			// render pass
-			.setRenderPass(renderPass)
-			.setSubpass(0); // index for the subpass this render pipeline will use
-
-		vk::Result result;
-		std::tie(result, graphicsPipeline) = deviceWrapper.logicalDevice.createGraphicsPipeline(nullptr, graphicsPipelineInfo);
-		switch (result)
-		{
-			case vk::Result::eSuccess: break;
-			case vk::Result::ePipelineCompileRequiredEXT:
-				VMI_LOG("Graphics pipeline creation: PipelineCompileRequiredEXT");
-				break;
-			default: assert(false);
-		}
 	}
 
 	void create_geometry_pass_graphics_pipeline(DeviceWrapper& deviceWrapper)
@@ -581,19 +461,21 @@ private:
 	}
 	void create_lighting_pass_graphics_pipeline(DeviceWrapper& deviceWrapper)
 	{
-		vk::PipelineShaderStageCreateInfo vertStageInfo = vk::PipelineShaderStageCreateInfo()
-			.setStage(vk::ShaderStageFlagBits::eVertex)
-			.setModule(lighting_vs)
-			// entrypoint (one shader module with multiple entry points for different shading stages?)
-			.setPName("main")
-			.setPSpecializationInfo(nullptr); // constants for optimization
+		std::array<vk::PipelineShaderStageCreateInfo, 2> shaderStages;
+		{
+			shaderStages[0] = vk::PipelineShaderStageCreateInfo()
+				.setStage(vk::ShaderStageFlagBits::eVertex)
+				.setModule(lighting_vs)
+				// entrypoint (one shader module with multiple entry points for different shading stages?)
+				.setPName("main")
+				.setPSpecializationInfo(nullptr); // constants for optimization
 
-		vk::PipelineShaderStageCreateInfo fragStageInfo = vk::PipelineShaderStageCreateInfo()
-			.setStage(vk::ShaderStageFlagBits::eFragment) // fragment == pixel shader in hlsl
-			.setModule(lighting_ps)
-			.setPName("main")
-			.setPSpecializationInfo(nullptr);
-		vk::PipelineShaderStageCreateInfo shaderStages[] = { vertStageInfo, fragStageInfo };
+			shaderStages[1] = vk::PipelineShaderStageCreateInfo()
+				.setStage(vk::ShaderStageFlagBits::eFragment) // fragment == pixel shader in hlsl
+				.setModule(lighting_ps)
+				.setPName("main")
+				.setPSpecializationInfo(nullptr);
+		}
 
 		// Vertex Input descriptor
 		vk::PipelineVertexInputStateCreateInfo vertexInputInfo = vk::PipelineVertexInputStateCreateInfo()
@@ -683,21 +565,17 @@ private:
 			.setStencilTestEnable(VK_FALSE);
 
 		// Pipeline Layout
-		std::array<vk::DescriptorSetLayout, 3> layouts = {
-			ringBuffer.frames[0].gPosDescSetLayout,
-			ringBuffer.frames[0].gColDescSetLayout,
-			ringBuffer.frames[0].gNormDescSetLayout
+		std::array<vk::DescriptorSetLayout, 1> layouts = {
+			ringBuffer.frames[0].gDescSetLayout
 		};
 		vk::PipelineLayoutCreateInfo pipelineLayoutInfo = vk::PipelineLayoutCreateInfo()
-			.setSetLayoutCount(3).setPSetLayouts(layouts.data())
-			.setPushConstantRangeCount(0)
-			.setPushConstantRanges(nullptr);
+			.setSetLayoutCount(layouts.size()).setPSetLayouts(layouts.data())
+			.setPushConstantRangeCount(0).setPushConstantRanges(nullptr);
 		lightingPassPipelineLayout = deviceWrapper.logicalDevice.createPipelineLayout(pipelineLayoutInfo);
 
 		// Finally, create actual render pipeline
 		vk::GraphicsPipelineCreateInfo graphicsPipelineInfo = vk::GraphicsPipelineCreateInfo()
-			.setStageCount(2)
-			.setPStages(shaderStages)
+			.setStageCount(shaderStages.size()).setPStages(shaderStages.data())
 			// fixed-function stages
 			.setPVertexInputState(&vertexInputInfo)
 			.setPInputAssemblyState(&inputAssemplyInfo)
@@ -802,7 +680,7 @@ private:
 		info.Queue = deviceWrapper.queue;
 		info.PipelineCache = pipelineCache;
 		info.DescriptorPool = imguiDescPool;
-		info.Subpass = 0;
+		info.Subpass = 1;
 		info.MinImageCount = (uint32_t) ringBuffer.frames.size(); // TODO: can prolly remove this one
 		info.ImageCount = (uint32_t)ringBuffer.frames.size();
 		info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
@@ -870,17 +748,30 @@ private:
 			// clear value
 			.setClearValueCount(clearValues.size()).setPClearValues(clearValues.data());
 
-		commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
-		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline);
+		// first subpass
+		{
+			commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
+			commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, geometryPassPipeline);
 
-		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, mvpBuffer.get_desc_set(iFrame), {});
-		geometry.draw(commandBuffer);
+			commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, geometryPassPipelineLayout, 0, mvpBuffer.get_desc_set(iFrame), {});
+			geometry.draw(commandBuffer);
+		}
 
-		ImGui::Render();
-		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
+		// second subpass
+		{
+			commandBuffer.nextSubpass(vk::SubpassContents::eInline);
+			commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, lightingPassPipeline);
+
+			std::array<vk::DescriptorSet, 1> descSets = { frame.gDescSet };
+			commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, lightingPassPipelineLayout, 0, descSets, {});
+			commandBuffer.draw(3, 1, 0, 0);
+
+			ImGui::Render();
+			ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
+		}
+
 
 		commandBuffer.endRenderPass();
-
 		commandBuffer.end();
 	}
 
@@ -902,8 +793,6 @@ private:
 	vk::PipelineLayout lightingPassPipelineLayout;
 
 	vk::RenderPass renderPass;
-	vk::Pipeline graphicsPipeline;
-	vk::PipelineLayout pipelineLayout;
 	vk::PipelineCache pipelineCache;
 
 	vk::CommandPool transientCommandPool;

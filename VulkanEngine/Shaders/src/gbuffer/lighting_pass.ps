@@ -1,6 +1,6 @@
-[[vk::input_attachment_index(0)]] SubpassInput gPos;
-[[vk::input_attachment_index(1)]] SubpassInput gCol;
-[[vk::input_attachment_index(2)]] SubpassInput gNorm;
+[[vk::input_attachment_index(0)]] SubpassInput<float4> gPos;
+[[vk::input_attachment_index(1)]] SubpassInput<float4> gCol;
+[[vk::input_attachment_index(2)]] SubpassInput<float4> gNorm;
 
 float4 main(float4 screenPos : SV_Position) : SV_Target
 {
@@ -8,5 +8,5 @@ float4 main(float4 screenPos : SV_Position) : SV_Target
     float4 col = gCol.SubpassLoad();
     float4 normal = gNorm.SubpassLoad();
     
-    return col;
+    return float4(col.rgb, pos.a * normal.a);
 }
