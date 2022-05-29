@@ -2,6 +2,7 @@
 // such as names of functions and macros.
 // For more information see https://go.microsoft.com/fwlink/?linkid=865984
 
+#define ROF_MOVE_DELETE(name) name(name&& other) = delete; name& operator=(name&& other) = delete;
 #define ROF_COPY_MOVE_DELETE(name) ROF_COPY_DELETE(name) ROF_MOVE_DELETE(name)
 #ifdef _DEBUG
 	#define DEBUG_ONLY(x) x

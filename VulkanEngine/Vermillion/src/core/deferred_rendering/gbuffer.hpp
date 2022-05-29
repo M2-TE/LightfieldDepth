@@ -5,7 +5,12 @@ class GBuffer
 public:
 	GBuffer() = default;
 	~GBuffer() = default;
-	ROF_COPY_MOVE_DELETE(GBuffer)
+	// copy operations
+	GBuffer(const GBuffer& other) = default;		
+	GBuffer& operator=(const GBuffer& other) = default;
+	// move operations
+	GBuffer(GBuffer&& other) = default;
+	GBuffer& operator=(GBuffer&& other) = default;
 
 public:
 	void init(DeferredRenderpassCreateInfo& info, vk::DescriptorSetLayout& descSetLayout)

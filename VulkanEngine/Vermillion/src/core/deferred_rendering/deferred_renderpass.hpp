@@ -6,7 +6,7 @@ struct DeferredRenderpassCreateInfo
 	SwapchainWrapper& swapchainWrapper;
 	vma::Allocator& allocator;
 	vk::DescriptorPool& descPool;
-	vk::ImageView& output, depthStencil;
+	std::vector<vk::ImageView>& outputs, depthStencils;
 	std::vector<vk::DescriptorSetLayout>& geometryPassDescSetLayouts;
 	std::vector<vk::DescriptorSetLayout>& lightingPassDescSetLayouts;
 	size_t nMaxFrames;
@@ -29,11 +29,12 @@ public:
 
 		// Input/Output
 		create_desc_set_layout(info);
+		gbuffers.resize(info.nMaxFrames);
 		for (size_t i = 0; i < info.nMaxFrames; i++) gbuffers[i].init(info, descSetLayout);
-		create_framebuffers(info);
 
 		// Render Pass
 		create_render_pass(info);
+		create_framebuffers(info);
 		// Stages
 		create_geometry_pass_pipeline_layout(info);
 		create_geometry_pass_pipeline(info);
@@ -57,6 +58,7 @@ public:
 
 		// Render Pass
 		deviceWrapper.logicalDevice.destroyRenderPass(renderPass);
+		for (size_t i = 0; i < gbuffers.size(); i++) deviceWrapper.logicalDevice.destroyFramebuffer(framebuffers[i]);
 		// Stages
 		deviceWrapper.logicalDevice.destroyPipelineLayout(geometryPassPipelineLayout);
 		deviceWrapper.logicalDevice.destroyPipeline(geometryPassPipeline);
@@ -94,10 +96,11 @@ private:
 	}
 	void create_framebuffers(DeferredRenderpassCreateInfo& info)
 	{
+		framebuffers.resize(info.nMaxFrames);
 		for (size_t i = 0; i < info.nMaxFrames; i++) {
 			std::array<vk::ImageView, 5> attachments = {
-				info.output,
-				info.depthStencil,
+				info.outputs[i],
+				info.depthStencils[i],
 				gbuffers[i].posImageView,
 				gbuffers[i].colImageView,
 				gbuffers[i].normImageView
@@ -180,53 +183,6 @@ private:
 				.setFinalLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
 		}
 	}
-	void fill_subpass_descriptions(std::array<vk::SubpassDescription, 2>& subpasses)
-	{
-		// Geometry Pass
-		{
-			vk::AttachmentReference depthAttachmentRef = vk::AttachmentReference(1, vk::ImageLayout::eDepthStencilAttachmentOptimal);
-
-			std::array<vk::AttachmentReference, 0> input = {
-			};
-
-			std::array<vk::AttachmentReference, 3> output = {
-				vk::AttachmentReference(2, vk::ImageLayout::eColorAttachmentOptimal), // gPos
-				vk::AttachmentReference(3, vk::ImageLayout::eColorAttachmentOptimal), // gCol
-				vk::AttachmentReference(4, vk::ImageLayout::eColorAttachmentOptimal), // gNorm
-			};
-
-			subpasses[0] = vk::SubpassDescription()
-				.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
-				.setPDepthStencilAttachment(&depthAttachmentRef)
-				.setInputAttachmentCount(input.size()).setPInputAttachments(input.data())
-				.setColorAttachmentCount(output.size()).setPColorAttachments(output.data())
-				// misc other:
-				.setPreserveAttachmentCount(0).setPPreserveAttachments(nullptr)
-				.setPResolveAttachments(nullptr);
-		}
-
-		// Lighting Pass
-		{
-			std::array<vk::AttachmentReference, 3> input = {
-				vk::AttachmentReference(2, vk::ImageLayout::eShaderReadOnlyOptimal), // gPos
-				vk::AttachmentReference(3, vk::ImageLayout::eShaderReadOnlyOptimal), // gCol
-				vk::AttachmentReference(4, vk::ImageLayout::eShaderReadOnlyOptimal), // gNorm
-			};
-
-			std::array<vk::AttachmentReference, 1> output = {
-				vk::AttachmentReference(0, vk::ImageLayout::eColorAttachmentOptimal), // output image
-			};
-
-			subpasses[1] = vk::SubpassDescription()
-				.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
-				.setPDepthStencilAttachment(nullptr)
-				.setInputAttachmentCount(input.size()).setPInputAttachments(input.data())
-				.setColorAttachmentCount(output.size()).setPColorAttachments(output.data())
-				// misc other:
-				.setPreserveAttachmentCount(0).setPPreserveAttachments(nullptr)
-				.setPResolveAttachments(nullptr);
-		}
-	}
 	void fill_subpass_dependencies(std::array<vk::SubpassDependency, 2>& dependencies)
 	{
 		// geometry pass
@@ -262,8 +218,54 @@ private:
 		std::array<vk::AttachmentDescription, GBuffer::nImages + 2> attachments;
 		fill_attachment_descriptions(info, attachments);
 
+		// Subpass Descriptions
 		std::array<vk::SubpassDescription, 2> subpasses;
-		fill_subpass_descriptions(subpasses);
+		{
+			// Geometry Pass
+			{
+				vk::AttachmentReference depthAttachmentRef = vk::AttachmentReference(1, vk::ImageLayout::eDepthStencilAttachmentOptimal);
+
+				std::array<vk::AttachmentReference, 0> input = {
+				};
+
+				std::array<vk::AttachmentReference, 3> output = {
+					vk::AttachmentReference(2, vk::ImageLayout::eColorAttachmentOptimal), // gPos
+					vk::AttachmentReference(3, vk::ImageLayout::eColorAttachmentOptimal), // gCol
+					vk::AttachmentReference(4, vk::ImageLayout::eColorAttachmentOptimal), // gNorm
+				};
+
+				subpasses[0] = vk::SubpassDescription()
+					.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
+					.setPDepthStencilAttachment(&depthAttachmentRef)
+					.setInputAttachmentCount(input.size()).setPInputAttachments(input.data())
+					.setColorAttachmentCount(output.size()).setPColorAttachments(output.data())
+					// misc other:
+					.setPreserveAttachmentCount(0).setPPreserveAttachments(nullptr)
+					.setPResolveAttachments(nullptr);
+			}
+
+			// Lighting Pass
+			{
+				std::array<vk::AttachmentReference, 3> input = {
+					vk::AttachmentReference(2, vk::ImageLayout::eShaderReadOnlyOptimal), // gPos
+					vk::AttachmentReference(3, vk::ImageLayout::eShaderReadOnlyOptimal), // gCol
+					vk::AttachmentReference(4, vk::ImageLayout::eShaderReadOnlyOptimal), // gNorm
+				};
+
+				std::array<vk::AttachmentReference, 1> output = {
+					vk::AttachmentReference(0, vk::ImageLayout::eColorAttachmentOptimal), // output image
+				};
+
+				subpasses[1] = vk::SubpassDescription()
+					.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
+					.setPDepthStencilAttachment(nullptr)
+					.setInputAttachmentCount(input.size()).setPInputAttachments(input.data())
+					.setColorAttachmentCount(output.size()).setPColorAttachments(output.data())
+					// misc other:
+					.setPreserveAttachmentCount(0).setPPreserveAttachments(nullptr)
+					.setPResolveAttachments(nullptr);
+			}
+		}
 
 		std::array<vk::SubpassDependency, 2> dependencies;
 		fill_subpass_dependencies(dependencies);
@@ -303,11 +305,12 @@ private:
 		}
 
 		// Input
-		auto attrDesc = Vertex::get_attr_desc();
-		auto bindingDesc = Vertex::get_binding_desc();
 		vk::PipelineVertexInputStateCreateInfo vertexInputInfo;
 		vk::PipelineInputAssemblyStateCreateInfo inputAssemplyInfo;
 		{
+			auto attrDesc = Vertex::get_attr_desc();
+			auto bindingDesc = Vertex::get_binding_desc();
+
 			// Vertex Input descriptor
 			vertexInputInfo = vk::PipelineVertexInputStateCreateInfo()
 				.setVertexBindingDescriptionCount(1).setVertexBindingDescriptions(bindingDesc)
@@ -320,16 +323,14 @@ private:
 		}
 
 		// Viewport
-		vk::Rect2D scissorRect;
-		vk::Viewport viewport;
 		vk::PipelineViewportStateCreateInfo viewportStateInfo;
 		{
 			// Scissor Rect
-			scissorRect = vk::Rect2D()
+			vk::Rect2D scissorRect = vk::Rect2D()
 				.setOffset({ 0, 0 })
 				.setExtent(info.swapchainWrapper.extent);
 			// Viewport
-			viewport = vk::Viewport()
+			vk::Viewport viewport = vk::Viewport()
 				.setX(0.0f)
 				.setY(0.0f)
 				.setWidth(static_cast<float>(info.swapchainWrapper.extent.width))
@@ -371,10 +372,10 @@ private:
 		}
 
 		// Color Blending
-		std::array<vk::PipelineColorBlendAttachmentState, GBuffer::nImages> colorBlendAttachments;
 		vk::PipelineColorBlendStateCreateInfo colorBlendInfo;
 		{
-			for (size_t i = 0; i < GBuffer::nImages; i++) {
+			std::array<vk::PipelineColorBlendAttachmentState, GBuffer::nImages> colorBlendAttachments;
+			for (size_t i = 0; i < colorBlendAttachments.size(); i++) {
 
 				// GBuffer output image
 				colorBlendAttachments[i] = vk::PipelineColorBlendAttachmentState()
@@ -526,7 +527,7 @@ private:
 		std::array<vk::PipelineColorBlendAttachmentState, 1> colorBlendAttachments;
 		vk::PipelineColorBlendStateCreateInfo colorBlendInfo;
 		{
-			for (size_t i = 0; i < GBuffer::nImages; i++) {
+			for (size_t i = 0; i < colorBlendAttachments.size(); i++) {
 
 				// final output image
 				colorBlendAttachments[i] = vk::PipelineColorBlendAttachmentState()

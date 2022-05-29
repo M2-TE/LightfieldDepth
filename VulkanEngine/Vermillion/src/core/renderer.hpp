@@ -140,6 +140,60 @@ private:
 
 		allocator = vma::createAllocator(info);
 	}
+	void create_descriptor_pools(DeviceWrapper& deviceWrapper)
+	{
+		// standard desc pool
+		{
+			static constexpr uint32_t poolSize = 1000;
+
+			std::array<vk::DescriptorPoolSize, 1>  poolSizes =
+			{
+				vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer, poolSize)
+				// TODO: other stuff this pool will need
+			};
+
+			vk::DescriptorPoolCreateInfo info = vk::DescriptorPoolCreateInfo()
+				.setFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet)
+				.setMaxSets(poolSize * (uint32_t)poolSizes.size())
+				.setPoolSizeCount((uint32_t)poolSizes.size())
+				.setPPoolSizes(poolSizes.data());
+			descPool = deviceWrapper.logicalDevice.createDescriptorPool(info);
+		}
+
+		// ImGui
+		{
+			uint32_t descCountImgui = 1000;
+			std::array<vk::DescriptorPoolSize, 11> poolSizes =
+			{
+				vk::DescriptorPoolSize(vk::DescriptorType::eSampler, descCountImgui),
+				vk::DescriptorPoolSize(vk::DescriptorType::eCombinedImageSampler, descCountImgui),
+				vk::DescriptorPoolSize(vk::DescriptorType::eSampledImage, descCountImgui),
+				vk::DescriptorPoolSize(vk::DescriptorType::eStorageImage, descCountImgui),
+				vk::DescriptorPoolSize(vk::DescriptorType::eUniformTexelBuffer, descCountImgui),
+				vk::DescriptorPoolSize(vk::DescriptorType::eStorageTexelBuffer, descCountImgui),
+				vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer, descCountImgui),
+				vk::DescriptorPoolSize(vk::DescriptorType::eStorageBuffer, descCountImgui),
+				vk::DescriptorPoolSize(vk::DescriptorType::eUniformBufferDynamic, descCountImgui),
+				vk::DescriptorPoolSize(vk::DescriptorType::eStorageBufferDynamic, descCountImgui),
+				vk::DescriptorPoolSize(vk::DescriptorType::eInputAttachment, descCountImgui)
+			};
+
+			vk::DescriptorPoolCreateInfo info = vk::DescriptorPoolCreateInfo()
+				.setFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet)
+				.setMaxSets(descCountImgui * (uint32_t)poolSizes.size())
+				.setPoolSizeCount((uint32_t)poolSizes.size())
+				.setPPoolSizes(poolSizes.data());
+
+			imguiDescPool = deviceWrapper.logicalDevice.createDescriptorPool(info);
+		}
+	}
+	void create_command_pools(DeviceWrapper& deviceWrapper)
+	{
+		vk::CommandPoolCreateInfo commandPoolInfo = vk::CommandPoolCreateInfo()
+			.setQueueFamilyIndex(deviceWrapper.iQueue)
+			.setFlags(vk::CommandPoolCreateFlagBits::eTransient);
+		transientCommandPool = deviceWrapper.logicalDevice.createCommandPool(commandPoolInfo);
+	}
 
 	void create_KHR(DeviceWrapper& deviceWrapper, Window& window)
 	{
@@ -148,12 +202,31 @@ private:
 		create_render_pass(deviceWrapper);
 		ringBuffer.create_all(deviceWrapper, allocator, renderPass, swapchainWrapper, descPool);
 
+		// create deferred render pass
+		std::vector<vk::ImageView> swapchainImageViews(nMaxFrames);
+		std::vector<vk::ImageView> depthStencilViews(nMaxFrames);
+		for (size_t i = 0; i < nMaxFrames; i++) {
+			swapchainImageViews[i] = ringBuffer.frames[i].swapchainImageView;
+			depthStencilViews[i] = ringBuffer.frames[i].depthStencilView;
+		}
+		std::vector<vk::DescriptorSetLayout> emptyLayouts(0);
+		DeferredRenderpassCreateInfo createInfo = {
+			deviceWrapper, swapchainWrapper,
+			allocator, descPool, 
+			swapchainImageViews, depthStencilViews,
+			emptyLayouts, emptyLayouts,
+			nMaxFrames
+		};
+		deferredRenderpass.init(createInfo);
+
 		create_geometry_pass_graphics_pipeline(deviceWrapper);
 		create_lighting_pass_graphics_pipeline(deviceWrapper);
 
 	}
 	void destroy_KHR(DeviceWrapper& deviceWrapper)
 	{
+		deferredRenderpass.destroy(deviceWrapper, allocator);
+
 		deviceWrapper.logicalDevice.destroyRenderPass(renderPass);
 
 		deviceWrapper.logicalDevice.destroyPipeline(geometryPassPipeline);
@@ -165,6 +238,7 @@ private:
 
 		swapchainWrapper.destroy(deviceWrapper);
 	}
+	
 	void create_render_pass(DeviceWrapper& deviceWrapper)
 	{
 		std::array<vk::AttachmentDescription, 5> attachments;
@@ -314,7 +388,6 @@ private:
 
 		renderPass = deviceWrapper.logicalDevice.createRenderPass(renderPassInfo);
 	}
-
 	void create_geometry_pass_graphics_pipeline(DeviceWrapper& deviceWrapper)
 	{
 		vk::PipelineShaderStageCreateInfo vertStageInfo = vk::PipelineShaderStageCreateInfo()
@@ -604,7 +677,6 @@ private:
 		lightingPassPipeline = result.value;
 	}
 
-
 	void create_shader_modules(DeviceWrapper& deviceWrapper)
 	{
 		vs = create_shader_module(deviceWrapper, shader_vs, shader_vs_size);
@@ -614,60 +686,6 @@ private:
 		geometry_ps = create_shader_module(deviceWrapper, geometry_pass_ps, geometry_pass_ps_size);
 		lighting_vs = create_shader_module(deviceWrapper, lighting_pass_vs, lighting_pass_vs_size);
 		lighting_ps = create_shader_module(deviceWrapper, lighting_pass_ps, lighting_pass_ps_size);
-	}
-	void create_descriptor_pools(DeviceWrapper& deviceWrapper)
-	{
-		// standard desc pool
-		{
-			static constexpr uint32_t poolSize = 1000;
-
-			std::array<vk::DescriptorPoolSize, 1>  poolSizes =
-			{
-				vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer, poolSize)
-				// TODO: other stuff this pool will need
-			};
-
-			vk::DescriptorPoolCreateInfo info = vk::DescriptorPoolCreateInfo()
-				.setFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet)
-				.setMaxSets(poolSize * (uint32_t)poolSizes.size())
-				.setPoolSizeCount((uint32_t)poolSizes.size())
-				.setPPoolSizes(poolSizes.data());
-			descPool = deviceWrapper.logicalDevice.createDescriptorPool(info);
-		}
-
-		// ImGui
-		{
-			uint32_t descCountImgui = 1000;
-			std::array<vk::DescriptorPoolSize, 11> poolSizes =
-			{
-				vk::DescriptorPoolSize(vk::DescriptorType::eSampler, descCountImgui),
-				vk::DescriptorPoolSize(vk::DescriptorType::eCombinedImageSampler, descCountImgui),
-				vk::DescriptorPoolSize(vk::DescriptorType::eSampledImage, descCountImgui),
-				vk::DescriptorPoolSize(vk::DescriptorType::eStorageImage, descCountImgui),
-				vk::DescriptorPoolSize(vk::DescriptorType::eUniformTexelBuffer, descCountImgui),
-				vk::DescriptorPoolSize(vk::DescriptorType::eStorageTexelBuffer, descCountImgui),
-				vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer, descCountImgui),
-				vk::DescriptorPoolSize(vk::DescriptorType::eStorageBuffer, descCountImgui),
-				vk::DescriptorPoolSize(vk::DescriptorType::eUniformBufferDynamic, descCountImgui),
-				vk::DescriptorPoolSize(vk::DescriptorType::eStorageBufferDynamic, descCountImgui),
-				vk::DescriptorPoolSize(vk::DescriptorType::eInputAttachment, descCountImgui)
-			};
-
-			vk::DescriptorPoolCreateInfo info = vk::DescriptorPoolCreateInfo()
-				.setFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet)
-				.setMaxSets(descCountImgui * (uint32_t)poolSizes.size())
-				.setPoolSizeCount((uint32_t)poolSizes.size())
-				.setPPoolSizes(poolSizes.data());
-
-			imguiDescPool = deviceWrapper.logicalDevice.createDescriptorPool(info);
-		}
-	}
-	void create_command_pools(DeviceWrapper& deviceWrapper)
-	{
-		vk::CommandPoolCreateInfo commandPoolInfo = vk::CommandPoolCreateInfo()
-			.setQueueFamilyIndex(deviceWrapper.iQueue)
-			.setFlags(vk::CommandPoolCreateFlagBits::eTransient);
-		transientCommandPool = deviceWrapper.logicalDevice.createCommandPool(commandPoolInfo);
 	}
 	
 	// ImGui
@@ -780,6 +798,7 @@ private:
 private:
 	uint32_t nMaxFrames = 2; // max frames in flight
 
+	DeferredRenderpass deferredRenderpass;
 	vma::Allocator allocator;
 	SwapchainWrapper swapchainWrapper;
 	RingBuffer ringBuffer;
