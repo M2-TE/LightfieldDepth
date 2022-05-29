@@ -453,10 +453,13 @@ private:
 	}
 	void create_lighting_pass_pipeline_layout(DeferredRenderpassCreateInfo& info)
 	{
-		// TODO: merge info.lightning layouts into array with the local layouts here
+		// merge parameterized layouts in info struct with local descSetLayout
+		std::vector<vk::DescriptorSetLayout> layouts(info.lightingPassDescSetLayouts.size() + 1);
+		for (size_t i = 1; i < layouts.size(); i++) layouts[i] = info.lightingPassDescSetLayouts[i - 1];
+		layouts[0] = descSetLayout;
 
 		vk::PipelineLayoutCreateInfo pipelineLayoutInfo = vk::PipelineLayoutCreateInfo()
-			.setSetLayoutCount(1).setPSetLayouts(&descSetLayout)
+			.setSetLayoutCount(layouts.size()).setPSetLayouts(layouts.data())
 			.setPushConstantRangeCount(0).setPushConstantRanges(nullptr);
 		lightingPassPipelineLayout = info.deviceWrapper.logicalDevice.createPipelineLayout(pipelineLayoutInfo);
 	}
