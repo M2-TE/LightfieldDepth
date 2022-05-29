@@ -40,7 +40,6 @@ public:
 		create_geometry_pass_pipeline(info);
 		create_lighting_pass_pipeline_layout(info);
 		create_lighting_pass_pipeline(info);
-
 	}
 	void destroy(DeviceWrapper& deviceWrapper, vma::Allocator& allocator)
 	{
@@ -65,6 +64,14 @@ public:
 		deviceWrapper.logicalDevice.destroyPipelineLayout(lightingPassPipelineLayout);
 		deviceWrapper.logicalDevice.destroyPipeline(lightingPassPipeline);
 	}
+
+	inline vk::RenderPass& get_render_pass() { return renderPass; }
+	inline vk::Pipeline& get_geometry_pass() { return geometryPassPipeline; }
+	inline vk::Pipeline& get_lighting_pass() { return lightingPassPipeline; }
+	inline vk::PipelineLayout& get_geometry_pass_layout() { return geometryPassPipelineLayout; }
+	inline vk::PipelineLayout& get_lighting_pass_layout() { return lightingPassPipelineLayout; }
+	inline vk::DescriptorSet& get_descriptor_set(size_t i) { return gbuffers[i].descSet; }
+	inline vk::Framebuffer& get_framebuffer(size_t i) { return framebuffers[i]; }
 
 private:
 	void create_shader_modules(DeferredRenderpassCreateInfo& info)
@@ -205,7 +212,7 @@ private:
 				.setDependencyFlags(vk::DependencyFlagBits::eByRegion) // for tiled GPUs.. i think.
 				// src (when/what to wait on)
 				.setSrcSubpass(0)
-				.setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
+				.setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests)
 				.setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentRead)
 				// dst (when/what to write to)
 				.setDstSubpass(1)
@@ -372,9 +379,9 @@ private:
 		}
 
 		// Color Blending
+		std::array<vk::PipelineColorBlendAttachmentState, GBuffer::nImages> colorBlendAttachments;
 		vk::PipelineColorBlendStateCreateInfo colorBlendInfo;
 		{
-			std::array<vk::PipelineColorBlendAttachmentState, GBuffer::nImages> colorBlendAttachments;
 			for (size_t i = 0; i < colorBlendAttachments.size(); i++) {
 
 				// GBuffer output image
@@ -394,7 +401,7 @@ private:
 			}
 			
 			// -> global
-			vk::PipelineColorBlendStateCreateInfo colorBlendInfo = vk::PipelineColorBlendStateCreateInfo()
+			colorBlendInfo = vk::PipelineColorBlendStateCreateInfo()
 				.setLogicOpEnable(VK_FALSE).setLogicOp(vk::LogicOp::eCopy)
 				.setAttachmentCount(colorBlendAttachments.size()).setPAttachments(colorBlendAttachments.data())
 				.setBlendConstants({ 0.0f, 0.0f, 0.0f, 0.0f });
@@ -432,11 +439,24 @@ private:
 			// render pass
 			.setRenderPass(renderPass)
 			.setSubpass(0);
+
+		auto result = info.deviceWrapper.logicalDevice.createGraphicsPipeline(geometryPassPipelineCache, graphicsPipelineInfo);
+		switch (result.result)
+		{
+			case vk::Result::eSuccess: break;
+			case vk::Result::ePipelineCompileRequiredEXT:
+				VMI_LOG("Graphics pipeline creation: PipelineCompileRequiredEXT");
+				break;
+			default: assert(false);
+		}
+		geometryPassPipeline = result.value;
 	}
 	void create_lighting_pass_pipeline_layout(DeferredRenderpassCreateInfo& info)
 	{
+		// TODO: merge info.lightning layouts into array with the local layouts here
+
 		vk::PipelineLayoutCreateInfo pipelineLayoutInfo = vk::PipelineLayoutCreateInfo()
-			.setSetLayoutCount(info.lightingPassDescSetLayouts.size()).setPSetLayouts(info.lightingPassDescSetLayouts.data())
+			.setSetLayoutCount(1).setPSetLayouts(&descSetLayout)
 			.setPushConstantRangeCount(0).setPushConstantRanges(nullptr);
 		lightingPassPipelineLayout = info.deviceWrapper.logicalDevice.createPipelineLayout(pipelineLayoutInfo);
 	}
@@ -546,7 +566,7 @@ private:
 			}
 
 			// -> global
-			vk::PipelineColorBlendStateCreateInfo colorBlendInfo = vk::PipelineColorBlendStateCreateInfo()
+			colorBlendInfo = vk::PipelineColorBlendStateCreateInfo()
 				.setLogicOpEnable(VK_FALSE).setLogicOp(vk::LogicOp::eCopy)
 				.setAttachmentCount(colorBlendAttachments.size()).setPAttachments(colorBlendAttachments.data())
 				.setBlendConstants({ 0.0f, 0.0f, 0.0f, 0.0f });
@@ -580,10 +600,21 @@ private:
 			.setPColorBlendState(&colorBlendInfo)
 			.setPDynamicState(nullptr)
 			// pipeline layout
-			.setLayout(geometryPassPipelineLayout)
+			.setLayout(lightingPassPipelineLayout)
 			// render pass
 			.setRenderPass(renderPass)
 			.setSubpass(1);
+
+		auto result = info.deviceWrapper.logicalDevice.createGraphicsPipeline(lightingPassPipelineCache, graphicsPipelineInfo);
+		switch (result.result)
+		{
+			case vk::Result::eSuccess: break;
+			case vk::Result::ePipelineCompileRequiredEXT:
+				VMI_LOG("Graphics pipeline creation: PipelineCompileRequiredEXT");
+				break;
+			default: assert(false);
+		}
+		lightingPassPipeline = result.value;
 	}
 
 private:

@@ -124,7 +124,7 @@ private:
 			.setDstBinding(0)
 			.setDstArrayElement(0)
 			.setDescriptorType(vk::DescriptorType::eInputAttachment)
-			.setDescriptorCount(3)
+			.setDescriptorCount(descriptors.size())
 			//
 			.setPBufferInfo(nullptr)
 			.setPImageInfo(descriptors.data())

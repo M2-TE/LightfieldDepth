@@ -32,15 +32,6 @@ struct RingFrame
 	// swapchain images
 	vk::Image swapchainImage;
 	vk::ImageView swapchainImageView;
-	vk::Framebuffer swapchainFramebuffer;
-
-	// TODO: encapsulate image in image_wrapper.hpp or something
-	// gbuffer images
-	std::pair<vk::Image, vma::Allocation> gPosAlloc, gColAlloc, gNormAlloc;
-	vk::ImageView gPosImageView, gColImageView, gNormImageView;
-
-	vk::DescriptorSet gDescSet;
-	vk::DescriptorSetLayout gDescSetLayout;
 };
 
 class RingBuffer
@@ -51,7 +42,7 @@ public:
 	ROF_COPY_MOVE_DELETE(RingBuffer)
 
 public:
-	void init(size_t nFrames) 
+	void init(DeviceWrapper& deviceWrapper, vma::Allocator& allocator, SwapchainWrapper& swapchainWrapper, size_t nFrames)
 	{
 		frames.resize(nFrames);
 		syncFrames.resize(nFrames);
@@ -60,30 +51,21 @@ public:
 			frames[i].index = i;
 			syncFrames[i].index = i;
 		}
-	}
-	void create_all(DeviceWrapper& deviceWrapper, vma::Allocator& allocator, vk::RenderPass& renderPass, SwapchainWrapper& swapchainWrapper, vk::DescriptorPool& descPool)
-	{
+
 		create_depth_stencils(allocator, swapchainWrapper);
 		create_depth_stencil_views(deviceWrapper);
 
-		create_gbuffer_images(allocator, swapchainWrapper);
-		create_gbuffer_image_views(deviceWrapper);
-		create_gbuffer_descriptor_sets(deviceWrapper, descPool);
-
 		create_swapchain_images(deviceWrapper, swapchainWrapper);
 		create_swapchain_image_views(deviceWrapper, swapchainWrapper);
-		create_swapchain_framebuffers(deviceWrapper, swapchainWrapper, renderPass);
 
 		create_sync_objects(deviceWrapper);
 		create_command_pools(deviceWrapper);
 		create_command_buffers(deviceWrapper);
 	}
-	void destroy_all(DeviceWrapper& deviceWrapper, vma::Allocator& allocator)
+	void destroy(DeviceWrapper& deviceWrapper, vma::Allocator& allocator)
 	{
 		destroy_depth_stencils(deviceWrapper, allocator);
-		destroy_gbuffer(deviceWrapper, allocator);
 		destroy_swapchain_image_views(deviceWrapper);
-		destroy_swapchain_framebuffers(deviceWrapper);
 		destroy_sync_objects(deviceWrapper);
 		destroy_command_pools(deviceWrapper);
 	}
@@ -99,7 +81,6 @@ public:
 
 private:
 	// create ring frame resources
-
 	void create_depth_stencils(vma::Allocator& allocator, SwapchainWrapper& swapchainWrapper)
 	{
 		vk::ImageCreateInfo imageCreateInfo = vk::ImageCreateInfo()
@@ -141,145 +122,6 @@ private:
 		}
 	}
 
-	void create_gbuffer_images(vma::Allocator& allocator, SwapchainWrapper& swapchainWrapper)
-	{
-		vk::ImageCreateInfo imageCreateInfo = vk::ImageCreateInfo()
-			.setPNext(nullptr)
-			.setImageType(vk::ImageType::e2D)
-			.setExtent(vk::Extent3D(swapchainWrapper.extent, 1))
-			//
-			.setMipLevels(1)
-			.setArrayLayers(1)
-			.setSamples(vk::SampleCountFlagBits::e1)
-			.setTiling(vk::ImageTiling::eOptimal)
-			.setUsage(vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment);
-
-		vma::AllocationCreateInfo allocCreateInfo = vma::AllocationCreateInfo()
-			.setUsage(vma::MemoryUsage::eAutoPreferDevice)
-			.setFlags(vma::AllocationCreateFlagBits::eDedicatedMemory);
-
-
-		// gPosBuffer
-		imageCreateInfo.setFormat(vk::Format::eR16G16B16A16Sfloat); // 16-bit signed float
-		imageCreateInfo.setFormat(vk::Format::eR32G32B32A32Sfloat); // 32-bit signed float
-			//.setUsage()  // TODO: might need to set different usage flags
-		for (size_t i = 0; i < frames.size(); i++) {
-			frames[i].gPosAlloc = allocator.createImage(imageCreateInfo, allocCreateInfo, nullptr);
-		}
-
-		// gColBuffer
-		imageCreateInfo.setFormat(vk::Format::eR8G8B8A8Srgb);
-		for (size_t i = 0; i < frames.size(); i++) {
-			frames[i].gColAlloc = allocator.createImage(imageCreateInfo, allocCreateInfo, nullptr);
-		}
-
-		// gNormBuffer
-		imageCreateInfo.setFormat(vk::Format::eR8G8B8A8Snorm); // normalized between -1 and 1
-			//.setUsage()  // TODO: might need to set different usage flags
-		for (size_t i = 0; i < frames.size(); i++) {
-			frames[i].gNormAlloc = allocator.createImage(imageCreateInfo, allocCreateInfo, nullptr);
-		}
-	}
-	void create_gbuffer_image_views(DeviceWrapper& deviceWrapper)
-	{
-		vk::ImageSubresourceRange subresourceRange = vk::ImageSubresourceRange()
-			.setAspectMask(vk::ImageAspectFlagBits::eColor)
-			.setBaseMipLevel(0).setLevelCount(1)
-			.setBaseArrayLayer(0).setLayerCount(1);
-
-		vk::ImageViewCreateInfo imageViewInfo = vk::ImageViewCreateInfo()
-			.setPNext(nullptr)
-			.setViewType(vk::ImageViewType::e2D)
-			.setFormat(vk::Format::eR8G8B8A8Srgb)
-			.setSubresourceRange(subresourceRange);
-
-		// gPosImageView
-		imageViewInfo.setFormat(vk::Format::eR16G16B16A16Sfloat); // 16-bit signed float
-		imageViewInfo.setFormat(vk::Format::eR32G32B32A32Sfloat); // 32-bit signed float
-		for (size_t i = 0; i < frames.size(); i++) {
-			imageViewInfo.setImage(frames[i].gPosAlloc.first);
-			frames[i].gPosImageView = deviceWrapper.logicalDevice.createImageView(imageViewInfo);
-		}
-
-		// gColImageView
-		imageViewInfo.setFormat(vk::Format::eR8G8B8A8Srgb);
-		for (size_t i = 0; i < frames.size(); i++) {
-			imageViewInfo.setImage(frames[i].gColAlloc.first);
-			frames[i].gColImageView = deviceWrapper.logicalDevice.createImageView(imageViewInfo);
-		}
-
-		// gNormImageView
-		imageViewInfo.setFormat(vk::Format::eR8G8B8A8Snorm); // normalized between -1 and 1
-		for (size_t i = 0; i < frames.size(); i++) {
-			imageViewInfo.setImage(frames[i].gNormAlloc.first);
-			frames[i].gNormImageView = deviceWrapper.logicalDevice.createImageView(imageViewInfo);
-		}
-	}
-	void create_gbuffer_descriptor_sets(DeviceWrapper& deviceWrapper, vk::DescriptorPool& descPool)
-	{
-
-		std::array<vk::DescriptorSetLayoutBinding, 3> setLayoutBindings;
-		for (size_t i = 0; i < setLayoutBindings.size(); i++)
-		{
-			setLayoutBindings[i]
-				.setBinding(i)
-				.setDescriptorCount(1)
-				.setDescriptorType(vk::DescriptorType::eInputAttachment)
-				.setStageFlags(vk::ShaderStageFlagBits::eFragment);
-		}
-
-
-		// update descriptor sets
-		for (size_t i = 0; i < frames.size(); i++) {
-
-			// allocate desc sets
-			
-			// create descriptor set layout from all the bindings
-			vk::DescriptorSetLayoutCreateInfo createInfo = vk::DescriptorSetLayoutCreateInfo()
-				.setBindingCount(3)
-				.setPBindings(setLayoutBindings.data());
-			frames[i].gDescSetLayout = deviceWrapper.logicalDevice.createDescriptorSetLayout(createInfo);
-
-			// allocate the descriptor sets using descriptor pool
-			vk::DescriptorSetAllocateInfo allocInfo = vk::DescriptorSetAllocateInfo()
-				.setDescriptorPool(descPool)
-				.setDescriptorSetCount(1).setPSetLayouts(&frames[i].gDescSetLayout);
-			frames[i].gDescSet = deviceWrapper.logicalDevice.allocateDescriptorSets(allocInfo)[0];
-
-			std::array<vk::DescriptorImageInfo, 3> descriptors;
-			// gPos image
-			descriptors[0]
-				.setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
-				.setImageView(frames[i].gPosImageView)
-				.setSampler(nullptr);
-			// gCol image
-			descriptors[1]
-				.setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
-				.setImageView(frames[i].gColImageView)
-				.setSampler(nullptr);
-			// gNorm image
-			descriptors[2]
-				.setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
-				.setImageView(frames[i].gNormImageView)
-				.setSampler(nullptr);
-
-			std::array<vk::WriteDescriptorSet, 1> descBufferWrites;
-			// gPos desc set
-			descBufferWrites[0] = vk::WriteDescriptorSet()
-				.setDstSet(frames[i].gDescSet)
-				.setDstBinding(0)
-				.setDstArrayElement(0)
-				.setDescriptorType(vk::DescriptorType::eInputAttachment)
-				.setDescriptorCount(3)
-				//
-				.setPBufferInfo(nullptr)
-				.setPImageInfo(descriptors.data())
-				.setPTexelBufferView(nullptr);
-
-			deviceWrapper.logicalDevice.updateDescriptorSets(descBufferWrites, {});
-		}
-	}
-
 	void create_swapchain_images(DeviceWrapper& deviceWrapper, SwapchainWrapper& swapchainWrapper)
 	{
 		std::vector<vk::Image> images = deviceWrapper.logicalDevice.getSwapchainImagesKHR(swapchainWrapper.swapchain);
@@ -310,30 +152,6 @@ private:
 				.setSubresourceRange(subrange);
 
 			frames[i].swapchainImageView = deviceWrapper.logicalDevice.createImageView(imageInfo);
-		}
-	}
-	void create_swapchain_framebuffers(DeviceWrapper& deviceWrapper, SwapchainWrapper& swapchainWrapper, vk::RenderPass& renderPass)
-	{
-		size_t size = frames.size();
-
-		for (size_t i = 0; i < size; i++) {
-			std::array<vk::ImageView, 5> attachments = { 
-				frames[i].swapchainImageView, 
-				frames[i].depthStencilView,
-				frames[i].gPosImageView,
-				frames[i].gColImageView,
-				frames[i].gNormImageView
-			};
-
-			vk::FramebufferCreateInfo framebufferInfo = vk::FramebufferCreateInfo()
-				.setRenderPass(renderPass)
-				.setWidth(swapchainWrapper.extent.width)
-				.setHeight(swapchainWrapper.extent.height)
-				.setLayers(1)
-				// attachments
-				.setAttachmentCount(attachments.size()).setPAttachments(attachments.data());
-
-			frames[i].swapchainFramebuffer = deviceWrapper.logicalDevice.createFramebuffer(framebufferInfo);
 		}
 	}
 	
@@ -381,29 +199,10 @@ private:
 		}
 	}
 
-	void destroy_gbuffer(DeviceWrapper& deviceWrapper, vma::Allocator& allocator)
-	{
-		for (size_t i = 0; i < frames.size(); i++) {
-			allocator.destroyImage(frames[i].gColAlloc.first, frames[i].gColAlloc.second);
-			allocator.destroyImage(frames[i].gPosAlloc.first, frames[i].gPosAlloc.second);
-			allocator.destroyImage(frames[i].gNormAlloc.first, frames[i].gNormAlloc.second);
-			deviceWrapper.logicalDevice.destroyImageView(frames[i].gColImageView);
-			deviceWrapper.logicalDevice.destroyImageView(frames[i].gPosImageView);
-			deviceWrapper.logicalDevice.destroyImageView(frames[i].gNormImageView);
-			deviceWrapper.logicalDevice.destroyDescriptorSetLayout(frames[i].gDescSetLayout);
-		}
-	}
-
 	void destroy_swapchain_image_views(DeviceWrapper& deviceWrapper)
 	{
 		for (size_t i = 0; i < frames.size(); i++) {
 			deviceWrapper.logicalDevice.destroyImageView(frames[i].swapchainImageView);
-		}
-	}
-	void destroy_swapchain_framebuffers(DeviceWrapper& deviceWrapper)
-	{
-		for (size_t i = 0; i < frames.size(); i++) {
-			deviceWrapper.logicalDevice.destroyFramebuffer(frames[i].swapchainFramebuffer);
 		}
 	}
 
