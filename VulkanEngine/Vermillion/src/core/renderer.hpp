@@ -324,9 +324,9 @@ private:
 private:
 	uint32_t nMaxFrames = 2; // max frames in flight
 
+	vma::Allocator allocator;
 	DeferredRenderpass deferredRenderpass;
 	SwapchainWrapper swapchainWrapper;
-	vma::Allocator allocator;
 	RingBuffer ringBuffer;
 
 	vk::CommandPool transientCommandPool;
