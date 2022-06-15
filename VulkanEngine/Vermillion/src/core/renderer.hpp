@@ -1,8 +1,9 @@
 #pragma once
 
 #include "vk_mem_alloc.hpp"
-#include "ring_buffer.hpp"
 #include "utils/types.hpp"
+#include "ring_buffer.hpp"
+#include "wrappers/imgui_wrapper.hpp"
 #include "wrappers/swapchain_wrapper.hpp"
 #include "wrappers/shader_wrapper.hpp"
 #include "wrappers/uniform_buffer_wrapper.hpp"
@@ -34,8 +35,7 @@ public:
 		mvpBuffer.allocate(deviceWrapper, allocator, descPool, 0, vk::ShaderStageFlagBits::eVertex, nMaxFrames);
 		create_KHR(deviceWrapper, window);
 
-		imgui_init_vulkan(deviceWrapper, window);
-		imgui_upload_fonts(deviceWrapper);
+		imguiWrapper.init(deviceWrapper, ringBuffer, window, deferredRenderpass.get_render_pass());
 
 		geometry.allocate(allocator, transientCommandPool, deviceWrapper);
 	}
@@ -46,14 +46,20 @@ public:
 		destroy_KHR(deviceWrapper);
 
 		device.destroyCommandPool(transientCommandPool);
-		device.destroyDescriptorPool(imguiDescPool);
 		device.destroyDescriptorPool(descPool);
 
+		imguiWrapper.destroy(deviceWrapper);
 		ImGui_ImplVulkan_Shutdown();
 
 		geometry.deallocate(allocator);
 		mvpBuffer.deallocate(deviceWrapper, allocator);
 		allocator.destroy();
+	}
+	void destroy_KHR(DeviceWrapper& deviceWrapper)
+	{
+		deferredRenderpass.destroy(deviceWrapper, allocator);
+		ringBuffer.destroy(deviceWrapper, allocator);
+		swapchainWrapper.destroy(deviceWrapper);
 	}
 	void recreate_KHR(DeviceWrapper& deviceWrapper, Window& window) // TODO use better approach of recreating swapchain using old swapchain pointer
 	{
@@ -63,6 +69,7 @@ public:
 		create_KHR(deviceWrapper, window);
 	}
 
+	// runtime
 	void render(DeviceWrapper& deviceWrapper)
 	{
 		// track sync frames separately, since we need a semaphore even before acquiring an image index
@@ -132,50 +139,20 @@ private:
 	}
 	void create_descriptor_pools(DeviceWrapper& deviceWrapper)
 	{
-		// standard desc pool
+		static constexpr uint32_t poolSize = 1000;
+
+		std::array<vk::DescriptorPoolSize, 1>  poolSizes =
 		{
-			static constexpr uint32_t poolSize = 1000;
+			vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer, poolSize)
+			// TODO: other stuff this pool will need
+		};
 
-			std::array<vk::DescriptorPoolSize, 1>  poolSizes =
-			{
-				vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer, poolSize)
-				// TODO: other stuff this pool will need
-			};
-
-			vk::DescriptorPoolCreateInfo info = vk::DescriptorPoolCreateInfo()
-				.setFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet)
-				.setMaxSets(poolSize * (uint32_t)poolSizes.size())
-				.setPoolSizeCount((uint32_t)poolSizes.size())
-				.setPPoolSizes(poolSizes.data());
-			descPool = deviceWrapper.logicalDevice.createDescriptorPool(info);
-		}
-
-		// ImGui
-		{
-			uint32_t descCountImgui = 1000;
-			std::array<vk::DescriptorPoolSize, 11> poolSizes =
-			{
-				vk::DescriptorPoolSize(vk::DescriptorType::eSampler, descCountImgui),
-				vk::DescriptorPoolSize(vk::DescriptorType::eCombinedImageSampler, descCountImgui),
-				vk::DescriptorPoolSize(vk::DescriptorType::eSampledImage, descCountImgui),
-				vk::DescriptorPoolSize(vk::DescriptorType::eStorageImage, descCountImgui),
-				vk::DescriptorPoolSize(vk::DescriptorType::eUniformTexelBuffer, descCountImgui),
-				vk::DescriptorPoolSize(vk::DescriptorType::eStorageTexelBuffer, descCountImgui),
-				vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer, descCountImgui),
-				vk::DescriptorPoolSize(vk::DescriptorType::eStorageBuffer, descCountImgui),
-				vk::DescriptorPoolSize(vk::DescriptorType::eUniformBufferDynamic, descCountImgui),
-				vk::DescriptorPoolSize(vk::DescriptorType::eStorageBufferDynamic, descCountImgui),
-				vk::DescriptorPoolSize(vk::DescriptorType::eInputAttachment, descCountImgui)
-			};
-
-			vk::DescriptorPoolCreateInfo info = vk::DescriptorPoolCreateInfo()
-				.setFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet)
-				.setMaxSets(descCountImgui * (uint32_t)poolSizes.size())
-				.setPoolSizeCount((uint32_t)poolSizes.size())
-				.setPPoolSizes(poolSizes.data());
-
-			imguiDescPool = deviceWrapper.logicalDevice.createDescriptorPool(info);
-		}
+		vk::DescriptorPoolCreateInfo info = vk::DescriptorPoolCreateInfo()
+			.setFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet)
+			.setMaxSets(poolSize * (uint32_t)poolSizes.size())
+			.setPoolSizeCount((uint32_t)poolSizes.size())
+			.setPPoolSizes(poolSizes.data());
+		descPool = deviceWrapper.logicalDevice.createDescriptorPool(info);
 	}
 	void create_command_pools(DeviceWrapper& deviceWrapper)
 	{
@@ -184,7 +161,6 @@ private:
 			.setFlags(vk::CommandPoolCreateFlagBits::eTransient);
 		transientCommandPool = deviceWrapper.logicalDevice.createCommandPool(commandPoolInfo);
 	}
-
 	void create_KHR(DeviceWrapper& deviceWrapper, Window& window)
 	{
 		swapchainWrapper.init(deviceWrapper, window, nMaxFrames);
@@ -197,7 +173,7 @@ private:
 			swapchainImageViews[i] = ringBuffer.frames[i].swapchainImageView;
 			depthStencilViews[i] = ringBuffer.frames[i].depthStencilView;
 		}
-		std::vector<vk::DescriptorSetLayout> lightingPassDescSetLayouts(0);
+		std::vector<vk::DescriptorSetLayout> lightingPassDescSetLayouts = {};
 		std::vector<vk::DescriptorSetLayout> geometryPassDescSetLayouts = { mvpBuffer.get_desc_set_layout() };
 		DeferredRenderpassCreateInfo createInfo = {
 			deviceWrapper, swapchainWrapper,
@@ -207,52 +183,6 @@ private:
 			nMaxFrames
 		};
 		deferredRenderpass.init(createInfo);
-	}
-	void destroy_KHR(DeviceWrapper& deviceWrapper)
-	{
-		deferredRenderpass.destroy(deviceWrapper, allocator);
-		ringBuffer.destroy(deviceWrapper, allocator);
-		swapchainWrapper.destroy(deviceWrapper);
-	}
-
-	// ImGui
-	void imgui_init_vulkan(DeviceWrapper& deviceWrapper, Window& window)
-	{
-		struct ImGui_ImplVulkan_InitInfo info = { 0 };
-		info.Instance = window.get_vulkan_instance();
-		info.PhysicalDevice = deviceWrapper.physicalDevice;
-		info.Device = deviceWrapper.logicalDevice;
-		info.QueueFamily = deviceWrapper.iQueue;
-		info.Queue = deviceWrapper.queue;
-		info.PipelineCache = nullptr;
-		info.DescriptorPool = imguiDescPool;
-		info.Subpass = 1;
-		info.MinImageCount = (uint32_t) ringBuffer.frames.size(); // TODO: can prolly remove this one
-		info.ImageCount = (uint32_t)ringBuffer.frames.size();
-		info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
-
-		ImGui_ImplVulkan_Init(&info, deferredRenderpass.get_render_pass());
-	}
-	void imgui_upload_fonts(DeviceWrapper& deviceWrapper)
-	{
-		vk::CommandBuffer commandBuffer = ringBuffer.frames[0].commandBuffer;
-		deviceWrapper.logicalDevice.resetCommandPool(ringBuffer.frames[0].commandPool);
-
-		vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo()
-			.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
-		commandBuffer.begin(beginInfo);
-
-		// upload fonts
-		ImGui_ImplVulkan_CreateFontsTexture(commandBuffer);
-
-		commandBuffer.end();
-		vk::SubmitInfo submitInfo = vk::SubmitInfo()
-			.setCommandBufferCount(1)
-			.setPCommandBuffers(&commandBuffer);
-		deviceWrapper.queue.submit(submitInfo);
-
-		deviceWrapper.logicalDevice.waitIdle();
-		ImGui_ImplVulkan_DestroyFontUploadObjects();
 	}
 
 	// runtime
@@ -327,10 +257,10 @@ private:
 	vma::Allocator allocator;
 	DeferredRenderpass deferredRenderpass;
 	SwapchainWrapper swapchainWrapper;
+	ImguiWrapper imguiWrapper;
 	RingBuffer ringBuffer;
 
 	vk::CommandPool transientCommandPool;
-	vk::DescriptorPool imguiDescPool;
 	vk::DescriptorPool descPool;
 
 	UniformBufferWrapper<UniformBufferObject> mvpBuffer;
