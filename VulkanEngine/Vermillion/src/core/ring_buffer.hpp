@@ -2,12 +2,6 @@
 
 #include "wrappers/swapchain_wrapper.hpp"
 
-
-
-
-// TODO: have only a single buffer and offset into it depending on iFrame instead of all these vectors?
-
-
 struct SyncFrame
 {
 	uint32_t index;
@@ -224,7 +218,6 @@ private:
 	}
 
 public:
-
 	std::vector<RingFrame> frames;
 private:
 	std::vector<SyncFrame> syncFrames;

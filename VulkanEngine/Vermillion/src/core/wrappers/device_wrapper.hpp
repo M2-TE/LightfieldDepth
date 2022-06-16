@@ -30,17 +30,32 @@ public:
 	}
 	void create_logical_device()
 	{
-		if (false) {
-			VMI_LOG("Available device extensions:");
-			std::vector<vk::ExtensionProperties> availableExtensions = physicalDevice.enumerateDeviceExtensionProperties();
-			for (const auto& extension : availableExtensions) VMI_LOG(extension.extensionName);
-			VMI_LOG("");
-		}
-
-		VMI_LOG("Required device extensions:");
+		std::string spacing = "    ";
+		VMI_LOG("Device Extensions:");
+		VMI_LOG(spacing << "Required device extensions:");
 		std::vector<const char*> requiredDeviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
-		for (const auto& extension : requiredDeviceExtensions) VMI_LOG(extension);
+		for (const auto& extension : requiredDeviceExtensions) VMI_LOG(spacing << "- " << extension);
 		VMI_LOG("");
+
+		VMI_LOG(spacing << "Optional device extensions:");
+		std::vector<const char*> optionalDeviceExtensions = {
+			VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME,
+			VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME
+		};
+		for (const auto& extension : optionalDeviceExtensions) VMI_LOG(spacing << "- " << extension);
+		VMI_LOG("");
+
+		VMI_LOG(spacing << "Available device extensions:");
+		std::vector<vk::ExtensionProperties> availableExtensions = physicalDevice.enumerateDeviceExtensionProperties();
+		for (size_t i = 0; i < optionalDeviceExtensions.size(); i++) {
+			std::string optionalExt = optionalDeviceExtensions[i];
+			for (const auto& extension : availableExtensions) {
+				if (optionalExt.find(extension.extensionName, 0, optionalExt.size()) < 1) {
+					requiredDeviceExtensions.push_back(extension.extensionName);
+				}
+			}
+		}
+		for (const auto& extension : requiredDeviceExtensions) VMI_LOG(spacing << "- " << extension);
 
 		vk::PhysicalDeviceFeatures deviceFeatures = vk::PhysicalDeviceFeatures();
 		// TODO: set specific features here
@@ -111,7 +126,7 @@ private:
 		// find a queue family that supports both graphics and presentation
 		std::vector<vk::QueueFamilyProperties> queueFamilies = physicalDevice.getQueueFamilyProperties();
 
-#ifdef _DEBUG
+#ifdef _DEBUG_ // disabled debug output for now
 		// query all queue families
 		for (int i = 0; i < queueFamilies.size(); i++) {
 			std::ostringstream oss;

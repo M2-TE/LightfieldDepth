@@ -133,7 +133,8 @@ private:
 			.setPhysicalDevice(deviceWrapper.physicalDevice)
 			.setDevice(deviceWrapper.logicalDevice)
 			.setInstance(window.get_vulkan_instance())
-			.setVulkanApiVersion(VK_API_VERSION_1_3);
+			.setVulkanApiVersion(VK_API_VERSION_1_1)
+			.setFlags(vma::AllocatorCreateFlagBits::eKhrDedicatedAllocation);
 
 		allocator = vma::createAllocator(info);
 	}

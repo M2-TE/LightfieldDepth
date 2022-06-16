@@ -67,8 +67,10 @@ private:
 		DEBUG_ONLY(vk::DebugUtilsMessengerCreateInfoEXT messengerInfo = Logging::SetupDebugMessenger(extensions));
 
 		// Log output:
-		std::cout << "Required instance extensions:\n";
-		for (const auto& extension : extensions) VMI_LOG(extension);
+		VMI_LOG("Instance Extensions:");
+		std::string spacing = "    ";
+		VMI_LOG(spacing << "Required instance extensions:");
+		for (const auto& extension : extensions) VMI_LOG(spacing << "- " << extension);
 		VMI_LOG("");
 
 		// Create app info
@@ -77,7 +79,7 @@ private:
 			.setApplicationVersion(VK_MAKE_API_VERSION(0, 0, 1, 0))
 			.setPEngineName("Vermillion")
 			.setEngineVersion(VK_MAKE_API_VERSION(0, 0, 1, 0))
-			.setApiVersion(VK_API_VERSION_1_3);
+			.setApiVersion(VK_API_VERSION_1_1);
 
 		// Use validation layer on debug
 		DEBUG_ONLY(layers.push_back("VK_LAYER_KHRONOS_validation"));
