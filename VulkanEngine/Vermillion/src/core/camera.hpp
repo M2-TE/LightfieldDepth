@@ -18,3 +18,5 @@ private:
 	glm::vec<4, float, glm::packed_highp> rotation;
 	glm::vec<4, float, glm::packed_highp> rotationEuler;
 };
+
+// TODO: decouple swapchain images in flight and standard images in flight!

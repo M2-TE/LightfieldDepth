@@ -85,18 +85,20 @@ public:
 			switch (imgResult.result) {
 				case vk::Result::eSuccess: break;
 				case vk::Result::eSuboptimalKHR: VMI_LOG("Suboptimal image acquisition."); break;
-				case vk::Result::eErrorOutOfDateKHR: VMI_ERR("Swapchain: KHR out of date."); assert(false);
+				case vk::Result::eErrorOutOfDateKHR: VMI_ERR("Swapchain: KHR out of date.");
 				default: assert(false);
 			}
 			iFrame = imgResult.value;
 		}
 		RingFrame& frame = ringBuffer.frames[iFrame];
 
-		// Render
+		// Render (record)
 		{
 			// wait for fence of fetched frame before rendering to it
 			vk::Result result = deviceWrapper.logicalDevice.waitForFences(syncFrame.fence, VK_TRUE, UINT64_MAX);
 			if (result != vk::Result::eSuccess) assert(false);
+			// and reset it
+			deviceWrapper.logicalDevice.resetFences(syncFrame.fence);
 
 			// reset command pool and then record into it (using command buffer)
 			deviceWrapper.logicalDevice.resetCommandPool(frame.commandPool);
@@ -104,7 +106,7 @@ public:
 			record_command_buffer(iFrame);
 		}
 
-		// Present
+		// Render (submit)
 		{
 			vk::PipelineStageFlags waitStages = vk::PipelineStageFlagBits::eColorAttachmentOutput;
 			vk::SubmitInfo submitInfo = vk::SubmitInfo()
@@ -115,9 +117,11 @@ public:
 				// command buffers
 				.setCommandBufferCount(1).setPCommandBuffers(&frame.commandBuffer);
 
-			deviceWrapper.logicalDevice.resetFences(syncFrame.fence);
 			deviceWrapper.queue.submit(submitInfo, syncFrame.fence);
+		}
 
+		// Present
+		{
 			vk::PresentInfoKHR presentInfo = vk::PresentInfoKHR()
 				.setPImageIndices(&iFrame)
 				// semaphores
@@ -125,7 +129,11 @@ public:
 				// swapchains
 				.setSwapchainCount(1).setPSwapchains(&swapchainWrapper.swapchain);
 			vk::Result result = deviceWrapper.queue.presentKHR(&presentInfo);
-			if (result != vk::Result::eSuccess) assert(false);
+			switch (result) {
+				case vk::Result::eSuccess: break;
+				case vk::Result::eErrorOutOfDateKHR: VMI_ERR("Swapchain: KHR out of date.");
+				default: assert(false);
+			}
 		}
 	}
 	void dump_mem_vma()
@@ -233,7 +241,6 @@ private:
 			.setRenderPass(deferredRenderpass.get_render_pass())
 			.setFramebuffer(deferredRenderpass.get_framebuffer(iFrame))
 			.setRenderArea(vk::Rect2D({ 0, 0 }, swapchainWrapper.extent))
-			// clear value
 			.setClearValueCount(clearValues.size()).setPClearValues(clearValues.data());
 
 		// first subpass
@@ -250,7 +257,6 @@ private:
 			commandBuffer.nextSubpass(vk::SubpassContents::eInline);
 			commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, deferredRenderpass.get_lighting_pass());
 
-			std::array<vk::DescriptorSet, 1> descSets = { deferredRenderpass.get_descriptor_set(iFrame) };
 			commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, deferredRenderpass.get_lighting_pass_layout(), 0, deferredRenderpass.get_descriptor_set(iFrame), {});
 			commandBuffer.draw(3, 1, 0, 0);
 
