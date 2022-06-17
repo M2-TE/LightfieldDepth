@@ -95,6 +95,7 @@ private:
 	static constexpr vk::Format targetFormat = vk::Format::eR8G8B8A8Srgb;
 	static constexpr vk::ColorSpaceKHR targetColorSpace = vk::ColorSpaceKHR::eSrgbNonlinear;
 	static constexpr vk::PresentModeKHR targetPresentMode = vk::PresentModeKHR::eFifo; // vsync
+	//static constexpr vk::PresentModeKHR targetPresentMode = vk::PresentModeKHR::eMailbox;
 
 public:
 	vk::SwapchainKHR swapchain;

@@ -257,7 +257,7 @@ private:
 			commandBuffer.nextSubpass(vk::SubpassContents::eInline);
 			commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, deferredRenderpass.get_lighting_pass());
 
-			commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, deferredRenderpass.get_lighting_pass_layout(), 0, deferredRenderpass.get_descriptor_set(iFrame), {});
+			commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, deferredRenderpass.get_lighting_pass_layout(), 0, deferredRenderpass.get_descriptor_set(), {});
 			commandBuffer.draw(3, 1, 0, 0);
 
 			ImGui::Render();

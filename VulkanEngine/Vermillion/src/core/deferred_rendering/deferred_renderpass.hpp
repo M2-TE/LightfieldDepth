@@ -6,6 +6,7 @@ struct DeferredRenderpassCreateInfo
 	SwapchainWrapper& swapchainWrapper;
 	vma::Allocator& allocator;
 	vk::DescriptorPool& descPool;
+	// TODO: write to intermediate output image instead of writing to swapchain directly, no need for vector here
 	std::vector<vk::ImageView>& outputs, depthStencils;
 	std::vector<vk::DescriptorSetLayout>& geometryPassDescSetLayouts;
 	std::vector<vk::DescriptorSetLayout>& lightingPassDescSetLayouts;
@@ -29,8 +30,7 @@ public:
 
 		// Input/Output
 		create_desc_set_layout(info);
-		gbuffers.resize(info.nMaxFrames);
-		for (size_t i = 0; i < info.nMaxFrames; i++) gbuffers[i].init(info, descSetLayout);
+		gbuffer.init(info, descSetLayout);
 
 		// Render Pass
 		create_render_pass(info);
@@ -53,11 +53,12 @@ public:
 
 		// Input/Output
 		device.destroyDescriptorSetLayout(descSetLayout);
-		for (size_t i = 0; i < gbuffers.size(); i++) gbuffers[i].destroy(deviceWrapper, allocator);
+		gbuffer.destroy(deviceWrapper, allocator);
 
 		// Render Pass
 		deviceWrapper.logicalDevice.destroyRenderPass(renderPass);
-		for (size_t i = 0; i < gbuffers.size(); i++) deviceWrapper.logicalDevice.destroyFramebuffer(framebuffers[i]);
+		for (size_t i = 0; i < framebuffers.size(); i++) deviceWrapper.logicalDevice.destroyFramebuffer(framebuffers[i]);
+
 		// Stages
 		deviceWrapper.logicalDevice.destroyPipelineLayout(geometryPassPipelineLayout);
 		deviceWrapper.logicalDevice.destroyPipeline(geometryPassPipeline);
@@ -70,7 +71,7 @@ public:
 	inline vk::Pipeline& get_lighting_pass() { return lightingPassPipeline; }
 	inline vk::PipelineLayout& get_geometry_pass_layout() { return geometryPassPipelineLayout; }
 	inline vk::PipelineLayout& get_lighting_pass_layout() { return lightingPassPipelineLayout; }
-	inline vk::DescriptorSet& get_descriptor_set(size_t i) { return gbuffers[i].descSet; }
+	inline vk::DescriptorSet& get_descriptor_set() { return gbuffer.descSet; }
 	inline vk::Framebuffer& get_framebuffer(size_t i) { return framebuffers[i]; }
 
 private:
@@ -108,9 +109,9 @@ private:
 			std::array<vk::ImageView, 5> attachments = {
 				info.outputs[i],
 				info.depthStencils[i],
-				gbuffers[i].posImageView,
-				gbuffers[i].colImageView,
-				gbuffers[i].normImageView
+				gbuffer.posImageView,
+				gbuffer.colImageView,
+				gbuffer.normImageView
 			};
 
 			vk::FramebufferCreateInfo framebufferInfo = vk::FramebufferCreateInfo()
@@ -227,15 +228,18 @@ private:
 
 		// Subpass Descriptions
 		std::array<vk::SubpassDescription, 2> subpasses;
+		vk::AttachmentReference depthAttachmentRef;
+		std::vector<vk::AttachmentReference> inputGeometry, outputGeometry;
+		std::vector<vk::AttachmentReference> inputLighting, outputLighting;
 		{
 			// Geometry Pass
 			{
-				vk::AttachmentReference depthAttachmentRef = vk::AttachmentReference(1, vk::ImageLayout::eDepthStencilAttachmentOptimal);
+				depthAttachmentRef = vk::AttachmentReference(1, vk::ImageLayout::eDepthStencilAttachmentOptimal);
 
-				std::array<vk::AttachmentReference, 0> input = {
+				inputGeometry = {
 				};
 
-				std::array<vk::AttachmentReference, 3> output = {
+				outputGeometry = {
 					vk::AttachmentReference(2, vk::ImageLayout::eColorAttachmentOptimal), // gPos
 					vk::AttachmentReference(3, vk::ImageLayout::eColorAttachmentOptimal), // gCol
 					vk::AttachmentReference(4, vk::ImageLayout::eColorAttachmentOptimal), // gNorm
@@ -244,8 +248,8 @@ private:
 				subpasses[0] = vk::SubpassDescription()
 					.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
 					.setPDepthStencilAttachment(&depthAttachmentRef)
-					.setInputAttachmentCount(input.size()).setPInputAttachments(input.data())
-					.setColorAttachmentCount(output.size()).setPColorAttachments(output.data())
+					.setInputAttachments(inputGeometry)
+					.setColorAttachments(outputGeometry)
 					// misc other:
 					.setPreserveAttachmentCount(0).setPPreserveAttachments(nullptr)
 					.setPResolveAttachments(nullptr);
@@ -253,21 +257,21 @@ private:
 
 			// Lighting Pass
 			{
-				std::array<vk::AttachmentReference, 3> input = {
+				inputLighting = {
 					vk::AttachmentReference(2, vk::ImageLayout::eShaderReadOnlyOptimal), // gPos
 					vk::AttachmentReference(3, vk::ImageLayout::eShaderReadOnlyOptimal), // gCol
 					vk::AttachmentReference(4, vk::ImageLayout::eShaderReadOnlyOptimal), // gNorm
 				};
 
-				std::array<vk::AttachmentReference, 1> output = {
+				outputLighting = {
 					vk::AttachmentReference(0, vk::ImageLayout::eColorAttachmentOptimal), // output image
 				};
 
 				subpasses[1] = vk::SubpassDescription()
 					.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
 					.setPDepthStencilAttachment(nullptr)
-					.setInputAttachmentCount(input.size()).setPInputAttachments(input.data())
-					.setColorAttachmentCount(output.size()).setPColorAttachments(output.data())
+					.setInputAttachments(inputLighting)
+					.setColorAttachments(outputLighting)
 					// misc other:
 					.setPreserveAttachmentCount(0).setPPreserveAttachments(nullptr)
 					.setPResolveAttachments(nullptr);
@@ -278,9 +282,9 @@ private:
 		fill_subpass_dependencies(dependencies);
 
 		vk::RenderPassCreateInfo renderPassInfo = vk::RenderPassCreateInfo()
-			.setAttachmentCount(attachments.size()).setPAttachments(attachments.data())
-			.setSubpassCount(subpasses.size()).setPSubpasses(subpasses.data())
-			.setDependencyCount(dependencies.size()).setPDependencies(dependencies.data());
+			.setAttachments(attachments)
+			.setDependencies(dependencies)
+			.setSubpasses(subpasses);
 
 		renderPass = info.deviceWrapper.logicalDevice.createRenderPass(renderPassInfo);
 	}
@@ -314,10 +318,9 @@ private:
 		// Input
 		vk::PipelineVertexInputStateCreateInfo vertexInputInfo;
 		vk::PipelineInputAssemblyStateCreateInfo inputAssemplyInfo;
+		auto attrDesc = Vertex::get_attr_desc();
+		auto bindingDesc = Vertex::get_binding_desc();
 		{
-			auto attrDesc = Vertex::get_attr_desc();
-			auto bindingDesc = Vertex::get_binding_desc();
-
 			// Vertex Input descriptor
 			vertexInputInfo = vk::PipelineVertexInputStateCreateInfo()
 				.setVertexBindingDescriptionCount(1).setVertexBindingDescriptions(bindingDesc)
@@ -330,14 +333,16 @@ private:
 		}
 
 		// Viewport
+		vk::Rect2D scissorRect;
+		vk::Viewport viewport;
 		vk::PipelineViewportStateCreateInfo viewportStateInfo;
 		{
 			// Scissor Rect
-			vk::Rect2D scissorRect = vk::Rect2D()
+			scissorRect = vk::Rect2D()
 				.setOffset({ 0, 0 })
 				.setExtent(info.swapchainWrapper.extent);
 			// Viewport
-			vk::Viewport viewport = vk::Viewport()
+			viewport = vk::Viewport()
 				.setX(0.0f)
 				.setY(0.0f)
 				.setWidth(static_cast<float>(info.swapchainWrapper.extent.width))
@@ -633,7 +638,8 @@ private:
 	vk::ShaderModule lightingVS, lightingPS;
 
 	// render resources
-	std::vector<GBuffer> gbuffers;
+	GBuffer gbuffer;
 	std::vector<vk::Framebuffer> framebuffers;
+	// TODO: move to gbuffer
 	vk::DescriptorSetLayout descSetLayout;
 };
