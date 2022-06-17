@@ -401,3 +401,7 @@ FodyWeavers.xsd
 VulkanEngine/Shaders/include/headers/*vs.hpp
 VulkanEngine/Shaders/include/headers/*ps.hpp
 VulkanEngine/Shaders/include/headers/*cs.hpp
+
+# vma memory dump outputs
+VulkanEngine/stats.jpg
+VulkanEngine/Vermillion/vma_stats.json
