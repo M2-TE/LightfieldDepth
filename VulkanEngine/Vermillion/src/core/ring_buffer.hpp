@@ -131,10 +131,6 @@ struct RingFramee
 {
 	uint32_t index;
 
-	// depth stencil DEPRECATED
-	std::pair<vk::Image, vma::Allocation> depthStencilAllocation;
-	vk::ImageView depthStencilView;
-
 	// swapchain images
 	vk::Image swapchainImage;
 	vk::ImageView swapchainImageView;
@@ -156,65 +152,15 @@ public:
 			frames[i].index = i;
 		}
 
-		create_depth_stencils(allocator, swapchainWrapper);
-		create_depth_stencil_views(deviceWrapper);
-
 		create_swapchain_images(deviceWrapper, swapchainWrapper);
 		create_swapchain_image_views(deviceWrapper, swapchainWrapper);
 	}
 	void destroy(DeviceWrapper& deviceWrapper, vma::Allocator& allocator)
 	{
-		destroy_depth_stencils(deviceWrapper, allocator);
 		destroy_swapchain_image_views(deviceWrapper);
 	}
 
 private:
-	// create ring frame resources
-	void create_depth_stencils(vma::Allocator& allocator, SwapchainWrapper& swapchainWrapper)
-	{
-		vk::ImageCreateInfo imageCreateInfo = vk::ImageCreateInfo()
-			.setPNext(nullptr)
-			.setImageType(vk::ImageType::e2D)
-			.setFormat(vk::Format::eD24UnormS8Uint)
-			.setExtent(vk::Extent3D(swapchainWrapper.extent, 1))
-			//
-			.setMipLevels(1)
-			.setArrayLayers(1)
-			.setSamples(vk::SampleCountFlagBits::e1)
-			.setTiling(vk::ImageTiling::eOptimal)
-			.setUsage(vk::ImageUsageFlagBits::eDepthStencilAttachment);
-
-		vma::AllocationCreateInfo allocCreateInfo = vma::AllocationCreateInfo()
-			.setUsage(vma::MemoryUsage::eAutoPreferDevice)
-			.setFlags(vma::AllocationCreateFlagBits::eDedicatedMemory);
-
-
-		for (size_t i = 0; i < frames.size(); i++) {
-			frames[i].depthStencilAllocation = allocator.createImage(imageCreateInfo, allocCreateInfo, nullptr);
-
-			std::string str = "Depth Stencil";
-			allocator.setAllocationName(frames[i].depthStencilAllocation.second, str.c_str());
-		}
-	}
-	void create_depth_stencil_views(DeviceWrapper& deviceWrapper)
-	{
-		vk::ImageSubresourceRange subresourceRange = vk::ImageSubresourceRange()
-			.setAspectMask(vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil)
-			.setBaseMipLevel(0).setLevelCount(1)
-			.setBaseArrayLayer(0).setLayerCount(1);
-
-		vk::ImageViewCreateInfo imageViewInfo = vk::ImageViewCreateInfo()
-			.setPNext(nullptr)
-			.setViewType(vk::ImageViewType::e2D)
-			.setFormat(vk::Format::eD24UnormS8Uint)
-			.setSubresourceRange(subresourceRange);
-
-		for (size_t i = 0; i < frames.size(); i++) {
-			imageViewInfo.setImage(frames[i].depthStencilAllocation.first);
-			frames[i].depthStencilView = deviceWrapper.logicalDevice.createImageView(imageViewInfo);
-		}
-	}
-
 	void create_swapchain_images(DeviceWrapper& deviceWrapper, SwapchainWrapper& swapchainWrapper)
 	{
 		std::vector<vk::Image> images = deviceWrapper.logicalDevice.getSwapchainImagesKHR(swapchainWrapper.swapchain);
@@ -249,13 +195,6 @@ private:
 	}
 
 	// destroy ring frame resources
-	void destroy_depth_stencils(DeviceWrapper& deviceWrapper, vma::Allocator& allocator)
-	{
-		for (size_t i = 0; i < frames.size(); i++) {
-			allocator.destroyImage(frames[i].depthStencilAllocation.first, frames[i].depthStencilAllocation.second);
-			deviceWrapper.logicalDevice.destroyImageView(frames[i].depthStencilView);
-		}
-	}
 	void destroy_swapchain_image_views(DeviceWrapper& deviceWrapper)
 	{
 		for (size_t i = 0; i < frames.size(); i++) {

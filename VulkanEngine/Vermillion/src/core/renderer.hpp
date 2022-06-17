@@ -192,17 +192,15 @@ private:
 
 		// create deferred render pass
 		std::vector<vk::ImageView> swapchainImageViews(nMaxFrames);
-		std::vector<vk::ImageView> depthStencilViews(nMaxFrames);
 		for (size_t i = 0; i < nMaxFrames; i++) {
 			swapchainImageViews[i] = ringBuffer.frames[i].swapchainImageView;
-			depthStencilViews[i] = ringBuffer.frames[i].depthStencilView;
 		}
 		std::vector<vk::DescriptorSetLayout> lightingPassDescSetLayouts = {};
 		std::vector<vk::DescriptorSetLayout> geometryPassDescSetLayouts = { mvpBuffer.get_desc_set_layout() };
 		DeferredRenderpassCreateInfo createInfo = {
 			deviceWrapper, swapchainWrapper,
 			allocator, descPool, 
-			swapchainImageViews, depthStencilViews,
+			swapchainImageViews,
 			geometryPassDescSetLayouts, lightingPassDescSetLayouts,
 			nMaxFrames
 		};

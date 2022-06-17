@@ -7,7 +7,7 @@ struct DeferredRenderpassCreateInfo
 	vma::Allocator& allocator;
 	vk::DescriptorPool& descPool;
 	// TODO: write to intermediate output image instead of writing to swapchain directly, no need for vector here
-	std::vector<vk::ImageView>& outputs, depthStencils;
+	std::vector<vk::ImageView>& outputs;
 	std::vector<vk::DescriptorSetLayout>& geometryPassDescSetLayouts;
 	std::vector<vk::DescriptorSetLayout>& lightingPassDescSetLayouts;
 	size_t nMaxFrames;
@@ -87,7 +87,7 @@ private:
 		for (size_t i = 0; i < info.nMaxFrames; i++) {
 			std::array<vk::ImageView, 5> attachments = {
 				info.outputs[i],
-				info.depthStencils[i],
+				gbuffer.depthStencilView,
 				gbuffer.posImageView,
 				gbuffer.colImageView,
 				gbuffer.normImageView
