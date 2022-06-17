@@ -1,33 +1,69 @@
 #pragma once
 
-#include "wrappers/swapchain_wrapper.hpp"
-
-struct SyncFrame
+class SyncFrameData
 {
-	uint32_t index;
+public:
+	void init(DeviceWrapper& deviceWrapper)
+	{
+		create_semaphores(deviceWrapper);
+		create_fence(deviceWrapper);
+		create_command_pools(deviceWrapper);
+		create_command_buffer(deviceWrapper);
+	}
+	void destroy(DeviceWrapper& deviceWrapper)
+	{
+		vk::Device& device = deviceWrapper.logicalDevice;
+		device.destroySemaphore(imageAvailable);
+		device.destroySemaphore(renderFinished);
+		device.destroyFence(commandBufferFence);
+		device.destroyCommandPool(commandPool);
+	}
 
-	// sync objects
+private:
+	void create_semaphores(DeviceWrapper& deviceWrapper)
+	{
+		vk::SemaphoreCreateInfo semaphoreInfo = vk::SemaphoreCreateInfo();
+
+		imageAvailable = deviceWrapper.logicalDevice.createSemaphore(semaphoreInfo);
+		renderFinished = deviceWrapper.logicalDevice.createSemaphore(semaphoreInfo);
+	}
+	void create_fence(DeviceWrapper& deviceWrapper)
+	{
+		vk::FenceCreateInfo fenceInfo = vk::FenceCreateInfo()
+			.setFlags(vk::FenceCreateFlagBits::eSignaled);
+
+		commandBufferFence = deviceWrapper.logicalDevice.createFence(fenceInfo);
+	}
+	void create_command_pools(DeviceWrapper& deviceWrapper)
+	{
+		vk::CommandPoolCreateInfo commandPoolInfo;
+
+		commandPoolInfo = vk::CommandPoolCreateInfo()
+			.setQueueFamilyIndex(deviceWrapper.iQueue);
+
+		commandPool = deviceWrapper.logicalDevice.createCommandPool(commandPoolInfo);
+
+	}
+	void create_command_buffer(DeviceWrapper& deviceWrapper)
+	{
+		vk::CommandBufferAllocateInfo commandBufferInfo = vk::CommandBufferAllocateInfo()
+			.setCommandPool(commandPool)
+			.setLevel(vk::CommandBufferLevel::ePrimary) // secondary are used by primary command buffers for e.g. common operations
+			.setCommandBufferCount(1);
+		commandBuffer = deviceWrapper.logicalDevice.allocateCommandBuffers(commandBufferInfo)[0];
+	}
+
+public:
 	vk::Semaphore imageAvailable;
 	vk::Semaphore renderFinished;
-	vk::Fence fence;
-};
-struct RingFrame
-{
-	uint32_t index;
+	vk::Fence commandBufferFence;
 
-	// command pools/buffers
+	// needs to be vector later (one for each thread)
 	vk::CommandPool commandPool;
 	vk::CommandBuffer commandBuffer;
-
-	// depth stencil
-	std::pair<vk::Image, vma::Allocation> depthStencilAllocation;
-	vk::ImageView depthStencilView;
-
-	// swapchain images
-	vk::Image swapchainImage;
-	vk::ImageView swapchainImageView;
 };
 
+template<class Data>
 class RingBuffer
 {
 public:
@@ -36,14 +72,91 @@ public:
 	ROF_COPY_MOVE_DELETE(RingBuffer)
 
 public:
+	RingBuffer& set_size(uint32_t nFrames)
+	{
+		frames.resize(nFrames);
+		return *this;
+	}
+
+	template<typename... Args>
+	void init(Args... args)
+	{
+		// set up linked list
+		for (size_t i = 0; i < frames.size() - 1; i++) {
+			frames[i].pNext = &frames[i];
+			frames[i].data.init(args...);
+		}
+		frames.back().pNext = &frames.front();
+
+		// set initial active frame
+		pCurrent = &frames.front();
+	}
+	
+	template<typename... Args>
+	void destroy(Args... args)
+	{
+		for (size_t i = 0; i < frames.size(); i++) {
+			frames[i].data.destroy(args...);
+		}
+	}
+
+	Data& get_next()
+	{
+		pCurrent = pCurrent->pNext;
+		return pCurrent->data;
+	}
+	std::vector<Data*> get_all()
+	{
+		std::vector<Data*> allData(frames.size);
+		for (size_t i = 0; i < frames.size(); i++) {
+			allData[i] = &frames[i].data;
+		}
+		return allData;
+	}
+
+private:
+	struct RingFrame { RingFrame* pNext; Data data; };
+	std::vector<RingFrame> frames;
+	RingFrame* pCurrent;
+};
+
+
+
+// DEPRECATED
+
+#include "wrappers/swapchain_wrapper.hpp"
+
+struct RingFramee
+{
+	uint32_t index;
+
+	// command pools/buffers
+	vk::CommandPool commandPool;
+	vk::CommandBuffer commandBuffer;
+
+	// depth stencil DEPRECATED
+	std::pair<vk::Image, vma::Allocation> depthStencilAllocation;
+	vk::ImageView depthStencilView;
+
+	// swapchain images
+	vk::Image swapchainImage;
+	vk::ImageView swapchainImageView;
+};
+
+class RingBufferr
+{
+public:
+	RingBufferr() = default;
+	~RingBufferr() = default;
+	ROF_COPY_MOVE_DELETE(RingBufferr)
+
+public:
 	void init(DeviceWrapper& deviceWrapper, vma::Allocator& allocator, SwapchainWrapper& swapchainWrapper, size_t nFrames)
 	{
 		frames.resize(nFrames);
-		syncFrames.resize(nFrames);
 
 		for (size_t i = 0; i < frames.size(); i++) {
 			frames[i].index = i;
-			syncFrames[i].index = i;
 		}
 
 		create_depth_stencils(allocator, swapchainWrapper);
@@ -52,7 +165,6 @@ public:
 		create_swapchain_images(deviceWrapper, swapchainWrapper);
 		create_swapchain_image_views(deviceWrapper, swapchainWrapper);
 
-		create_sync_objects(deviceWrapper);
 		create_command_pools(deviceWrapper);
 		create_command_buffers(deviceWrapper);
 	}
@@ -60,17 +172,7 @@ public:
 	{
 		destroy_depth_stencils(deviceWrapper, allocator);
 		destroy_swapchain_image_views(deviceWrapper);
-		destroy_sync_objects(deviceWrapper);
 		destroy_command_pools(deviceWrapper);
-	}
-	RingBuffer& advance()
-	{
-		iSyncFrame = (iSyncFrame + 1) % frames.size();
-		return *this;
-	}
-	SyncFrame& get_sync_frame()
-	{
-		return syncFrames[iSyncFrame];
 	}
 
 private:
@@ -153,19 +255,6 @@ private:
 		}
 	}
 	
-	void create_sync_objects(DeviceWrapper& deviceWrapper)
-	{
-		vk::Device& device = deviceWrapper.logicalDevice;
-
-		vk::SemaphoreCreateInfo semaphoreInfo = vk::SemaphoreCreateInfo();
-		vk::FenceCreateInfo fenceInfo = vk::FenceCreateInfo().setFlags(vk::FenceCreateFlagBits::eSignaled);
-		for (size_t i = 0; i < frames.size(); i++) {
-			SyncFrame& frame = syncFrames[i];
-			frame.imageAvailable = device.createSemaphore(semaphoreInfo);
-			frame.renderFinished = device.createSemaphore(semaphoreInfo);
-			frame.fence = device.createFence(fenceInfo);
-		}
-	}
 	void create_command_pools(DeviceWrapper& deviceWrapper)
 	{
 		vk::CommandPoolCreateInfo commandPoolInfo;
@@ -196,22 +285,10 @@ private:
 			deviceWrapper.logicalDevice.destroyImageView(frames[i].depthStencilView);
 		}
 	}
-
 	void destroy_swapchain_image_views(DeviceWrapper& deviceWrapper)
 	{
 		for (size_t i = 0; i < frames.size(); i++) {
 			deviceWrapper.logicalDevice.destroyImageView(frames[i].swapchainImageView);
-		}
-	}
-
-	void destroy_sync_objects(DeviceWrapper& deviceWrapper)
-	{
-		vk::Device& device = deviceWrapper.logicalDevice;
-		for (size_t i = 0; i < frames.size(); i++) {
-			SyncFrame& frame = syncFrames[i];
-			device.destroySemaphore(frame.imageAvailable);
-			device.destroySemaphore(frame.renderFinished);
-			device.destroyFence(frame.fence);
 		}
 	}
 	void destroy_command_pools(DeviceWrapper& deviceWrapper)
@@ -222,8 +299,5 @@ private:
 	}
 
 public:
-	std::vector<RingFrame> frames;
-private:
-	std::vector<SyncFrame> syncFrames;
-	size_t iSyncFrame = 0;
+	std::vector<RingFramee> frames;
 };

@@ -35,6 +35,8 @@ public:
 		create_descriptor_pools(deviceWrapper);
 		create_command_pools(deviceWrapper);
 
+		syncFrames.set_size(nMaxFrames).init(deviceWrapper);
+
 		mvpBuffer.allocate(deviceWrapper, allocator, descPool, 0, vk::ShaderStageFlagBits::eVertex, nMaxFrames);
 		create_KHR(deviceWrapper, window);
 
@@ -50,6 +52,8 @@ public:
 
 		device.destroyCommandPool(transientCommandPool);
 		device.destroyDescriptorPool(descPool);
+
+		syncFrames.destroy(deviceWrapper);
 
 		imguiWrapper.destroy(deviceWrapper);
 		ImGui_ImplVulkan_Shutdown();
@@ -75,8 +79,8 @@ public:
 	// runtime
 	void render(DeviceWrapper& deviceWrapper)
 	{
-		// track sync frames separately, since we need a semaphore even before acquiring an image index
-		SyncFrame& syncFrame = ringBuffer.advance().get_sync_frame();
+		// get next frame of sync objects
+		auto& syncFrame = syncFrames.get_next();
 
 		uint32_t iFrame;
 		// Acquire image
@@ -90,15 +94,15 @@ public:
 			}
 			iFrame = imgResult.value;
 		}
-		RingFrame& frame = ringBuffer.frames[iFrame];
+		RingFramee& frame = ringBuffer.frames[iFrame];
 
 		// Render (record)
 		{
 			// wait for fence of fetched frame before rendering to it
-			vk::Result result = deviceWrapper.logicalDevice.waitForFences(syncFrame.fence, VK_TRUE, UINT64_MAX);
+			vk::Result result = deviceWrapper.logicalDevice.waitForFences(syncFrame.commandBufferFence, VK_TRUE, UINT64_MAX);
 			if (result != vk::Result::eSuccess) assert(false);
 			// and reset it
-			deviceWrapper.logicalDevice.resetFences(syncFrame.fence);
+			deviceWrapper.logicalDevice.resetFences(syncFrame.commandBufferFence);
 
 			// reset command pool and then record into it (using command buffer)
 			deviceWrapper.logicalDevice.resetCommandPool(frame.commandPool);
@@ -117,7 +121,7 @@ public:
 				// command buffers
 				.setCommandBufferCount(1).setPCommandBuffers(&frame.commandBuffer);
 
-			deviceWrapper.queue.submit(submitInfo, syncFrame.fence);
+			deviceWrapper.queue.submit(submitInfo, syncFrame.commandBufferFence);
 		}
 
 		// Present
@@ -276,7 +280,8 @@ private:
 	DeferredRenderpass deferredRenderpass;
 	SwapchainWrapper swapchainWrapper;
 	ImguiWrapper imguiWrapper;
-	RingBuffer ringBuffer;
+	RingBufferr ringBuffer; // Deprecated
+	RingBuffer<SyncFrameData> syncFrames;
 
 	vk::CommandPool transientCommandPool;
 	vk::DescriptorPool descPool;

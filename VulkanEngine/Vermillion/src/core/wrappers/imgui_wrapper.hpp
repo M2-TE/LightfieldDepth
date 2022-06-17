@@ -8,7 +8,7 @@ public:
 	ROF_COPY_MOVE_DELETE(ImguiWrapper)
 
 public:
-	void init(DeviceWrapper& deviceWrapper, RingBuffer& ringBuffer, Window& window, vk::RenderPass& renderPass)
+	void init(DeviceWrapper& deviceWrapper, RingBufferr& ringBuffer, Window& window, vk::RenderPass& renderPass)
 	{
 		imgui_create_desc_pool(deviceWrapper);
 		imgui_init_vulkan(deviceWrapper, ringBuffer, window, renderPass);
@@ -46,7 +46,7 @@ private:
 
 		descPool = deviceWrapper.logicalDevice.createDescriptorPool(info);
 	}
-	void imgui_init_vulkan(DeviceWrapper& deviceWrapper, RingBuffer& ringBuffer, Window& window, vk::RenderPass& renderPass)
+	void imgui_init_vulkan(DeviceWrapper& deviceWrapper, RingBufferr& ringBuffer, Window& window, vk::RenderPass& renderPass)
 	{
 		struct ImGui_ImplVulkan_InitInfo info = { 0 };
 		info.Instance = window.get_vulkan_instance();
@@ -63,7 +63,7 @@ private:
 
 		ImGui_ImplVulkan_Init(&info, renderPass);
 	}
-	void imgui_upload_fonts(DeviceWrapper& deviceWrapper, RingBuffer& ringBuffer)
+	void imgui_upload_fonts(DeviceWrapper& deviceWrapper, RingBufferr& ringBuffer)
 	{
 		vk::CommandBuffer commandBuffer = ringBuffer.frames[0].commandBuffer;
 		deviceWrapper.logicalDevice.resetCommandPool(ringBuffer.frames[0].commandPool);
