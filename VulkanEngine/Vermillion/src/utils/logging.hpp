@@ -7,13 +7,8 @@
 #define VMI_ERR(msg) throw std::exception(msg)
 #define VMI_SDL_ERR() VMI_LOG("Error: " << std::string(SDL_GetError()) << std::endl << CODE_LOCATION)
 
-#ifdef _DEBUG
-	#define DEBUG_ONLY(x) x
-#else
-	#define DEBUG_ONLY(x)
-#endif
-
-#ifdef _DEBUG
+// currently enabled debug logging for both debug and release builds
+#if defined(_DEBUG) || defined(NDEBUG)
 class Logging
 {
 public:
@@ -48,4 +43,7 @@ public:
 		return messengerInfo;
 	}
 };
+	#define DEBUG_ONLY(x) x
+#else
+	#define DEBUG_ONLY(x)
 #endif
