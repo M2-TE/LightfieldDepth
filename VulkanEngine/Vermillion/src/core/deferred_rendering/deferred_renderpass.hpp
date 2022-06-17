@@ -29,8 +29,7 @@ public:
 		create_shader_modules(info);
 
 		// Input/Output
-		create_desc_set_layout(info);
-		gbuffer.init(info, descSetLayout);
+		gbuffer.init(info);
 
 		// Render Pass
 		create_render_pass(info);
@@ -52,7 +51,6 @@ public:
 		device.destroyShaderModule(lightingPS);
 
 		// Input/Output
-		device.destroyDescriptorSetLayout(descSetLayout);
 		gbuffer.destroy(deviceWrapper, allocator);
 
 		// Render Pass
@@ -82,25 +80,6 @@ private:
 
 		lightingVS = create_shader_module(info.deviceWrapper, lighting_pass_vs, lighting_pass_vs_size);
 		lightingPS = create_shader_module(info.deviceWrapper, lighting_pass_ps, lighting_pass_ps_size);
-	}
-	void create_desc_set_layout(DeferredRenderpassCreateInfo& info)
-	{
-		// one binding for each image in gbuffer
-		std::array<vk::DescriptorSetLayoutBinding, GBuffer::nImages> setLayoutBindings;
-		for (size_t i = 0; i < setLayoutBindings.size(); i++)
-		{
-			setLayoutBindings[i]
-				.setBinding(i)
-				.setDescriptorCount(1)
-				.setDescriptorType(vk::DescriptorType::eInputAttachment)
-				.setStageFlags(vk::ShaderStageFlagBits::eFragment);
-		}
-
-		// create descriptor set layout from the bindings
-		vk::DescriptorSetLayoutCreateInfo createInfo = vk::DescriptorSetLayoutCreateInfo()
-			.setBindingCount(setLayoutBindings.size())
-			.setPBindings(setLayoutBindings.data());
-		descSetLayout = info.deviceWrapper.logicalDevice.createDescriptorSetLayout(createInfo);
 	}
 	void create_framebuffers(DeferredRenderpassCreateInfo& info)
 	{
@@ -461,7 +440,7 @@ private:
 		// merge parameterized layouts in info struct with local descSetLayout
 		std::vector<vk::DescriptorSetLayout> layouts(info.lightingPassDescSetLayouts.size() + 1);
 		for (size_t i = 1; i < layouts.size(); i++) layouts[i] = info.lightingPassDescSetLayouts[i - 1];
-		layouts[0] = descSetLayout;
+		layouts[0] = gbuffer.descSetLayout;
 
 		vk::PipelineLayoutCreateInfo pipelineLayoutInfo = vk::PipelineLayoutCreateInfo()
 			.setSetLayoutCount(layouts.size()).setPSetLayouts(layouts.data())
@@ -640,6 +619,4 @@ private:
 	// render resources
 	GBuffer gbuffer;
 	std::vector<vk::Framebuffer> framebuffers;
-	// TODO: move to gbuffer
-	vk::DescriptorSetLayout descSetLayout;
 };

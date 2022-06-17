@@ -13,11 +13,12 @@ public:
 	GBuffer& operator=(GBuffer&& other) = default;
 
 public:
-	void init(DeferredRenderpassCreateInfo& info, vk::DescriptorSetLayout& descSetLayout)
+	void init(DeferredRenderpassCreateInfo& info)
 	{
 		create_images(info.allocator, info.swapchainWrapper);
 		create_image_views(info.deviceWrapper);
-		create_desc_set(info.deviceWrapper, info.descPool, descSetLayout);
+		create_desc_set_layout(info.deviceWrapper);
+		create_desc_set(info.deviceWrapper, info.descPool);
 	}
 	void destroy(DeviceWrapper& deviceWrapper, vma::Allocator& allocator)
 	{
@@ -27,6 +28,7 @@ public:
 		deviceWrapper.logicalDevice.destroyImageView(posImageView);
 		deviceWrapper.logicalDevice.destroyImageView(colImageView);
 		deviceWrapper.logicalDevice.destroyImageView(normImageView);
+		deviceWrapper.logicalDevice.destroyDescriptorSetLayout(descSetLayout);
 	}
 
 private:
@@ -93,7 +95,7 @@ private:
 		imageViewInfo.setImage(normImage);
 		normImageView = deviceWrapper.logicalDevice.createImageView(imageViewInfo);
 	}
-	void create_desc_set(DeviceWrapper& deviceWrapper, vk::DescriptorPool& descPool, vk::DescriptorSetLayout& descSetLayout)
+	void create_desc_set(DeviceWrapper& deviceWrapper, vk::DescriptorPool& descPool)
 	{
 		// allocate the descriptor sets using descriptor pool
 		vk::DescriptorSetAllocateInfo allocInfo = vk::DescriptorSetAllocateInfo()
@@ -132,6 +134,25 @@ private:
 
 		deviceWrapper.logicalDevice.updateDescriptorSets(descBufferWrites, {});
 	}
+	void create_desc_set_layout(DeviceWrapper& deviceWrapper)
+	{
+		// one binding for each image in gbuffer
+		std::array<vk::DescriptorSetLayoutBinding, GBuffer::nImages> setLayoutBindings;
+		for (size_t i = 0; i < setLayoutBindings.size(); i++)
+		{
+			setLayoutBindings[i]
+				.setBinding(i)
+				.setDescriptorCount(1)
+				.setDescriptorType(vk::DescriptorType::eInputAttachment)
+				.setStageFlags(vk::ShaderStageFlagBits::eFragment);
+		}
+
+		// create descriptor set layout from the bindings
+		vk::DescriptorSetLayoutCreateInfo createInfo = vk::DescriptorSetLayoutCreateInfo()
+			.setBindingCount(setLayoutBindings.size())
+			.setPBindings(setLayoutBindings.data());
+		descSetLayout = deviceWrapper.logicalDevice.createDescriptorSetLayout(createInfo);
+	}
 
 public:
 	static constexpr size_t nImages = 3;
@@ -140,5 +161,11 @@ private:
 	vma::Allocation posAlloc, colAlloc, normAlloc;
 	vk::Image posImage, colImage, normImage;
 	vk::ImageView posImageView, colImageView, normImageView;
+
 	vk::DescriptorSet descSet;
+	vk::DescriptorSetLayout descSetLayout;
+
+	// TODO
+	//std::pair<vk::Image, vma::Allocation> depthStencilAllocation;
+	//vk::ImageView depthStencilView;
 };
