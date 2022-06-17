@@ -168,7 +168,7 @@ private:
 	}
 
 public:
-	static constexpr size_t nImages = 3;
+	static constexpr size_t nImages = 3; // pos, col, norm
 private:
 	friend class DeferredRenderpass;
 	vma::Allocation posAlloc, colAlloc, normAlloc, depthStencilAlloc;

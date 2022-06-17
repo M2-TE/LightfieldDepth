@@ -14,10 +14,16 @@ public:
 		choose_extent(deviceWrapper, window);
 
 		create_swapchain(deviceWrapper, window, nImages);
+		create_images(deviceWrapper);
+		create_image_views(deviceWrapper);
 	}
 	void destroy(DeviceWrapper& deviceWrapper)
 	{
 		deviceWrapper.logicalDevice.destroySwapchainKHR(swapchain);
+
+		for (size_t i = 0; i < images.size(); i++) {
+			deviceWrapper.logicalDevice.destroyImageView(imageViews[i]);
+		}
 	}
 
 private:
@@ -91,6 +97,36 @@ private:
 		swapchain = deviceWrapper.logicalDevice.createSwapchainKHR(swapchainInfo);
 	}
 
+	void create_images(DeviceWrapper& deviceWrapper)
+	{
+		images = deviceWrapper.logicalDevice.getSwapchainImagesKHR(swapchain);
+	}
+	void create_image_views(DeviceWrapper& deviceWrapper)
+	{
+		vk::ComponentMapping mapping = vk::ComponentMapping()
+			.setR(vk::ComponentSwizzle::eIdentity)
+			.setG(vk::ComponentSwizzle::eIdentity)
+			.setB(vk::ComponentSwizzle::eIdentity)
+			.setA(vk::ComponentSwizzle::eIdentity);
+
+		vk::ImageSubresourceRange subrange = vk::ImageSubresourceRange()
+			.setAspectMask(vk::ImageAspectFlagBits::eColor)
+			.setLevelCount(1).setBaseMipLevel(0)
+			.setLayerCount(1).setBaseArrayLayer(0);
+
+		imageViews.resize(images.size());
+		for (size_t i = 0; i < imageViews.size(); i++) {
+			vk::ImageViewCreateInfo imageInfo = vk::ImageViewCreateInfo()
+				.setImage(images[i])
+				.setViewType(vk::ImageViewType::e2D)
+				.setFormat(surfaceFormat.format)
+				.setComponents(mapping)
+				.setSubresourceRange(subrange);
+
+			imageViews[i] = deviceWrapper.logicalDevice.createImageView(imageInfo);
+		}
+	}
+
 private:
 	static constexpr vk::Format targetFormat = vk::Format::eR8G8B8A8Srgb;
 	static constexpr vk::ColorSpaceKHR targetColorSpace = vk::ColorSpaceKHR::eSrgbNonlinear;
@@ -102,4 +138,7 @@ public:
 	vk::SurfaceFormatKHR surfaceFormat;
 	vk::PresentModeKHR presentMode;
 	vk::Extent2D extent;
+
+	std::vector<vk::Image> images;
+	std::vector<vk::ImageView> imageViews;
 };
