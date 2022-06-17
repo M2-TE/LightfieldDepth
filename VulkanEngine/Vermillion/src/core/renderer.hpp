@@ -40,7 +40,7 @@ public:
 		mvpBuffer.allocate(deviceWrapper, allocator, descPool, 0, vk::ShaderStageFlagBits::eVertex, nMaxFrames);
 		create_KHR(deviceWrapper, window);
 
-		imguiWrapper.init(deviceWrapper, ringBuffer, window, deferredRenderpass.get_render_pass());
+		imguiWrapper.init(deviceWrapper, window, deferredRenderpass.get_render_pass(), syncFrames);
 
 		geometry.allocate(allocator, transientCommandPool, deviceWrapper);
 	}
@@ -105,9 +105,9 @@ public:
 			deviceWrapper.logicalDevice.resetFences(syncFrame.commandBufferFence);
 
 			// reset command pool and then record into it (using command buffer)
-			deviceWrapper.logicalDevice.resetCommandPool(frame.commandPool);
+			deviceWrapper.logicalDevice.resetCommandPool(syncFrame.commandPool);
 			update_uniform_buffer(deviceWrapper, iFrame);
-			record_command_buffer(iFrame);
+			record_command_buffer(iFrame, syncFrame.commandBuffer);
 		}
 
 		// Render (submit)
@@ -119,7 +119,7 @@ public:
 				.setWaitSemaphoreCount(1).setPWaitSemaphores(&syncFrame.imageAvailable)
 				.setSignalSemaphoreCount(1).setPSignalSemaphores(&syncFrame.renderFinished)
 				// command buffers
-				.setCommandBufferCount(1).setPCommandBuffers(&frame.commandBuffer);
+				.setCommandBufferCount(1).setPCommandBuffers(&syncFrame.commandBuffer);
 
 			deviceWrapper.queue.submit(submitInfo, syncFrame.commandBufferFence);
 		}
@@ -223,10 +223,9 @@ private:
 
 		mvpBuffer.update(iCurrentFrame);
 	}
-	void record_command_buffer(uint32_t iFrame)
+	void record_command_buffer(uint32_t iFrame, vk::CommandBuffer& commandBuffer)
 	{
 		// setting up command buffer
-		vk::CommandBuffer& commandBuffer = ringBuffer.frames[iFrame].commandBuffer;
 		vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo()
 			.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit)
 			.setPInheritanceInfo(nullptr);

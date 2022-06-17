@@ -72,11 +72,6 @@ public:
 	ROF_COPY_MOVE_DELETE(RingBuffer)
 
 public:
-	RingBuffer& set_size(uint32_t nFrames)
-	{
-		frames.resize(nFrames);
-		return *this;
-	}
 
 	template<typename... Args>
 	void init(Args... args)
@@ -91,7 +86,6 @@ public:
 		// set initial active frame
 		pCurrent = &frames.front();
 	}
-	
 	template<typename... Args>
 	void destroy(Args... args)
 	{
@@ -99,6 +93,13 @@ public:
 			frames[i].data.destroy(args...);
 		}
 	}
+
+	RingBuffer& set_size(uint32_t nFrames)
+	{
+		frames.resize(nFrames);
+		return *this;
+	}
+	uint32_t get_size() { return frames.size(); }
 
 	Data& get_next()
 	{
@@ -130,10 +131,6 @@ struct RingFramee
 {
 	uint32_t index;
 
-	// command pools/buffers
-	vk::CommandPool commandPool;
-	vk::CommandBuffer commandBuffer;
-
 	// depth stencil DEPRECATED
 	std::pair<vk::Image, vma::Allocation> depthStencilAllocation;
 	vk::ImageView depthStencilView;
@@ -164,15 +161,11 @@ public:
 
 		create_swapchain_images(deviceWrapper, swapchainWrapper);
 		create_swapchain_image_views(deviceWrapper, swapchainWrapper);
-
-		create_command_pools(deviceWrapper);
-		create_command_buffers(deviceWrapper);
 	}
 	void destroy(DeviceWrapper& deviceWrapper, vma::Allocator& allocator)
 	{
 		destroy_depth_stencils(deviceWrapper, allocator);
 		destroy_swapchain_image_views(deviceWrapper);
-		destroy_command_pools(deviceWrapper);
 	}
 
 private:
@@ -254,28 +247,6 @@ private:
 			frames[i].swapchainImageView = deviceWrapper.logicalDevice.createImageView(imageInfo);
 		}
 	}
-	
-	void create_command_pools(DeviceWrapper& deviceWrapper)
-	{
-		vk::CommandPoolCreateInfo commandPoolInfo;
-
-		commandPoolInfo = vk::CommandPoolCreateInfo()
-			.setQueueFamilyIndex(deviceWrapper.iQueue);
-		for (uint32_t i = 0; i < frames.size(); i++) {
-			frames[i].commandPool = deviceWrapper.logicalDevice.createCommandPool(commandPoolInfo);
-		}
-
-	}
-	void create_command_buffers(DeviceWrapper& deviceWrapper)
-	{
-		for (uint32_t i = 0; i < frames.size(); i++) {
-			vk::CommandBufferAllocateInfo commandBufferInfo = vk::CommandBufferAllocateInfo()
-				.setCommandPool(frames[i].commandPool)
-				.setLevel(vk::CommandBufferLevel::ePrimary) // secondary are used by primary command buffers for e.g. common operations
-				.setCommandBufferCount(1);
-			frames[i].commandBuffer = deviceWrapper.logicalDevice.allocateCommandBuffers(commandBufferInfo)[0];
-		}
-	}
 
 	// destroy ring frame resources
 	void destroy_depth_stencils(DeviceWrapper& deviceWrapper, vma::Allocator& allocator)
@@ -289,12 +260,6 @@ private:
 	{
 		for (size_t i = 0; i < frames.size(); i++) {
 			deviceWrapper.logicalDevice.destroyImageView(frames[i].swapchainImageView);
-		}
-	}
-	void destroy_command_pools(DeviceWrapper& deviceWrapper)
-	{
-		for (size_t i = 0; i < frames.size(); i++) {
-			deviceWrapper.logicalDevice.destroyCommandPool(frames[i].commandPool);
 		}
 	}
 

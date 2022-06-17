@@ -8,11 +8,11 @@ public:
 	ROF_COPY_MOVE_DELETE(ImguiWrapper)
 
 public:
-	void init(DeviceWrapper& deviceWrapper, RingBufferr& ringBuffer, Window& window, vk::RenderPass& renderPass)
+	void init(DeviceWrapper& deviceWrapper, Window& window, vk::RenderPass& renderPass, RingBuffer<SyncFrameData>& syncFrames)
 	{
 		imgui_create_desc_pool(deviceWrapper);
-		imgui_init_vulkan(deviceWrapper, ringBuffer, window, renderPass);
-		imgui_upload_fonts(deviceWrapper, ringBuffer);
+		imgui_init_vulkan(deviceWrapper, window, renderPass, syncFrames);
+		imgui_upload_fonts(deviceWrapper, syncFrames);
 	}
 	void destroy(DeviceWrapper& deviceWrapper)
 	{
@@ -46,7 +46,7 @@ private:
 
 		descPool = deviceWrapper.logicalDevice.createDescriptorPool(info);
 	}
-	void imgui_init_vulkan(DeviceWrapper& deviceWrapper, RingBufferr& ringBuffer, Window& window, vk::RenderPass& renderPass)
+	void imgui_init_vulkan(DeviceWrapper& deviceWrapper, Window& window, vk::RenderPass& renderPass, RingBuffer<SyncFrameData>& syncFrames)
 	{
 		struct ImGui_ImplVulkan_InitInfo info = { 0 };
 		info.Instance = window.get_vulkan_instance();
@@ -57,16 +57,17 @@ private:
 		info.PipelineCache = nullptr;
 		info.DescriptorPool = descPool;
 		info.Subpass = 1;
-		info.MinImageCount = (uint32_t)ringBuffer.frames.size(); // TODO: can prolly remove this one
-		info.ImageCount = (uint32_t)ringBuffer.frames.size();
+		info.MinImageCount = syncFrames.get_size();
+		info.ImageCount = syncFrames.get_size();
 		info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
 
 		ImGui_ImplVulkan_Init(&info, renderPass);
 	}
-	void imgui_upload_fonts(DeviceWrapper& deviceWrapper, RingBufferr& ringBuffer)
+	void imgui_upload_fonts(DeviceWrapper& deviceWrapper, RingBuffer<SyncFrameData>& syncFrames)
 	{
-		vk::CommandBuffer commandBuffer = ringBuffer.frames[0].commandBuffer;
-		deviceWrapper.logicalDevice.resetCommandPool(ringBuffer.frames[0].commandPool);
+		SyncFrameData& syncFrame = syncFrames.get_next();
+		vk::CommandBuffer commandBuffer = syncFrame.commandBuffer;
+		deviceWrapper.logicalDevice.resetCommandPool(syncFrame.commandPool);
 
 		vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo()
 			.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
