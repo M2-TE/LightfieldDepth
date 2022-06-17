@@ -102,6 +102,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\core\application.hpp" />
+    <ClInclude Include="src\core\camera.hpp" />
     <ClInclude Include="src\core\deferred_rendering\deferred_renderpass.hpp" />
     <ClInclude Include="src\core\deferred_rendering\gbuffer.hpp" />
     <ClInclude Include="src\core\device_manager.hpp" />

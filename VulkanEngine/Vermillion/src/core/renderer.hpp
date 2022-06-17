@@ -3,11 +3,14 @@
 #include "vk_mem_alloc.hpp"
 #include "utils/types.hpp"
 #include "ring_buffer.hpp"
+#include "camera.hpp"
+// wrappers
 #include "wrappers/imgui_wrapper.hpp"
 #include "wrappers/swapchain_wrapper.hpp"
 #include "wrappers/shader_wrapper.hpp"
 #include "wrappers/uniform_buffer_wrapper.hpp"
 #include "wrappers/render_pass_wrapper.hpp"
+// other
 #include "geometry/indexed_geometry.hpp"
 #include "deferred_rendering/deferred_renderpass.hpp"
 
@@ -28,7 +31,7 @@ public:
 public:
 	void init(DeviceWrapper& deviceWrapper, Window& window)
 	{
-		create_allocator(deviceWrapper, window);
+		create_vma_allocator(deviceWrapper, window);
 		create_descriptor_pools(deviceWrapper);
 		create_command_pools(deviceWrapper);
 
@@ -125,9 +128,17 @@ public:
 			if (result != vk::Result::eSuccess) assert(false);
 		}
 	}
+	void dump_mem_vma()
+	{
+		std::string stats = allocator.buildStatsString(true);
+		std::ofstream out("vma_stats.json");
+		out << stats;
+		out.close();
+		VMI_LOG("Dumped VMA stats to vma_stats.json");
+	}
 
 private:
-	void create_allocator(DeviceWrapper& deviceWrapper, Window& window)
+	void create_vma_allocator(DeviceWrapper& deviceWrapper, Window& window)
 	{
 		vma::AllocatorCreateInfo info = vma::AllocatorCreateInfo()
 			.setPhysicalDevice(deviceWrapper.physicalDevice)

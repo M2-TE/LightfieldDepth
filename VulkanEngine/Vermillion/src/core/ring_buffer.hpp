@@ -93,8 +93,12 @@ private:
 			.setUsage(vma::MemoryUsage::eAutoPreferDevice)
 			.setFlags(vma::AllocationCreateFlagBits::eDedicatedMemory);
 
+
 		for (size_t i = 0; i < frames.size(); i++) {
 			frames[i].depthStencilAllocation = allocator.createImage(imageCreateInfo, allocCreateInfo, nullptr);
+
+			std::string str = "Depth Stencil";
+			allocator.setAllocationName(frames[i].depthStencilAllocation.second, str.c_str());
 		}
 	}
 	void create_depth_stencil_views(DeviceWrapper& deviceWrapper)

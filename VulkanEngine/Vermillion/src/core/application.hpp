@@ -53,9 +53,14 @@ private:
 						case SDLK_F11: {
 							if (event.key.type == SDL_KEYDOWN) {
 								deviceManager.get_logical_device().waitIdle();
-								SDL_SetWindowFullscreen(window.get_window(), SDL_WINDOW_FULLSCREEN);
-								//SDL_SetWindowFullscreen(window.get_window(), SDL_WINDOW_FULLSCREEN_DESKTOP); // borderless
+								//SDL_SetWindowFullscreen(window.get_window(), SDL_WINDOW_FULLSCREEN); // crash when tabbing out, need to investigate
+								SDL_SetWindowFullscreen(window.get_window(), SDL_WINDOW_FULLSCREEN_DESKTOP); // borderless
 								bSwapchainRebuildQueued = true;
+							}
+						}
+						case SDLK_F10: {
+							if (event.key.type == SDL_KEYDOWN) {
+								renderer.dump_mem_vma();
 							}
 						}
 					}
