@@ -65,7 +65,6 @@ public:
 	void destroy_KHR(DeviceWrapper& deviceWrapper)
 	{
 		deferredRenderpass.destroy(deviceWrapper, allocator);
-		ringBuffer.destroy(deviceWrapper, allocator);
 		swapchainWrapper.destroy(deviceWrapper);
 	}
 	void recreate_KHR(DeviceWrapper& deviceWrapper, Window& window) // TODO use better approach of recreating swapchain using old swapchain pointer
@@ -94,7 +93,6 @@ public:
 			}
 			iFrame = imgResult.value;
 		}
-		RingFramee& frame = ringBuffer.frames[iFrame];
 
 		// Render (record)
 		{
@@ -188,19 +186,14 @@ private:
 	void create_KHR(DeviceWrapper& deviceWrapper, Window& window)
 	{
 		swapchainWrapper.init(deviceWrapper, window, nMaxFrames);
-		ringBuffer.init(deviceWrapper, allocator, swapchainWrapper, nMaxFrames);
 
 		// create deferred render pass
-		std::vector<vk::ImageView> swapchainImageViews(nMaxFrames);
-		for (size_t i = 0; i < nMaxFrames; i++) {
-			swapchainImageViews[i] = ringBuffer.frames[i].swapchainImageView;
-		}
-		std::vector<vk::DescriptorSetLayout> lightingPassDescSetLayouts = {};
 		std::vector<vk::DescriptorSetLayout> geometryPassDescSetLayouts = { mvpBuffer.get_desc_set_layout() };
+		std::vector<vk::DescriptorSetLayout> lightingPassDescSetLayouts = {};
 		DeferredRenderpassCreateInfo createInfo = {
 			deviceWrapper, swapchainWrapper,
 			allocator, descPool, 
-			swapchainImageViews,
+			swapchainWrapper.imageViews,
 			geometryPassDescSetLayouts, lightingPassDescSetLayouts,
 			nMaxFrames
 		};
@@ -277,9 +270,8 @@ private:
 	DeferredRenderpass deferredRenderpass;
 	SwapchainWrapper swapchainWrapper;
 	ImguiWrapper imguiWrapper;
-	RingBufferr ringBuffer; // Deprecated
-	RingBuffer<SyncFrameData> syncFrames;
 
+	RingBuffer<SyncFrameData> syncFrames;
 	vk::CommandPool transientCommandPool;
 	vk::DescriptorPool descPool;
 
