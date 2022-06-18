@@ -4,8 +4,9 @@
 #include "headers/lighting_pass.ps.hpp"
 #include "headers/geometry_pass.vs.hpp"
 #include "headers/geometry_pass.ps.hpp"
+#include "headers/swapchain_write.vs.hpp"
+#include "headers/swapchain_write.ps.hpp"
 
-const size_t lighting_pass_vs_size = sizeof(lighting_pass_vs);
-const size_t lighting_pass_ps_size = sizeof(lighting_pass_ps);
-const size_t geometry_pass_vs_size = sizeof(geometry_pass_vs);
-const size_t geometry_pass_ps_size = sizeof(geometry_pass_ps);
+const ShaderPack geometryPass = { { geometry_pass_vs, sizeof(geometry_pass_vs) }, { geometry_pass_ps, sizeof(geometry_pass_ps) } };
+const ShaderPack lightingPass = { { lighting_pass_vs, sizeof(lighting_pass_vs) }, { lighting_pass_ps, sizeof(lighting_pass_ps) } };
+const ShaderPack swapchainWrite = { { swapchain_write_vs, sizeof(swapchain_write_vs) }, { swapchain_write_ps, sizeof(swapchain_write_ps) } };

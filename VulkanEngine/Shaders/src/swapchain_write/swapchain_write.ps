@@ -1,0 +1,7 @@
+Texture2D<float4> inputTex;
+
+float4 main(float4 screenPos : SV_Position) : SV_Target
+{
+    uint2 pos = (uint2) screenPos.xy;
+    return inputTex[pos];
+}

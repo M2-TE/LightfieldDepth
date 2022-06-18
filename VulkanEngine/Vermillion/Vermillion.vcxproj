@@ -106,6 +106,7 @@
     <ClInclude Include="src\core\render_passes\deferred_renderpass.hpp" />
     <ClInclude Include="src\core\render_passes\gbuffer.hpp" />
     <ClInclude Include="src\core\device_manager.hpp" />
+    <ClInclude Include="src\core\render_passes\swapchain_write.hpp" />
     <ClInclude Include="src\core\ring_buffer.hpp" />
     <ClInclude Include="src\core\geometry\indexed_geometry.hpp" />
     <ClInclude Include="src\core\geometry\vertex.hpp" />

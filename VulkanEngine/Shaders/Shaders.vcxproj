@@ -86,8 +86,10 @@
   <ItemGroup>
     <DXCShaderPS Include="src\gbuffer\lighting_pass.ps" />
     <DXCShaderPS Include="src\gbuffer\geometry_pass.ps" />
+    <DXCShaderPS Include="src\swapchain_write\swapchain_write.ps" />
     <DXCShaderVS Include="src\gbuffer\lighting_pass.vs" />
     <DXCShaderVS Include="src\gbuffer\geometry_pass.vs" />
+    <DXCShaderVS Include="src\swapchain_write\swapchain_write.vs" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="include\shaders.cpp" />

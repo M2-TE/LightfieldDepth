@@ -4,15 +4,14 @@
 #include "utils/types.hpp"
 #include "ring_buffer.hpp"
 #include "camera.hpp"
-// wrappers
 #include "wrappers/imgui_wrapper.hpp"
 #include "wrappers/swapchain_wrapper.hpp"
 #include "wrappers/shader_wrapper.hpp"
 #include "wrappers/uniform_buffer_wrapper.hpp"
 #include "wrappers/render_pass_wrapper.hpp"
-// other
 #include "geometry/indexed_geometry.hpp"
 #include "render_passes/deferred_renderpass.hpp"
+#include "render_passes/swapchain_write.hpp"
 
 struct UniformBufferObject 
 {

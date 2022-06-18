@@ -32,7 +32,7 @@ public:
 
 		// Render Pass
 		create_render_pass(info);
-		create_framebuffers(info);
+		create_framebuffer(info);
 		// Stages
 		create_geometry_pass_pipeline_layout(info);
 		create_geometry_pass_pipeline(info);
@@ -75,15 +75,14 @@ public:
 private:
 	void create_shader_modules(DeferredRenderpassCreateInfo& info)
 	{
-		geometryVS = create_shader_module(info.deviceWrapper, geometry_pass_vs, geometry_pass_vs_size);
-		geometryPS = create_shader_module(info.deviceWrapper, geometry_pass_ps, geometry_pass_ps_size);
+		geometryVS = create_shader_module(info.deviceWrapper, geometryPass.vs);
+		geometryPS = create_shader_module(info.deviceWrapper, geometryPass.ps);
 
-		lightingVS = create_shader_module(info.deviceWrapper, lighting_pass_vs, lighting_pass_vs_size);
-		lightingPS = create_shader_module(info.deviceWrapper, lighting_pass_ps, lighting_pass_ps_size);
+		lightingVS = create_shader_module(info.deviceWrapper, lightingPass.vs);
+		lightingPS = create_shader_module(info.deviceWrapper, lightingPass.ps);
 	}
-	void create_framebuffers(DeferredRenderpassCreateInfo& info)
+	void create_framebuffer(DeferredRenderpassCreateInfo& info)
 	{
-		// TODO: reorder
 		std::array<vk::ImageView, 5> attachments = {
 			gbuffer.posImageView,
 			gbuffer.colImageView,
@@ -96,13 +95,13 @@ private:
 			.setRenderPass(renderPass)
 			.setWidth(info.swapchainWrapper.extent.width)
 			.setHeight(info.swapchainWrapper.extent.height)
-			.setLayers(1)
-			// attachments
-			.setAttachmentCount(attachments.size()).setPAttachments(attachments.data());
+			.setAttachments(attachments)
+			.setLayers(1);
 
 		framebuffer = info.deviceWrapper.logicalDevice.createFramebuffer(framebufferInfo);
 	}
 
+	// render pass creation
 	void fill_attachment_descriptions(DeferredRenderpassCreateInfo& info, std::array<vk::AttachmentDescription, GBuffer::nImages + 2>& attachments)
 	{
 		// gbuffer pos attachment
@@ -267,10 +266,11 @@ private:
 		renderPass = info.deviceWrapper.logicalDevice.createRenderPass(renderPassInfo);
 	}
 
+	// graphics pipelines
 	void create_geometry_pass_pipeline_layout(DeferredRenderpassCreateInfo& info)
 	{
 		vk::PipelineLayoutCreateInfo pipelineLayoutInfo = vk::PipelineLayoutCreateInfo()
-			.setSetLayoutCount(info.geometryPassDescSetLayouts.size()).setPSetLayouts(info.geometryPassDescSetLayouts.data())
+			.setSetLayouts(info.geometryPassDescSetLayouts)
 			.setPushConstantRangeCount(0).setPushConstantRanges(nullptr);
 		geometryPassPipelineLayout = info.deviceWrapper.logicalDevice.createPipelineLayout(pipelineLayoutInfo);
 	}
@@ -386,7 +386,7 @@ private:
 			// -> global
 			colorBlendInfo = vk::PipelineColorBlendStateCreateInfo()
 				.setLogicOpEnable(VK_FALSE).setLogicOp(vk::LogicOp::eCopy)
-				.setAttachmentCount(colorBlendAttachments.size()).setPAttachments(colorBlendAttachments.data())
+				.setAttachments(colorBlendAttachments)
 				.setBlendConstants({ 0.0f, 0.0f, 0.0f, 0.0f });
 		}
 
@@ -442,7 +442,7 @@ private:
 		layouts[0] = gbuffer.descSetLayout;
 
 		vk::PipelineLayoutCreateInfo pipelineLayoutInfo = vk::PipelineLayoutCreateInfo()
-			.setSetLayoutCount(layouts.size()).setPSetLayouts(layouts.data())
+			.setSetLayouts(layouts)
 			.setPushConstantRangeCount(0).setPushConstantRanges(nullptr);
 		lightingPassPipelineLayout = info.deviceWrapper.logicalDevice.createPipelineLayout(pipelineLayoutInfo);
 	}
@@ -554,7 +554,7 @@ private:
 			// -> global
 			colorBlendInfo = vk::PipelineColorBlendStateCreateInfo()
 				.setLogicOpEnable(VK_FALSE).setLogicOp(vk::LogicOp::eCopy)
-				.setAttachmentCount(colorBlendAttachments.size()).setPAttachments(colorBlendAttachments.data())
+				.setAttachments(colorBlendAttachments)
 				.setBlendConstants({ 0.0f, 0.0f, 0.0f, 0.0f });
 		}
 

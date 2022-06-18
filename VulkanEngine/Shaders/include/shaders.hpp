@@ -1,12 +1,7 @@
 #pragma once
 
-// GBuffer: geometry pass
-extern const unsigned char geometry_pass_vs[];
-extern const unsigned char geometry_pass_ps[];
-extern const size_t geometry_pass_vs_size;
-extern const size_t geometry_pass_ps_size;
-// GBuffer: lighting pass
-extern const unsigned char lighting_pass_vs[];
-extern const unsigned char lighting_pass_ps[];
-extern const size_t lighting_pass_vs_size;
-extern const size_t lighting_pass_ps_size;
+struct ShaderData { const unsigned char* pData; size_t size; };
+struct ShaderPack { ShaderData vs, ps; };
+
+extern const ShaderPack geometryPass, lightingPass;
+extern const ShaderPack swapchainWrite;
