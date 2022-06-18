@@ -5,13 +5,13 @@ VisualStudioVersion = 17.1.32407.343
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Shaders", "Shaders\Shaders.vcxproj", "{73F690A0-099F-43F7-BDD5-819869DDAE07}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ImGui", "ImGui\ImGui.vcxproj", "{C31438C7-CAAC-4E09-AB30-87181AFF8EFD}"
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Vermillion-Windows", "Vermillion-Windows\Vermillion-Windows.vcxproj", "{0C5C39C9-82B9-4544-83D2-83394EF43434}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Vermillion-Linux", "Vermillion-Linux\Vermillion-Linux.vcxproj", "{8A34EF34-2D9E-4564-866C-0D0C9574FCB4}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Vermillion", "Vermillion\Vermillion.vcxitems", "{2519C4CF-25CE-45D0-BEA2-700B57ACF167}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ImGui", "ImGui\ImGui.vcxitems", "{644DB85A-B854-4FD1-93D9-FF5EB6DD59D0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -23,10 +23,6 @@ Global
 		{73F690A0-099F-43F7-BDD5-819869DDAE07}.Debug|x64.Build.0 = Debug|x64
 		{73F690A0-099F-43F7-BDD5-819869DDAE07}.Release|x64.ActiveCfg = Release|x64
 		{73F690A0-099F-43F7-BDD5-819869DDAE07}.Release|x64.Build.0 = Release|x64
-		{C31438C7-CAAC-4E09-AB30-87181AFF8EFD}.Debug|x64.ActiveCfg = Debug|x64
-		{C31438C7-CAAC-4E09-AB30-87181AFF8EFD}.Debug|x64.Build.0 = Debug|x64
-		{C31438C7-CAAC-4E09-AB30-87181AFF8EFD}.Release|x64.ActiveCfg = Release|x64
-		{C31438C7-CAAC-4E09-AB30-87181AFF8EFD}.Release|x64.Build.0 = Release|x64
 		{0C5C39C9-82B9-4544-83D2-83394EF43434}.Debug|x64.ActiveCfg = Debug|x64
 		{0C5C39C9-82B9-4544-83D2-83394EF43434}.Debug|x64.Build.0 = Debug|x64
 		{0C5C39C9-82B9-4544-83D2-83394EF43434}.Release|x64.ActiveCfg = Release|x64
@@ -45,7 +41,9 @@ Global
 		SolutionGuid = {3B1AF14D-D0F0-49B8-AC50-2DBAD2003D90}
 	EndGlobalSection
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		ImGui\ImGui.vcxitems*{0c5c39c9-82b9-4544-83d2-83394ef43434}*SharedItemsImports = 4
 		Vermillion\Vermillion.vcxitems*{0c5c39c9-82b9-4544-83d2-83394ef43434}*SharedItemsImports = 4
 		Vermillion\Vermillion.vcxitems*{2519c4cf-25ce-45d0-bea2-700b57acf167}*SharedItemsImports = 9
+		ImGui\ImGui.vcxitems*{644db85a-b854-4fd1-93d9-ff5eb6dd59d0}*SharedItemsImports = 9
 	EndGlobalSection
 EndGlobal

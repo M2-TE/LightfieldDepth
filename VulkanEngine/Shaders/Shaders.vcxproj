@@ -45,13 +45,13 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <OutDir>$(ProjectDir)lib\$(ProjectName)\$(SDKIdentifier)\$(Configuration)\</OutDir>
-    <IntDir>$(ProjectDir)lib-int\$(ProjectName)\$(SDKIdentifier)\$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)bin-int\$(SDKIdentifier)\$(Configuration)\lib\</OutDir>
+    <IntDir>$(SolutionDir)bin-int\$(SDKIdentifier)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>$(ProjectDir)lib\$(ProjectName)\$(SDKIdentifier)\$(Configuration)\</OutDir>
-    <IntDir>$(ProjectDir)lib-int\$(ProjectName)\$(SDKIdentifier)\$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)bin-int\$(SDKIdentifier)\$(Configuration)\lib\</OutDir>
+    <IntDir>$(SolutionDir)bin-int\$(SDKIdentifier)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
