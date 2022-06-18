@@ -68,8 +68,7 @@ private:
 
 		// output
 		imageCreateInfo.setFormat(colorFormat);
-		imageCreateInfo.setUsage(vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eColorAttachment);
-		VMI_LOG("Note: Deferred output still marked as blit src");
+		imageCreateInfo.setUsage(vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment);
 		result = allocator.createImage(&imageCreateInfo, &allocCreateInfo, &outputImage, &outputAlloc, nullptr);
 		if (result != vk::Result::eSuccess) VMI_ERR("GBuffer output image creation unsuccessful");
 		allocator.setAllocationName(outputAlloc, std::string("GBuffer output").c_str());

@@ -69,7 +69,6 @@ private:
 		if (deviceWrapper.capabilities.minImageCount > nImages) VMI_ERR("Swapchain has higher minimum image count requirement");
 
 
-		VMI_LOG("Note: Swapchain images still marked as blit dst");
 		vk::SwapchainCreateInfoKHR swapchainInfo = vk::SwapchainCreateInfoKHR()
 			// image settings
 			.setMinImageCount(nImages)
@@ -77,7 +76,7 @@ private:
 			.setImageColorSpace(surfaceFormat.colorSpace)
 			.setImageExtent(extent)
 			.setImageArrayLayers(1)
-			.setImageUsage(vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferDst)
+			.setImageUsage(vk::ImageUsageFlagBits::eColorAttachment)
 
 			// when both queues are the same, create exclusive access, else create concurrent access
 			.setImageSharingMode(vk::SharingMode::eExclusive)

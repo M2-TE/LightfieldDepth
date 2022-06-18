@@ -64,6 +64,7 @@ public:
 	void destroy_KHR(DeviceWrapper& deviceWrapper)
 	{
 		deferredRenderpass.destroy(deviceWrapper, allocator);
+		swapchainWriteRenderpass.destroy(deviceWrapper);
 		swapchainWrapper.destroy(deviceWrapper);
 	}
 	void recreate_KHR(DeviceWrapper& deviceWrapper, Window& window) // TODO use better approach of recreating swapchain using old swapchain pointer
@@ -191,10 +192,11 @@ private:
 		std::vector<vk::DescriptorSetLayout> lightingPassDescSetLayouts = {};
 		DeferredRenderpassCreateInfo createInfo = {
 			deviceWrapper, swapchainWrapper, allocator, descPool,
-			geometryPassDescSetLayouts, lightingPassDescSetLayouts,
-			nMaxFrames
+			geometryPassDescSetLayouts, lightingPassDescSetLayouts
 		};
 		deferredRenderpass.init(createInfo);
+
+		swapchainWriteRenderpass.init(deviceWrapper, swapchainWrapper, descPool, deferredRenderpass.get_output_image_view());
 	}
 
 	// runtime
@@ -219,71 +221,17 @@ private:
 			.setPInheritanceInfo(nullptr);
 		commandBuffer.begin(beginInfo);
 
-		// clear color
-		std::array<vk::ClearValue, 5> clearValues = { 
-			vk::ClearValue(vk::ClearColorValue().setFloat32({ 0.0f, 0.0f, 0.0f, 0.0f })),
-			vk::ClearValue(vk::ClearColorValue().setFloat32({ 0.0f, 0.0f, 0.0f, 0.0f })),
-			vk::ClearValue(vk::ClearColorValue().setFloat32({ 0.0f, 0.0f, 0.0f, 0.0f })),
-			vk::ClearValue(vk::ClearColorValue().setFloat32({ 0.0f, 0.0f, 0.0f, 0.0f })),
-			vk::ClearValue(vk::ClearDepthStencilValue().setDepth(1.0f).setStencil(0))
-		};
+		// deferred renderpass
+		deferredRenderpass.begin(commandBuffer);
+		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, deferredRenderpass.get_geometry_pass_layout(), 0, mvpBuffer.get_desc_set(iFrame), {});
+		geometry.draw(commandBuffer);
+		deferredRenderpass.end(commandBuffer);
 
-		vk::RenderPassBeginInfo renderPassBeginInfo = vk::RenderPassBeginInfo()
-			.setRenderPass(deferredRenderpass.get_render_pass())
-			.setFramebuffer(deferredRenderpass.get_framebuffer())
-			.setRenderArea(vk::Rect2D({ 0, 0 }, swapchainWrapper.extent))
-			.setClearValueCount(clearValues.size()).setPClearValues(clearValues.data());
+		// direct write to swapchain image
+		swapchainWriteRenderpass.begin(commandBuffer, iFrame);
+		swapchainWriteRenderpass.end(commandBuffer);
 
-		// first subpass
-		{
-			commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
-			commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, deferredRenderpass.get_geometry_pass());
-
-			commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, deferredRenderpass.get_geometry_pass_layout(), 0, mvpBuffer.get_desc_set(iFrame), {});
-			geometry.draw(commandBuffer);
-		}
-
-		// second subpass
-		{
-			commandBuffer.nextSubpass(vk::SubpassContents::eInline);
-			commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, deferredRenderpass.get_lighting_pass());
-
-			commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, deferredRenderpass.get_lighting_pass_layout(), 0, deferredRenderpass.get_descriptor_set(), {});
-			commandBuffer.draw(3, 1, 0, 0);
-
-			ImGui::Render();
-			ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
-		}
-		commandBuffer.endRenderPass();
-
-		// blit to swapchain image (temp workaround)
-		{
-			// TODO: dont create this again every frame, its unnecessary
-			vk::ImageSubresourceLayers layers = vk::ImageSubresourceLayers()
-				.setAspectMask(vk::ImageAspectFlagBits::eColor)
-				.setLayerCount(1).setBaseArrayLayer(0)
-				.setMipLevel(0);
-			
-			vk::Offset3D offset = vk::Offset3D(swapchainWrapper.extent.width, swapchainWrapper.extent.height, 1);
-			vk::ImageBlit region = vk::ImageBlit()
-				.setSrcOffsets({ vk::Offset3D(0, 0, 0), offset }) // TODO: set actual size
-				.setSrcSubresource(layers)
-				.setDstOffsets({ vk::Offset3D(0, 0, 0), offset })
-				.setDstSubresource(layers);
-
-			commandBuffer.blitImage(
-				// src
-				deferredRenderpass.get_output_image(),
-				vk::ImageLayout::eTransferSrcOptimal,
-				// dst
-				swapchainWrapper.images[iFrame],
-				vk::ImageLayout::eTransferDstOptimal,
-				region, 
-				vk::Filter::eLinear);
-
-		}
-
-
+		// finalize command buffer
 		commandBuffer.end();
 	}
 
@@ -292,6 +240,7 @@ private:
 
 	vma::Allocator allocator;
 	DeferredRenderpass deferredRenderpass;
+	SwapchainWrite swapchainWriteRenderpass;
 	SwapchainWrapper swapchainWrapper;
 	ImguiWrapper imguiWrapper;
 

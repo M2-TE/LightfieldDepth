@@ -1,7 +1,5 @@
 #pragma once
 
-// TODO: make generic post-processing stack with each effect being its own subpass?
-
 class SwapchainWrite
 {
 public:
@@ -10,13 +8,58 @@ public:
 	ROF_COPY_MOVE_DELETE(SwapchainWrite)
 
 public:
-	void init()
+	void init(DeviceWrapper& deviceWrapper, SwapchainWrapper& swapchainWrapper, vk::DescriptorPool& descPool, vk::ImageView& input)
 	{
-		// TODO
+		create_shader_modules(deviceWrapper);
+		create_render_pass(deviceWrapper, swapchainWrapper);
+		create_framebuffer(deviceWrapper, swapchainWrapper, input);
+
+		create_desc_set_layout(deviceWrapper);
+		create_desc_set(deviceWrapper, descPool, input);
+
+		create_pipeline_layout(deviceWrapper);
+		create_pipeline(deviceWrapper, swapchainWrapper);
+
+		fullscreenRect = vk::Rect2D({ 0, 0 }, swapchainWrapper.extent);
 	}
-	void destroy()
+	void destroy(DeviceWrapper& deviceWrapper)
 	{
-		// TODO
+		auto& device = deviceWrapper.logicalDevice;
+
+		// Shaders
+		device.destroyShaderModule(vs);
+		device.destroyShaderModule(ps);
+
+		// Render Pass
+		deviceWrapper.logicalDevice.destroyRenderPass(renderPass);
+		for (size_t i = 0; i < framebuffers.size(); i++) {
+			deviceWrapper.logicalDevice.destroyFramebuffer(framebuffers[i]);
+		}
+
+		// Stages
+		deviceWrapper.logicalDevice.destroyPipelineLayout(pipelineLayout);
+		deviceWrapper.logicalDevice.destroyPipeline(graphicsPipeline);
+
+		// descriptors
+		deviceWrapper.logicalDevice.destroyDescriptorSetLayout(descSetLayout);
+	}
+
+	void begin(vk::CommandBuffer& commandBuffer, uint32_t iFrame)
+	{
+		vk::RenderPassBeginInfo renderPassBeginInfo = vk::RenderPassBeginInfo()
+			.setRenderPass(renderPass)
+			.setFramebuffer(framebuffers[iFrame])
+			.setRenderArea(fullscreenRect);
+
+		commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
+		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline);
+	}
+	void end(vk::CommandBuffer& commandBuffer)
+	{
+		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, descSet, {});
+		commandBuffer.draw(3, 1, 0, 0);
+
+		commandBuffer.endRenderPass();
 	}
 
 private:
@@ -32,17 +75,17 @@ private:
 			vk::AttachmentDescription()
 				.setFormat(vk::Format::eR8G8B8A8Srgb)
 				.setSamples(vk::SampleCountFlagBits::e1)
-				.setLoadOp(vk::AttachmentLoadOp::eClear)
+				.setLoadOp(vk::AttachmentLoadOp::eLoad)
 				.setStoreOp(vk::AttachmentStoreOp::eDontCare)
 				.setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
 				.setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
-				.setInitialLayout(vk::ImageLayout::eUndefined) // may need to be defined? unsure (its eColorAttachment)
+				.setInitialLayout(vk::ImageLayout::eColorAttachmentOptimal)
 				.setFinalLayout(vk::ImageLayout::eShaderReadOnlyOptimal),
 			// Output
 			vk::AttachmentDescription()
-				.setFormat(swapchainWrapper.surfaceFormat.format) // TODO: adjust to actual swapchain format
+				.setFormat(swapchainWrapper.surfaceFormat.format)
 				.setSamples(vk::SampleCountFlagBits::e1)
-				.setLoadOp(vk::AttachmentLoadOp::eDontCare) // may not need to be cleared
+				.setLoadOp(vk::AttachmentLoadOp::eDontCare)
 				.setStoreOp(vk::AttachmentStoreOp::eStore)
 				.setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
 				.setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
@@ -52,7 +95,7 @@ private:
 
 		// Subpass Descriptions
 		vk::AttachmentReference input = vk::AttachmentReference(0, vk::ImageLayout::eShaderReadOnlyOptimal);
-		vk::AttachmentReference output = vk::AttachmentReference(1, vk::ImageLayout::ePresentSrcKHR);
+		vk::AttachmentReference output = vk::AttachmentReference(1, vk::ImageLayout::eColorAttachmentOptimal);
 		vk::SubpassDescription subpass = vk::SubpassDescription()
 			.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
 			.setPDepthStencilAttachment(nullptr)
@@ -79,18 +122,66 @@ private:
 
 		renderPass = deviceWrapper.logicalDevice.createRenderPass(renderPassInfo);
 	}
-	void create_framebuffer(DeviceWrapper& deviceWrapper, SwapchainWrapper& swapchainWrapper, vk::ImageView& input, vk::ImageView& output)
+	void create_framebuffer(DeviceWrapper& deviceWrapper, SwapchainWrapper& swapchainWrapper, vk::ImageView& input)
 	{
-		std::array<vk::ImageView, 2> attachments = { input, output };
+		std::array<vk::ImageView, 2> attachments = { input, VK_NULL_HANDLE };
 
-		vk::FramebufferCreateInfo framebufferInfo = vk::FramebufferCreateInfo()
-			.setRenderPass(renderPass)
-			.setWidth(swapchainWrapper.extent.width)
-			.setHeight(swapchainWrapper.extent.height)
-			.setAttachments(attachments)
-			.setLayers(1);
+		// create one framebuffer for each potential image view output
+		framebuffers.resize(swapchainWrapper.images.size());
+		for (size_t i = 0; i < swapchainWrapper.images.size(); i++) {
 
-		framebuffer = deviceWrapper.logicalDevice.createFramebuffer(framebufferInfo);
+			attachments[1] = swapchainWrapper.imageViews[i];
+
+			vk::FramebufferCreateInfo framebufferInfo = vk::FramebufferCreateInfo()
+				.setRenderPass(renderPass)
+				.setWidth(swapchainWrapper.extent.width)
+				.setHeight(swapchainWrapper.extent.height)
+				.setAttachments(attachments)
+				.setLayers(1);
+
+			framebuffers[i] = deviceWrapper.logicalDevice.createFramebuffer(framebufferInfo);
+		}
+	}
+
+	void create_desc_set_layout(DeviceWrapper& deviceWrapper)
+	{
+		vk::DescriptorSetLayoutBinding setLayoutBinding = vk::DescriptorSetLayoutBinding()
+			.setBinding(0)
+			.setDescriptorCount(1)
+			.setDescriptorType(vk::DescriptorType::eInputAttachment)
+			.setStageFlags(vk::ShaderStageFlagBits::eFragment);
+
+		// create descriptor set layout from the bindings
+		vk::DescriptorSetLayoutCreateInfo createInfo = vk::DescriptorSetLayoutCreateInfo()
+			.setBindings(setLayoutBinding);
+
+		descSetLayout = deviceWrapper.logicalDevice.createDescriptorSetLayout(createInfo);
+	}
+	void create_desc_set(DeviceWrapper& deviceWrapper, vk::DescriptorPool& descPool, vk::ImageView& imageView)
+	{
+		// allocate the descriptor sets using descriptor pool
+		vk::DescriptorSetAllocateInfo allocInfo = vk::DescriptorSetAllocateInfo()
+			.setDescriptorPool(descPool)
+			.setDescriptorSetCount(1).setPSetLayouts(&descSetLayout);
+		descSet = deviceWrapper.logicalDevice.allocateDescriptorSets(allocInfo)[0];
+
+		vk::DescriptorImageInfo descriptor = vk::DescriptorImageInfo()
+			.setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
+			.setImageView(imageView)
+			.setSampler(nullptr);
+
+		// input image
+		vk::WriteDescriptorSet descBufferWrites = vk::WriteDescriptorSet()
+			.setDstSet(descSet)
+			.setDstBinding(0)
+			.setDstArrayElement(0)
+			.setDescriptorType(vk::DescriptorType::eInputAttachment)
+			//
+			.setPBufferInfo(nullptr)
+			.setImageInfo(descriptor)
+			.setPTexelBufferView(nullptr);
+
+		deviceWrapper.logicalDevice.updateDescriptorSets(descBufferWrites, {});
 	}
 
 	void create_pipeline_layout(DeviceWrapper& deviceWrapper)
@@ -240,7 +331,7 @@ private:
 			.setLayout(pipelineLayout)
 			// render pass
 			.setRenderPass(renderPass)
-			.setSubpass(1);
+			.setSubpass(0);
 
 		auto result = deviceWrapper.logicalDevice.createGraphicsPipeline(pipelineCache, graphicsPipelineInfo);
 		switch (result.result)
@@ -253,10 +344,11 @@ private:
 		}
 		graphicsPipeline = result.value;
 	}
+	
 
 private:
 	vk::RenderPass renderPass;
-	vk::Framebuffer framebuffer;
+	std::vector<vk::Framebuffer> framebuffers;
 	vk::ShaderModule vs, ps;
 
 	// subpasses
@@ -265,6 +357,10 @@ private:
 	vk::PipelineCache pipelineCache; // TODO
 
 	// descriptor
-	vk::DescriptorSetLayout descSetLayout; // TODO
-	vk::DescriptorSet descSet; // TODO
+	vk::DescriptorSetLayout descSetLayout;
+	vk::DescriptorSet descSet;
+
+	// misc
+	vk::Rect2D fullscreenRect;
+	vk::ClearValue clearValue;
 };

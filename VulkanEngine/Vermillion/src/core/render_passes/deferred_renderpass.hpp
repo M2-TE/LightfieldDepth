@@ -9,7 +9,6 @@ struct DeferredRenderpassCreateInfo
 	// TODO: write to intermediate output image instead of writing to swapchain directly, no need for vector here
 	std::vector<vk::DescriptorSetLayout>& geometryPassDescSetLayouts;
 	std::vector<vk::DescriptorSetLayout>& lightingPassDescSetLayouts;
-	size_t nMaxFrames;
 };
 
 #include "gbuffer.hpp"
@@ -38,6 +37,16 @@ public:
 		create_geometry_pass_pipeline(info);
 		create_lighting_pass_pipeline_layout(info);
 		create_lighting_pass_pipeline(info);
+
+		// other
+		fullscreenRect = vk::Rect2D({ 0, 0 }, info.swapchainWrapper.extent);
+		clearValues = {
+			vk::ClearValue(vk::ClearColorValue().setFloat32({ 0.0f, 0.0f, 0.0f, 0.0f })),
+			vk::ClearValue(vk::ClearColorValue().setFloat32({ 0.0f, 0.0f, 0.0f, 0.0f })),
+			vk::ClearValue(vk::ClearColorValue().setFloat32({ 0.0f, 0.0f, 0.0f, 0.0f })),
+			vk::ClearValue(vk::ClearColorValue().setFloat32({ 0.0f, 0.0f, 0.0f, 0.0f })),
+			vk::ClearValue(vk::ClearDepthStencilValue().setDepth(1.0f).setStencil(0))
+		};
 	}
 	void destroy(DeviceWrapper& deviceWrapper, vma::Allocator& allocator)
 	{
@@ -63,6 +72,34 @@ public:
 		deviceWrapper.logicalDevice.destroyPipeline(lightingPassPipeline);
 	}
 
+	void begin(vk::CommandBuffer& commandBuffer)
+	{
+		vk::RenderPassBeginInfo renderPassBeginInfo = vk::RenderPassBeginInfo()
+			.setRenderPass(renderPass)
+			.setFramebuffer(framebuffer)
+			.setRenderArea(fullscreenRect)
+			.setClearValues(clearValues);
+
+		commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
+		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, geometryPassPipeline);
+	}
+	void end(vk::CommandBuffer& commandBuffer)
+	{
+		// draw fullscreen triangle to write output
+		commandBuffer.nextSubpass(vk::SubpassContents::eInline);
+		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, lightingPassPipeline);
+
+		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, lightingPassPipelineLayout, 0, gbuffer.descSet, {});
+		commandBuffer.draw(3, 1, 0, 0);
+
+		// write imgui ui to the output image
+		ImGui::Render();
+		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
+
+		commandBuffer.endRenderPass();
+	}
+
+	// TODO: remove some of these
 	inline vk::RenderPass& get_render_pass() { return renderPass; }
 	inline vk::Pipeline& get_geometry_pass() { return geometryPassPipeline; }
 	inline vk::Pipeline& get_lighting_pass() { return lightingPassPipeline; }
@@ -70,6 +107,7 @@ public:
 	inline vk::PipelineLayout& get_lighting_pass_layout() { return lightingPassPipelineLayout; }
 	inline vk::DescriptorSet& get_descriptor_set() { return gbuffer.descSet; }
 	inline vk::Image& get_output_image() { return gbuffer.outputImage; }
+	inline vk::ImageView& get_output_image_view() { return gbuffer.outputImageView; }
 	inline vk::Framebuffer& get_framebuffer() { return framebuffer; }
 
 private:
@@ -142,7 +180,6 @@ private:
 		}
 		// output color attachment
 		{
-			VMI_LOG("framebuffer attachment (output) final image layout marked as transfer src optimal");
 			attachments[3] = vk::AttachmentDescription()
 				.setFormat(gbuffer.colorViewFormat)
 				.setSamples(vk::SampleCountFlagBits::e1)
@@ -151,7 +188,7 @@ private:
 				.setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
 				.setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
 				.setInitialLayout(vk::ImageLayout::eUndefined)
-				.setFinalLayout(vk::ImageLayout::eTransferSrcOptimal);
+				.setFinalLayout(vk::ImageLayout::eColorAttachmentOptimal);
 		}
 		// depth stencil attachment
 		{
@@ -618,4 +655,8 @@ private:
 	// render resources
 	GBuffer gbuffer;
 	vk::Framebuffer framebuffer;
+
+	// misc
+	vk::Rect2D fullscreenRect;
+	std::array<vk::ClearValue, 5> clearValues;
 };
