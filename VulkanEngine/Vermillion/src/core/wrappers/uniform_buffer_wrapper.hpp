@@ -108,6 +108,7 @@ public:
 	T data;
 
 private:
+	// TODO: use Dynamic Uniform Buffers
 	std::vector<std::pair<vk::Buffer, vma::Allocation>> buffers;
 	std::vector<vma::AllocationInfo> allocInfos;
 
