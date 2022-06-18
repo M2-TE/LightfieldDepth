@@ -20,10 +20,12 @@ public:
 		allocator.destroyImage(posImage, posAlloc);
 		allocator.destroyImage(colImage, colAlloc);
 		allocator.destroyImage(normImage, normAlloc);
+		allocator.destroyImage(outputImage, outputAlloc);
 		allocator.destroyImage(depthStencilImage, depthStencilAlloc);
 		deviceWrapper.logicalDevice.destroyImageView(posImageView);
 		deviceWrapper.logicalDevice.destroyImageView(colImageView);
 		deviceWrapper.logicalDevice.destroyImageView(normImageView);
+		deviceWrapper.logicalDevice.destroyImageView(outputImageView);
 		deviceWrapper.logicalDevice.destroyImageView(depthStencilView);
 		deviceWrapper.logicalDevice.destroyDescriptorSetLayout(descSetLayout);
 	}
@@ -35,8 +37,7 @@ private:
 			.setImageType(vk::ImageType::e2D)
 			.setExtent(vk::Extent3D(swapchainWrapper.extent, 1))
 			//
-			.setMipLevels(1)
-			.setArrayLayers(1)
+			.setMipLevels(1).setArrayLayers(1)
 			.setSamples(vk::SampleCountFlagBits::e1)
 			.setTiling(vk::ImageTiling::eOptimal)
 			.setUsage(vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment);
@@ -45,8 +46,7 @@ private:
 			.setUsage(vma::MemoryUsage::eAutoPreferDevice)
 			.setFlags(vma::AllocationCreateFlagBits::eDedicatedMemory);
 
-
-		// gPosBuffer
+		// position
 		vk::Result result;
 		imageCreateInfo.setFormat(vk::Format::eR16G16B16A16Sfloat); // 16-bit signed float
 		imageCreateInfo.setFormat(vk::Format::eR32G32B32A32Sfloat); // 32-bit signed float
@@ -54,17 +54,23 @@ private:
 		if (result != vk::Result::eSuccess) VMI_ERR("Gbuffer position image creation unsuccessful");
 		allocator.setAllocationName(posAlloc, std::string("GBuffer positions").c_str());
 
-		// gColBuffer
-		imageCreateInfo.setFormat(vk::Format::eR8G8B8A8Srgb);
+		// color
+		imageCreateInfo.setFormat(colorFormat);
 		result = allocator.createImage(&imageCreateInfo, &allocCreateInfo, &colImage, &colAlloc, nullptr);
 		if (result != vk::Result::eSuccess) VMI_ERR("GBuffer color image creation unsuccessful");
 		allocator.setAllocationName(colAlloc, std::string("GBuffer colors").c_str());
 
-		// gNormBuffer
+		// normals
 		imageCreateInfo.setFormat(vk::Format::eR8G8B8A8Snorm); // normalized between -1 and 1
 		result = allocator.createImage(&imageCreateInfo, &allocCreateInfo, &normImage, &normAlloc, nullptr);
 		if (result != vk::Result::eSuccess) VMI_ERR("GBuffer normal image creation unsuccessful");
 		allocator.setAllocationName(normAlloc, std::string("GBuffer normals").c_str());
+
+		// output
+		imageCreateInfo.setFormat(colorFormat);
+		result = allocator.createImage(&imageCreateInfo, &allocCreateInfo, &outputImage, &outputAlloc, nullptr);
+		if (result != vk::Result::eSuccess) VMI_ERR("GBuffer output image creation unsuccessful");
+		allocator.setAllocationName(outputAlloc, std::string("GBuffer output").c_str());
 
 		// depth stencil
 		imageCreateInfo.setFormat(vk::Format::eD24UnormS8Uint);
@@ -93,7 +99,7 @@ private:
 		posImageView = deviceWrapper.logicalDevice.createImageView(imageViewInfo);
 
 		// colors view
-		imageViewInfo.setFormat(vk::Format::eR8G8B8A8Srgb);
+		imageViewInfo.setFormat(colorViewFormat);
 		imageViewInfo.setImage(colImage);
 		colImageView = deviceWrapper.logicalDevice.createImageView(imageViewInfo);
 
@@ -101,6 +107,11 @@ private:
 		imageViewInfo.setFormat(vk::Format::eR8G8B8A8Snorm); // normalized between -1 and 1
 		imageViewInfo.setImage(normImage);
 		normImageView = deviceWrapper.logicalDevice.createImageView(imageViewInfo);
+
+		// output view
+		imageViewInfo.setFormat(colorViewFormat);
+		imageViewInfo.setImage(outputImage);
+		outputImageView = deviceWrapper.logicalDevice.createImageView(imageViewInfo);
 
 		// depth stencil view
 		subresourceRange.setAspectMask(vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil);
@@ -171,9 +182,12 @@ public:
 	static constexpr size_t nImages = 3; // pos, col, norm
 private:
 	friend class DeferredRenderpass;
-	vma::Allocation posAlloc, colAlloc, normAlloc, depthStencilAlloc;
-	vk::Image posImage, colImage, normImage, depthStencilImage;
-	vk::ImageView posImageView, colImageView, normImageView, depthStencilView;
+	static constexpr vk::Format colorFormat = vk::Format::eR8G8B8A8Srgb;
+	static constexpr vk::Format colorViewFormat = vk::Format::eR8G8B8A8Srgb;
+
+	vma::Allocation posAlloc, colAlloc, normAlloc, outputAlloc, depthStencilAlloc;
+	vk::Image posImage, colImage, normImage, outputImage, depthStencilImage;
+	vk::ImageView posImageView, colImageView, normImageView, outputImageView, depthStencilView;
 
 	vk::DescriptorSet descSet;
 	vk::DescriptorSetLayout descSetLayout;
