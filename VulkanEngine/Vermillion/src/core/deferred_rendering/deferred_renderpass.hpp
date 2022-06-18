@@ -7,7 +7,6 @@ struct DeferredRenderpassCreateInfo
 	vma::Allocator& allocator;
 	vk::DescriptorPool& descPool;
 	// TODO: write to intermediate output image instead of writing to swapchain directly, no need for vector here
-	std::vector<vk::ImageView>& outputs;
 	std::vector<vk::DescriptorSetLayout>& geometryPassDescSetLayouts;
 	std::vector<vk::DescriptorSetLayout>& lightingPassDescSetLayouts;
 	size_t nMaxFrames;
@@ -55,7 +54,7 @@ public:
 
 		// Render Pass
 		deviceWrapper.logicalDevice.destroyRenderPass(renderPass);
-		for (size_t i = 0; i < framebuffers.size(); i++) deviceWrapper.logicalDevice.destroyFramebuffer(framebuffers[i]);
+		deviceWrapper.logicalDevice.destroyFramebuffer(framebuffer);
 
 		// Stages
 		deviceWrapper.logicalDevice.destroyPipelineLayout(geometryPassPipelineLayout);
@@ -70,7 +69,8 @@ public:
 	inline vk::PipelineLayout& get_geometry_pass_layout() { return geometryPassPipelineLayout; }
 	inline vk::PipelineLayout& get_lighting_pass_layout() { return lightingPassPipelineLayout; }
 	inline vk::DescriptorSet& get_descriptor_set() { return gbuffer.descSet; }
-	inline vk::Framebuffer& get_framebuffer(size_t i) { return framebuffers[i]; }
+	inline vk::Image& get_output_image() { return gbuffer.outputImage; }
+	inline vk::Framebuffer& get_framebuffer() { return framebuffer; }
 
 private:
 	void create_shader_modules(DeferredRenderpassCreateInfo& info)
@@ -83,41 +83,40 @@ private:
 	}
 	void create_framebuffers(DeferredRenderpassCreateInfo& info)
 	{
-		framebuffers.resize(info.nMaxFrames);
-		for (size_t i = 0; i < info.nMaxFrames; i++) {
-			std::array<vk::ImageView, 5> attachments = {
-				info.outputs[i],
-				gbuffer.depthStencilView,
-				gbuffer.posImageView,
-				gbuffer.colImageView,
-				gbuffer.normImageView
-			};
+		// TODO: reorder
+		std::array<vk::ImageView, 5> attachments = {
+			gbuffer.outputImageView,
+			gbuffer.depthStencilView,
+			gbuffer.posImageView,
+			gbuffer.colImageView,
+			gbuffer.normImageView
+		};
 
-			vk::FramebufferCreateInfo framebufferInfo = vk::FramebufferCreateInfo()
-				.setRenderPass(renderPass)
-				.setWidth(info.swapchainWrapper.extent.width)
-				.setHeight(info.swapchainWrapper.extent.height)
-				.setLayers(1)
-				// attachments
-				.setAttachmentCount(attachments.size()).setPAttachments(attachments.data());
+		vk::FramebufferCreateInfo framebufferInfo = vk::FramebufferCreateInfo()
+			.setRenderPass(renderPass)
+			.setWidth(info.swapchainWrapper.extent.width)
+			.setHeight(info.swapchainWrapper.extent.height)
+			.setLayers(1)
+			// attachments
+			.setAttachmentCount(attachments.size()).setPAttachments(attachments.data());
 
-			framebuffers[i] = info.deviceWrapper.logicalDevice.createFramebuffer(framebufferInfo);
-		}
+		framebuffer = info.deviceWrapper.logicalDevice.createFramebuffer(framebufferInfo);
 	}
 
 	void fill_attachment_descriptions(DeferredRenderpassCreateInfo& info, std::array<vk::AttachmentDescription, GBuffer::nImages + 2>& attachments)
 	{
 		// color attachment
 		{
+			VMI_LOG("framebuffer attachment 0 final image layout marked as transfer src optimal");
 			attachments[0] = vk::AttachmentDescription()
-				.setFormat(info.swapchainWrapper.surfaceFormat.format)
+				.setFormat(gbuffer.colorViewFormat)
 				.setSamples(vk::SampleCountFlagBits::e1)
 				.setLoadOp(vk::AttachmentLoadOp::eClear)
 				.setStoreOp(vk::AttachmentStoreOp::eStore)
 				.setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
 				.setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
 				.setInitialLayout(vk::ImageLayout::eUndefined)
-				.setFinalLayout(vk::ImageLayout::ePresentSrcKHR);
+				.setFinalLayout(vk::ImageLayout::eTransferSrcOptimal);
 		}
 		// depth stencil attachment
 		{
@@ -618,5 +617,5 @@ private:
 
 	// render resources
 	GBuffer gbuffer;
-	std::vector<vk::Framebuffer> framebuffers;
+	vk::Framebuffer framebuffer;
 };
