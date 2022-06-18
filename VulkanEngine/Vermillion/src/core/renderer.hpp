@@ -12,7 +12,7 @@
 #include "wrappers/render_pass_wrapper.hpp"
 // other
 #include "geometry/indexed_geometry.hpp"
-#include "deferred_rendering/deferred_renderpass.hpp"
+#include "render_passes/deferred_renderpass.hpp"
 
 struct UniformBufferObject 
 {
@@ -222,11 +222,11 @@ private:
 
 		// clear color
 		std::array<vk::ClearValue, 5> clearValues = { 
-			vk::ClearValue(vk::ClearColorValue().setFloat32({ 0.0f, 0.0f, 0.0f, 1.0f })),
-			vk::ClearValue(vk::ClearDepthStencilValue().setDepth(1.0f).setStencil(0)),
 			vk::ClearValue(vk::ClearColorValue().setFloat32({ 0.0f, 0.0f, 0.0f, 0.0f })),
 			vk::ClearValue(vk::ClearColorValue().setFloat32({ 0.0f, 0.0f, 0.0f, 0.0f })),
-			vk::ClearValue(vk::ClearColorValue().setFloat32({ 0.0f, 0.0f, 0.0f, 0.0f }))
+			vk::ClearValue(vk::ClearColorValue().setFloat32({ 0.0f, 0.0f, 0.0f, 0.0f })),
+			vk::ClearValue(vk::ClearColorValue().setFloat32({ 0.0f, 0.0f, 0.0f, 0.0f })),
+			vk::ClearValue(vk::ClearDepthStencilValue().setDepth(1.0f).setStencil(0))
 		};
 
 		vk::RenderPassBeginInfo renderPassBeginInfo = vk::RenderPassBeginInfo()

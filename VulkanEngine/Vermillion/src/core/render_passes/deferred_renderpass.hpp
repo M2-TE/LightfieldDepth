@@ -85,11 +85,11 @@ private:
 	{
 		// TODO: reorder
 		std::array<vk::ImageView, 5> attachments = {
-			gbuffer.outputImageView,
-			gbuffer.depthStencilView,
 			gbuffer.posImageView,
 			gbuffer.colImageView,
-			gbuffer.normImageView
+			gbuffer.normImageView,
+			gbuffer.outputImageView,
+			gbuffer.depthStencilView
 		};
 
 		vk::FramebufferCreateInfo framebufferInfo = vk::FramebufferCreateInfo()
@@ -105,36 +105,9 @@ private:
 
 	void fill_attachment_descriptions(DeferredRenderpassCreateInfo& info, std::array<vk::AttachmentDescription, GBuffer::nImages + 2>& attachments)
 	{
-		// color attachment
-		{
-			VMI_LOG("framebuffer attachment 0 final image layout marked as transfer src optimal");
-			attachments[0] = vk::AttachmentDescription()
-				.setFormat(gbuffer.colorViewFormat)
-				.setSamples(vk::SampleCountFlagBits::e1)
-				.setLoadOp(vk::AttachmentLoadOp::eClear)
-				.setStoreOp(vk::AttachmentStoreOp::eStore)
-				.setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
-				.setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
-				.setInitialLayout(vk::ImageLayout::eUndefined)
-				.setFinalLayout(vk::ImageLayout::eTransferSrcOptimal);
-		}
-		// depth stencil attachment
-		{
-			attachments[1] = vk::AttachmentDescription()
-				.setFormat(vk::Format::eD24UnormS8Uint)
-				.setSamples(vk::SampleCountFlagBits::e1)
-				// depth
-				.setLoadOp(vk::AttachmentLoadOp::eClear)
-				.setStoreOp(vk::AttachmentStoreOp::eStore)
-				// stencil
-				.setStencilLoadOp(vk::AttachmentLoadOp::eClear)
-				.setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
-				.setInitialLayout(vk::ImageLayout::eUndefined)
-				.setFinalLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal);
-		}
 		// gbuffer pos attachment
 		{
-			attachments[2] = vk::AttachmentDescription()
+			attachments[0] = vk::AttachmentDescription()
 				.setFormat(vk::Format::eR32G32B32A32Sfloat)
 				.setSamples(vk::SampleCountFlagBits::e1)
 				.setLoadOp(vk::AttachmentLoadOp::eClear)
@@ -146,7 +119,7 @@ private:
 		}
 		// gbuffer col attachment
 		{
-			attachments[3] = vk::AttachmentDescription()
+			attachments[1] = vk::AttachmentDescription()
 				.setFormat(vk::Format::eR8G8B8A8Srgb)
 				.setSamples(vk::SampleCountFlagBits::e1)
 				.setLoadOp(vk::AttachmentLoadOp::eClear)
@@ -158,7 +131,7 @@ private:
 		}
 		// gbuffer norm attachment
 		{
-			attachments[4] = vk::AttachmentDescription()
+			attachments[2] = vk::AttachmentDescription()
 				.setFormat(vk::Format::eR8G8B8A8Snorm)
 				.setSamples(vk::SampleCountFlagBits::e1)
 				.setLoadOp(vk::AttachmentLoadOp::eClear)
@@ -167,6 +140,33 @@ private:
 				.setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
 				.setInitialLayout(vk::ImageLayout::eUndefined)
 				.setFinalLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
+		}
+		// output color attachment
+		{
+			VMI_LOG("framebuffer attachment (output) final image layout marked as transfer src optimal");
+			attachments[3] = vk::AttachmentDescription()
+				.setFormat(gbuffer.colorViewFormat)
+				.setSamples(vk::SampleCountFlagBits::e1)
+				.setLoadOp(vk::AttachmentLoadOp::eClear)
+				.setStoreOp(vk::AttachmentStoreOp::eStore)
+				.setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
+				.setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
+				.setInitialLayout(vk::ImageLayout::eUndefined)
+				.setFinalLayout(vk::ImageLayout::eTransferSrcOptimal);
+		}
+		// depth stencil attachment
+		{
+			attachments[4] = vk::AttachmentDescription()
+				.setFormat(vk::Format::eD24UnormS8Uint)
+				.setSamples(vk::SampleCountFlagBits::e1)
+				// depth
+				.setLoadOp(vk::AttachmentLoadOp::eClear)
+				.setStoreOp(vk::AttachmentStoreOp::eStore)
+				// stencil
+				.setStencilLoadOp(vk::AttachmentLoadOp::eClear)
+				.setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
+				.setInitialLayout(vk::ImageLayout::eUndefined)
+				.setFinalLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal);
 		}
 	}
 	void fill_subpass_dependencies(std::array<vk::SubpassDependency, 2>& dependencies)
@@ -212,15 +212,15 @@ private:
 		{
 			// Geometry Pass
 			{
-				depthAttachmentRef = vk::AttachmentReference(1, vk::ImageLayout::eDepthStencilAttachmentOptimal);
+				depthAttachmentRef = vk::AttachmentReference(4, vk::ImageLayout::eDepthStencilAttachmentOptimal);
 
 				inputGeometry = {
 				};
 
 				outputGeometry = {
-					vk::AttachmentReference(2, vk::ImageLayout::eColorAttachmentOptimal), // gPos
-					vk::AttachmentReference(3, vk::ImageLayout::eColorAttachmentOptimal), // gCol
-					vk::AttachmentReference(4, vk::ImageLayout::eColorAttachmentOptimal), // gNorm
+					vk::AttachmentReference(0, vk::ImageLayout::eColorAttachmentOptimal), // gPos
+					vk::AttachmentReference(1, vk::ImageLayout::eColorAttachmentOptimal), // gCol
+					vk::AttachmentReference(2, vk::ImageLayout::eColorAttachmentOptimal), // gNorm
 				};
 
 				subpasses[0] = vk::SubpassDescription()
@@ -236,13 +236,13 @@ private:
 			// Lighting Pass
 			{
 				inputLighting = {
-					vk::AttachmentReference(2, vk::ImageLayout::eShaderReadOnlyOptimal), // gPos
-					vk::AttachmentReference(3, vk::ImageLayout::eShaderReadOnlyOptimal), // gCol
-					vk::AttachmentReference(4, vk::ImageLayout::eShaderReadOnlyOptimal), // gNorm
+					vk::AttachmentReference(0, vk::ImageLayout::eShaderReadOnlyOptimal), // gPos
+					vk::AttachmentReference(1, vk::ImageLayout::eShaderReadOnlyOptimal), // gCol
+					vk::AttachmentReference(2, vk::ImageLayout::eShaderReadOnlyOptimal), // gNorm
 				};
 
 				outputLighting = {
-					vk::AttachmentReference(0, vk::ImageLayout::eColorAttachmentOptimal), // output image
+					vk::AttachmentReference(3, vk::ImageLayout::eColorAttachmentOptimal), // output image
 				};
 
 				subpasses[1] = vk::SubpassDescription()

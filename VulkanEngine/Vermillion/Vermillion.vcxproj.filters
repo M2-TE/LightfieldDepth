@@ -95,10 +95,10 @@
     <ClInclude Include="src\core\wrappers\image_wrapper.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\core\deferred_rendering\deferred_renderpass.hpp">
+    <ClInclude Include="src\core\render_passes\deferred_renderpass.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\core\deferred_rendering\gbuffer.hpp">
+    <ClInclude Include="src\core\render_passes\gbuffer.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\core\wrappers\imgui_wrapper.hpp">
