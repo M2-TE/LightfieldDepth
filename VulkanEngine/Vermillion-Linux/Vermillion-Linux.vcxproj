@@ -74,6 +74,14 @@
   <ImportGroup Label="Shared" />
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <OutDir>$(SolutionDir)bin\$(TargetPlatformIdentifier)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)bin-int\$(TargetPlatformIdentifier)\$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <OutDir>$(SolutionDir)bin\$(TargetPlatformIdentifier)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)bin-int\$(TargetPlatformIdentifier)\$(Configuration)\</IntDir>
+  </PropertyGroup>
   <ItemGroup>
   </ItemGroup>
   <ItemDefinitionGroup />

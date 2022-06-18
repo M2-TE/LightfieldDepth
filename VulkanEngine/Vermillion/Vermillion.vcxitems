@@ -1,0 +1,58 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="Globals">
+    <MSBuildAllProjects Condition="'$(MSBuildVersion)' == '' Or '$(MSBuildVersion)' &lt; '16.0'">$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
+    <HasSharedItems>true</HasSharedItems>
+    <ItemsProjectGuid>{2519c4cf-25ce-45d0-bea2-700b57acf167}</ItemsProjectGuid>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(MSBuildThisFileDirectory)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ProjectCapability Include="SourceItemsFromImports" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\application.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\camera.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\device_manager.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\geometry\indexed_geometry.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\geometry\vertex.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\renderer.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\render_passes\deferred_renderpass.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\render_passes\gbuffer.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\render_passes\swapchain_write.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\ring_buffer.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\window.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\wrappers\device_wrapper.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\wrappers\image_wrapper.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\wrappers\imgui_wrapper.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\wrappers\render_pass_wrapper.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\wrappers\shader_wrapper.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\wrappers\swapchain_wrapper.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\wrappers\uniform_buffer_wrapper.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\pch\pch.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\utils\logging.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\utils\rule_of_five.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\utils\timer.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\utils\types.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)vendor\vma-hpp\include\vk_mem_alloc.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)vendor\vma-hpp\include\vk_mem_alloc.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)vendor\vma-hpp\include\vk_mem_alloc_enums.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)vendor\vma-hpp\include\vk_mem_alloc_funcs.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)vendor\vma-hpp\include\vk_mem_alloc_handles.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)vendor\vma-hpp\include\vk_mem_alloc_structs.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="$(MSBuildThisFileDirectory)src\entry.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)src\pch\pch.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">pch.hpp</PrecompiledHeaderFile>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">pch.hpp</PrecompiledHeaderFile>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
+    </ClCompile>
+  </ItemGroup>
+</Project>
