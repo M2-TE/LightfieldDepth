@@ -1,6 +1,44 @@
 #pragma once
 
 template<class T>
+class UniformBufferBase
+{
+private:
+	UniformBufferBase() = default;
+	~UniformBufferBase() = default;
+	ROF_COPY_MOVE_DELETE(UniformBufferBase)
+
+public:
+	T& get() { return data; }
+
+private:
+	T data;
+};
+
+template<class T>
+class UniformBufferStatic : public UniformBufferBase<T>
+{
+public:
+	UniformBufferStatic() = default;
+	~UniformBufferStatic() = default;
+	ROF_COPY_MOVE_DELETE(UniformBufferStatic)
+
+private:
+
+};
+
+template<class T>
+class UniformBufferDynamic : public UniformBufferBase<T>
+{
+public:
+	UniformBufferDynamic() = default;
+	~UniformBufferDynamic() = default;
+	ROF_COPY_MOVE_DELETE(UniformBufferDynamic)
+};
+
+
+// deprecate this!
+template<class T>
 class UniformBufferWrapper
 {
 public:
@@ -28,7 +66,7 @@ public:
 		memcpy(allocInfos[iBuffer].pMappedData, &data, sizeof(T));
 	}
 
-	vk::DescriptorSet get_desc_set(uint32_t iDescSet)
+	vk::DescriptorSet& get_desc_set(uint32_t iDescSet)
 	{
 		return descSets[iDescSet];
 	}

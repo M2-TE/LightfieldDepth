@@ -28,7 +28,6 @@ public:
 
 		syncFrames.set_size(nMaxFrames).init(deviceWrapper);
 
-		create_uniform_buffers(deviceWrapper);
 		create_KHR(deviceWrapper, window);
 
 		imguiWrapper.init(deviceWrapper, window, deferredRenderpass.get_render_pass(), syncFrames);
@@ -38,8 +37,7 @@ public:
 	void destroy(DeviceWrapper& deviceWrapper)
 	{
 		vk::Device& device = deviceWrapper.logicalDevice;
-
-		destroy_uniform_buffers(deviceWrapper);
+		
 		destroy_KHR(deviceWrapper);
 
 		device.destroyCommandPool(transientCommandPool);
@@ -55,13 +53,6 @@ public:
 	}
 
 	// runtime
-	void recreate_uniform_buffers(DeviceWrapper& deviceWrapper)
-	{
-		VMI_LOG("Rebuilding uniform buffers");
-
-		destroy_uniform_buffers(deviceWrapper);
-		create_uniform_buffers(deviceWrapper);
-	}
 	void recreate_KHR(DeviceWrapper& deviceWrapper, Window& window) // TODO use better approach of recreating swapchain using old swapchain pointer
 	{
 		VMI_LOG("Rebuilding KHR");
@@ -105,7 +96,6 @@ public:
 
 			// reset command pool and then record into it (using command buffer)
 			deviceWrapper.logicalDevice.resetCommandPool(syncFrame.commandPool);
-			camera.update_uniform_buffer(deviceWrapper, swapchainWrapper.extent, iFrame);
 			record_command_buffer(iFrame, syncFrame.commandBuffer);
 		}
 
@@ -176,16 +166,13 @@ private:
 			.setFlags(vk::CommandPoolCreateFlagBits::eTransient);
 		transientCommandPool = deviceWrapper.logicalDevice.createCommandPool(commandPoolInfo);
 	}
-	void create_uniform_buffers(DeviceWrapper& deviceWrapper)
-	{
-		camera.init(deviceWrapper, allocator, descPool, nMaxFrames);
-	}
 	void create_KHR(DeviceWrapper& deviceWrapper, Window& window)
 	{
 		swapchainWrapper.init(deviceWrapper, window, nMaxFrames);
+		camera.init(deviceWrapper, allocator, descPool, swapchainWrapper);
 
 		// create deferred render pass
-		std::vector<vk::DescriptorSetLayout> geometryPassDescSetLayouts = { camera.viewProjBuffer.get_desc_set_layout() };
+		std::vector<vk::DescriptorSetLayout> geometryPassDescSetLayouts = { camera.get_desc_set_layout() };
 		std::vector<vk::DescriptorSetLayout> lightingPassDescSetLayouts = {};
 		DeferredRenderpassCreateInfo createInfo = {
 			deviceWrapper, swapchainWrapper, allocator, descPool,
@@ -195,15 +182,12 @@ private:
 
 		swapchainWriteRenderpass.init(deviceWrapper, swapchainWrapper, descPool, deferredRenderpass.get_output_image_view());
 	}
-	void destroy_uniform_buffers(DeviceWrapper& deviceWrapper)
-	{
-		camera.destroy(deviceWrapper, allocator);
-	}
 	void destroy_KHR(DeviceWrapper& deviceWrapper)
 	{
 		deferredRenderpass.destroy(deviceWrapper, allocator);
 		swapchainWriteRenderpass.destroy(deviceWrapper);
 		swapchainWrapper.destroy(deviceWrapper);
+		camera.destroy(deviceWrapper, allocator);
 	}
 
 	// runtime
@@ -214,10 +198,13 @@ private:
 			.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit)
 			.setPInheritanceInfo(nullptr);
 		commandBuffer.begin(beginInfo);
+		
+		// update camera buffer
+		camera.update(iFrame);
 
 		// deferred renderpass
 		deferredRenderpass.begin(commandBuffer);
-		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, deferredRenderpass.get_geometry_pass_layout(), 0, camera.viewProjBuffer.get_desc_set(iFrame), {});
+		deferredRenderpass.bind_desc_sets(commandBuffer, camera.get_desc_set(iFrame));
 		geometry.draw(commandBuffer);
 		deferredRenderpass.end(commandBuffer);
 

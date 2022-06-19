@@ -1,5 +1,6 @@
 #pragma once
 
+typedef glm::qua<glm::f32, glm::packed_highp> Quaternion;
 typedef glm::mat<4, 4, glm::f32, glm::packed_highp> float4x4;
 typedef glm::vec<4, glm::f32, glm::packed_highp> float4;
 typedef glm::vec<3, glm::f32, glm::packed_highp> float3;

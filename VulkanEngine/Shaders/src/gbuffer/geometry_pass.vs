@@ -21,16 +21,15 @@ cbuffer ViewProjectionBuffer
 {
     float4x4 view;
     float4x4 proj;
+    float4x4 viewProj;
 };
 
 
 Output main(Input input)
 {
     Output output;
-    //output.worldPos = mul(model, input.position); // no model matrix needed atm
     output.worldPos = input.position;
-    output.screenPos = mul(view, output.worldPos);
-    output.screenPos = mul(proj, output.screenPos);
+    output.screenPos = mul(viewProj, output.worldPos);
     output.color = input.color;
     return output;
 }

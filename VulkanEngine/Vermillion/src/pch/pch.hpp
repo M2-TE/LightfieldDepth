@@ -26,6 +26,7 @@
 #define GLM_FORCE_SIZE_T_LENGTH
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 // Tell SDL not to mess with main()
 #define SDL_MAIN_HANDLED

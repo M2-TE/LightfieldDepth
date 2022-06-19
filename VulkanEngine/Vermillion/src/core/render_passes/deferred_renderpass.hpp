@@ -98,6 +98,10 @@ public:
 
 		commandBuffer.endRenderPass();
 	}
+	void bind_desc_sets(vk::CommandBuffer& commandBuffer, const vk::ArrayProxy<vk::DescriptorSet>& descSets)
+	{
+		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, geometryPassPipelineLayout, 0, descSets, {});
+	}
 
 	// TODO: remove some of these
 	inline vk::RenderPass& get_render_pass() { return renderPass; }

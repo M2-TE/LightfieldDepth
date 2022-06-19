@@ -1,8 +1,13 @@
 #pragma once
 
 #include "wrappers/uniform_buffer_wrapper.hpp"
+#include "wrappers/swapchain_wrapper.hpp"
 
-struct ViewProjectionBuffer { float4x4 view, proj; };
+// why were these defined in the first place.. tf?
+#undef near
+#undef far
+
+struct ViewProjectionBuffer { float4x4 view, proj, viewProj; };
 class Camera
 {
 public:
@@ -11,37 +16,74 @@ public:
 	ROF_COPY_MOVE_DELETE(Camera)
 
 public:
-	void init(DeviceWrapper& deviceWrapper, vma::Allocator& allocator, vk::DescriptorPool& descPool, uint32_t nMaxFrames)
+	void init(DeviceWrapper& deviceWrapper, vma::Allocator& allocator, vk::DescriptorPool& descPool, SwapchainWrapper& swapchainWrapper)
 	{
-		viewProjBuffer.init(deviceWrapper, allocator, descPool, 1, vk::ShaderStageFlagBits::eVertex, nMaxFrames);
+		aspectRatio = (float)swapchainWrapper.extent.width / (float)swapchainWrapper.extent.height;
+
+		auto& ubo = viewProjBuffer.data;
+		// view matrix
+		ubo.view = glm::mat4_cast(glm::inverse(rotation));
+		ubo.view = glm::translate(ubo.view, -position);
+		// projection matrix
+		ubo.proj = glm::perspective(fov, aspectRatio, near, far);
+		// combination
+		ubo.viewProj = ubo.proj * ubo.view;
+
+		viewProjBuffer.init(deviceWrapper, allocator, descPool, 1, vk::ShaderStageFlagBits::eVertex, swapchainWrapper.images.size());
 	}
 	void destroy(DeviceWrapper& deviceWrapper, vma::Allocator& allocator)
 	{
 		viewProjBuffer.destroy(deviceWrapper, allocator);
 	}
-	void rebuild()
+	void rebuild(DeviceWrapper& deviceWrapper, vma::Allocator& allocator, vk::DescriptorPool& descPool, SwapchainWrapper& swapchainWrapper)
 	{
-		// TODO (on e.g. change of nFrames in flight)
+		destroy(deviceWrapper, allocator);
+		init(deviceWrapper, allocator, descPool, swapchainWrapper);
 	}
 
-	void update_uniform_buffer(DeviceWrapper& deviceWrapper, vk::Extent2D& extent, uint32_t iCurrentFrame)
+	void translate(float3 dir)
 	{
-		static auto startTime = std::chrono::high_resolution_clock::now();
-		auto currentTime = std::chrono::high_resolution_clock::now();
-		float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
+		position += dir;
+	}
+	void rotate_euler(float3 rot)
+	{
+		rotation *= Quaternion(rot);
+	}
+	
+	void update(uint32_t iCurrentFrame)
+	{
 		auto& ubo = viewProjBuffer.data;
-		ubo.view = glm::lookAt(glm::vec3(0.0f, 2.0f, -2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-		ubo.proj = glm::perspective(glm::radians(45.0f), (float)extent.width / (float)extent.height, 0.1f, 10.0f);
 
+		// view matrix
+		ubo.view = glm::mat4_cast(glm::inverse(rotation));
+		ubo.view = glm::translate(ubo.view, -position);
+
+		// projection matrix
+		ubo.proj = glm::perspective(fov, aspectRatio, near, far);
+
+		// combination
+		ubo.viewProj = ubo.proj * ubo.view;
+		
 		viewProjBuffer.update(iCurrentFrame);
 	}
-
-public:
-	UniformBufferWrapper<ViewProjectionBuffer> viewProjBuffer;
+	vk::DescriptorSet& get_desc_set(uint32_t iFrame)
+	{
+		return viewProjBuffer.get_desc_set(iFrame);
+	}
+	vk::DescriptorSetLayout& get_desc_set_layout()
+	{
+		return viewProjBuffer.get_desc_set_layout();
+	}
 
 private:
-	float4 position;
-	float4 rotation;
-	float4 rotationEuler;
+	UniformBufferWrapper<ViewProjectionBuffer> viewProjBuffer;
+
+	// camera position in world space
+	float3 position = { 0.0f, 0.0f, -5.0f };
+	Quaternion rotation = glm::identity<Quaternion>() * glm::quat({ 0.0f, glm::radians(10.0f), 0.0f});
+
+	// camera settings
+	float aspectRatio = 1280.0f / 720.0f;
+	float fov = 45.0f;
+	float near = 0.1f, far = 1000.0f;
 };
