@@ -1,8 +1,16 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug-Linux|x64">
+      <Configuration>Debug-Linux</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
     <ProjectConfiguration Include="Debug|x64">
       <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release-Linux|x64">
+      <Configuration>Release-Linux</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
     <ProjectConfiguration Include="Release|x64">
@@ -24,47 +32,95 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>Remote_GCC_1_0</PlatformToolset>
+    <UseOfStl>libstdc++_static</UseOfStl>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug-Linux|x64'" Label="Configuration">
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>Remote_GCC_1_0</PlatformToolset>
+    <UseOfStl>libstdc++_static</UseOfStl>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>Remote_GCC_1_0</PlatformToolset>
+    <UseOfStl>libstdc++_static</UseOfStl>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release-Linux|x64'" Label="Configuration">
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>Remote_GCC_1_0</PlatformToolset>
+    <UseOfStl>libstdc++_static</UseOfStl>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings" />
   <ImportGroup Label="Shared">
-    <Import Project="..\ImGui\ImGui.vcxitems" Label="Shared" />
     <Import Project="..\Vermillion\Vermillion.vcxitems" Label="Shared" />
+    <Import Project="..\ImGui\ImGui.vcxitems" Label="Shared" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>$(SolutionDir)bin\$(TargetPlatformIdentifier)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)bin-int\$(TargetPlatformIdentifier)\$(Configuration)\</IntDir>
-    <LocalRemoteCopySources>false</LocalRemoteCopySources>
+    <LocalRemoteCopySources>true</LocalRemoteCopySources>
+    <TargetExt>.sh</TargetExt>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug-Linux|x64'">
+    <OutDir>$(SolutionDir)bin\$(TargetPlatformIdentifier)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)bin-int\$(TargetPlatformIdentifier)\$(Configuration)\</IntDir>
+    <LocalRemoteCopySources>true</LocalRemoteCopySources>
+    <TargetExt>.sh</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>$(SolutionDir)bin\$(TargetPlatformIdentifier)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)bin-int\$(TargetPlatformIdentifier)\$(Configuration)\</IntDir>
-    <LocalRemoteCopySources>false</LocalRemoteCopySources>
+    <LocalRemoteCopySources>true</LocalRemoteCopySources>
+    <TargetExt>.sh</TargetExt>
   </PropertyGroup>
-  <ItemGroup>
-  </ItemGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release-Linux|x64'">
+    <OutDir>$(SolutionDir)bin\$(TargetPlatformIdentifier)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)bin-int\$(TargetPlatformIdentifier)\$(Configuration)\</IntDir>
+    <LocalRemoteCopySources>true</LocalRemoteCopySources>
+    <TargetExt>.sh</TargetExt>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>$(SolutionDir)Vermillion\src\;$(SolutionDir)Vermillion\src\pch\;$(SolutionDir)Vermillion\vendor\vma-hpp\include\;$(SolutionDir)Shaders\include\;$(SolutionDir)ImGui\vendor\imgui\;$(VULKAN_SDK)\Include\;$(VULKAN_SDK)\Include\SDL2\;%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Vermillion\src\;$(SolutionDir)Vermillion\src\pch\;$(SolutionDir)Vermillion\vendor\vma-hpp\include\;$(SolutionDir)Shaders\include\;$(SolutionDir)ImGui\vendor\imgui\;$(VULKAN_SDK)\Include\;/usr/include/SDL2/;%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <CppLanguageStandard>c++17</CppLanguageStandard>
+      <PreprocessorDefinitions>_DEBUG;</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <AdditionalLibraryDirectories>$(VULKAN_SDK)\Lib;%(Link.AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>vulkan-1.lib;SDL2.lib;%(AdditionalDependencies);$(StlAdditionalDependencies);%(Link.AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>%(Link.AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>%(AdditionalDependencies);$(StlAdditionalDependencies);%(Link.AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug-Linux|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(SolutionDir)Vermillion\src\;$(SolutionDir)Vermillion\src\pch\;$(SolutionDir)Vermillion\vendor\vma-hpp\include\;$(SolutionDir)Shaders\include\;$(SolutionDir)ImGui\vendor\imgui\;$(VULKAN_SDK)\Include\;/usr/include/SDL2/;%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <CppLanguageStandard>c++17</CppLanguageStandard>
+      <PreprocessorDefinitions>_DEBUG;</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>%(Link.AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>%(AdditionalDependencies);$(StlAdditionalDependencies);%(Link.AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>$(SolutionDir)Vermillion\src\;$(SolutionDir)Vermillion\src\pch\;$(SolutionDir)Vermillion\vendor\vma-hpp\include\;$(SolutionDir)Shaders\include\;$(SolutionDir)ImGui\vendor\imgui\;$(VULKAN_SDK)\Include\;$(VULKAN_SDK)\Include\SDL2\;%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Vermillion\src\;$(SolutionDir)Vermillion\src\pch\;$(SolutionDir)Vermillion\vendor\vma-hpp\include\;$(SolutionDir)Shaders\include\;$(SolutionDir)ImGui\vendor\imgui\;$(VULKAN_SDK)\Include\;/usr/include/SDL2/;%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <CppLanguageStandard>c++17</CppLanguageStandard>
     </ClCompile>
     <Link>
-      <AdditionalLibraryDirectories>$(VULKAN_SDK)\Lib;%(Link.AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>vulkan-1.lib;SDL2.lib;%(AdditionalDependencies);$(StlAdditionalDependencies);%(Link.AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>%(Link.AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>%(AdditionalDependencies);$(StlAdditionalDependencies);%(Link.AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release-Linux|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(SolutionDir)Vermillion\src\;$(SolutionDir)Vermillion\src\pch\;$(SolutionDir)Vermillion\vendor\vma-hpp\include\;$(SolutionDir)Shaders\include\;$(SolutionDir)ImGui\vendor\imgui\;$(VULKAN_SDK)\Include\;/usr/include/SDL2/;%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <CppLanguageStandard>c++17</CppLanguageStandard>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>%(Link.AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>%(AdditionalDependencies);$(StlAdditionalDependencies);%(Link.AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

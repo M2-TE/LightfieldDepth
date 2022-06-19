@@ -16,23 +16,33 @@ EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
+		Debug-Linux|x64 = Debug-Linux|x64
 		Release|x64 = Release|x64
+		Release-Linux|x64 = Release-Linux|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{73F690A0-099F-43F7-BDD5-819869DDAE07}.Debug|x64.ActiveCfg = Debug|x64
 		{73F690A0-099F-43F7-BDD5-819869DDAE07}.Debug|x64.Build.0 = Debug|x64
+		{73F690A0-099F-43F7-BDD5-819869DDAE07}.Debug-Linux|x64.ActiveCfg = Debug-Linux|x64
+		{73F690A0-099F-43F7-BDD5-819869DDAE07}.Debug-Linux|x64.Build.0 = Debug-Linux|x64
 		{73F690A0-099F-43F7-BDD5-819869DDAE07}.Release|x64.ActiveCfg = Release|x64
 		{73F690A0-099F-43F7-BDD5-819869DDAE07}.Release|x64.Build.0 = Release|x64
+		{73F690A0-099F-43F7-BDD5-819869DDAE07}.Release-Linux|x64.ActiveCfg = Release-Linux|x64
+		{73F690A0-099F-43F7-BDD5-819869DDAE07}.Release-Linux|x64.Build.0 = Release-Linux|x64
 		{0C5C39C9-82B9-4544-83D2-83394EF43434}.Debug|x64.ActiveCfg = Debug|x64
 		{0C5C39C9-82B9-4544-83D2-83394EF43434}.Debug|x64.Build.0 = Debug|x64
+		{0C5C39C9-82B9-4544-83D2-83394EF43434}.Debug-Linux|x64.ActiveCfg = Debug-Linux|x64
 		{0C5C39C9-82B9-4544-83D2-83394EF43434}.Release|x64.ActiveCfg = Release|x64
 		{0C5C39C9-82B9-4544-83D2-83394EF43434}.Release|x64.Build.0 = Release|x64
+		{0C5C39C9-82B9-4544-83D2-83394EF43434}.Release-Linux|x64.ActiveCfg = Release-Linux|x64
 		{8A34EF34-2D9E-4564-866C-0D0C9574FCB4}.Debug|x64.ActiveCfg = Debug|x64
-		{8A34EF34-2D9E-4564-866C-0D0C9574FCB4}.Debug|x64.Build.0 = Debug|x64
-		{8A34EF34-2D9E-4564-866C-0D0C9574FCB4}.Debug|x64.Deploy.0 = Debug|x64
+		{8A34EF34-2D9E-4564-866C-0D0C9574FCB4}.Debug-Linux|x64.ActiveCfg = Debug-Linux|x64
+		{8A34EF34-2D9E-4564-866C-0D0C9574FCB4}.Debug-Linux|x64.Build.0 = Debug-Linux|x64
+		{8A34EF34-2D9E-4564-866C-0D0C9574FCB4}.Debug-Linux|x64.Deploy.0 = Debug-Linux|x64
 		{8A34EF34-2D9E-4564-866C-0D0C9574FCB4}.Release|x64.ActiveCfg = Release|x64
-		{8A34EF34-2D9E-4564-866C-0D0C9574FCB4}.Release|x64.Build.0 = Release|x64
-		{8A34EF34-2D9E-4564-866C-0D0C9574FCB4}.Release|x64.Deploy.0 = Release|x64
+		{8A34EF34-2D9E-4564-866C-0D0C9574FCB4}.Release-Linux|x64.ActiveCfg = Release-Linux|x64
+		{8A34EF34-2D9E-4564-866C-0D0C9574FCB4}.Release-Linux|x64.Build.0 = Release-Linux|x64
+		{8A34EF34-2D9E-4564-866C-0D0C9574FCB4}.Release-Linux|x64.Deploy.0 = Release-Linux|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

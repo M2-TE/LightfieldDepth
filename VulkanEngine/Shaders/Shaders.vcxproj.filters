@@ -25,16 +25,6 @@
     <DXCShaderVS Include="src\swapchain_write\swapchain_write.vs" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="include\shaders.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="include\shaders.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
     <Xml Include="dxc\dxc.xml" />
   </ItemGroup>
   <ItemGroup>
