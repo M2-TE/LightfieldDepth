@@ -28,6 +28,7 @@ public:
 			1, swapchainWrapper.images.size()
 		};
 		viewProjBuffer.init(info);
+		update();
 	}
 	void destroy(DeviceWrapper& deviceWrapper, vma::Allocator& allocator)
 	{
@@ -50,7 +51,7 @@ public:
 	
 	void update()
 	{
-		auto& ubo = viewProjBuffer.get();
+		auto& ubo = viewProjBuffer.data;
 
 		// view matrix
 		ubo.view = glm::mat4_cast(glm::inverse(rotation));
@@ -62,7 +63,7 @@ public:
 		// combination
 		ubo.viewProj = ubo.proj * ubo.view;
 		
-		viewProjBuffer.update();
+		viewProjBuffer.write_buffer();
 	}
 	vk::DescriptorSet& get_desc_set()
 	{

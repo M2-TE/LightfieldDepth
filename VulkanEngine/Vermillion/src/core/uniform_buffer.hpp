@@ -32,21 +32,9 @@ public:
 		deviceWrapper.logicalDevice.destroyDescriptorSetLayout(descSetLayout); 
 		destroy_buffer(allocator);
 	}
-	void update()
-	{
-		if (bDirty) {
-			write_buffer();
-			bDirty = false;
-		}
-	}
-	inline T& get() 
-	{ 
-		bDirty = true;
-		return data; 
-	}
+	virtual void write_buffer() = 0;
 
 protected:
-	virtual void write_buffer() = 0;
 	virtual void destroy_buffer(vma::Allocator& allocator) = 0;
 	virtual void create_buffer(BufferInfo& info) = 0;
 	virtual void create_descriptor_sets(BufferInfo& info) = 0;
@@ -69,11 +57,8 @@ private:
 	}
 
 public:
-	vk::DescriptorSetLayout descSetLayout;
-	bool bDirty = true;
-
-protected:
 	T data;
+	vk::DescriptorSetLayout descSetLayout;
 };
 
 template<class T>
@@ -106,14 +91,14 @@ public:
 	{
 		return bufferFrames.get_current().descSet;
 	}
-
-private:
 	void write_buffer() override
 	{
 		// already mapped, so just copy over
 		// additionally, advance frame by one, so the next free buffer frame gets written to
 		memcpy(bufferFrames.get_next().allocInfo.pMappedData, &(UniformBufferBase<T>::data), sizeof(T));
 	}
+
+private:
 	void destroy_buffer(vma::Allocator& allocator) override
 	{
 		bufferFrames.destroy(allocator);
