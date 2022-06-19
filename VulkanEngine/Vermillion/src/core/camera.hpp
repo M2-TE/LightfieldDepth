@@ -1,6 +1,6 @@
 #pragma once
 
-#include "wrappers/uniform_buffer_wrapper.hpp"
+#include "uniform_buffer.hpp"
 #include "wrappers/swapchain_wrapper.hpp"
 
 // why were these defined in the first place.. tf?
@@ -29,7 +29,14 @@ public:
 		// combination
 		ubo.viewProj = ubo.proj * ubo.view;
 
-		viewProjBuffer.init(deviceWrapper, allocator, descPool, 1, vk::ShaderStageFlagBits::eVertex, swapchainWrapper.images.size());
+		BufferInfo info = {
+			deviceWrapper,
+			allocator,
+			descPool,
+			vk::ShaderStageFlagBits::eVertex,
+			1, swapchainWrapper.images.size()
+		};
+		viewProjBuffer.init(info);
 	}
 	void destroy(DeviceWrapper& deviceWrapper, vma::Allocator& allocator)
 	{
@@ -50,7 +57,7 @@ public:
 		rotation *= Quaternion(rot);
 	}
 	
-	void update(uint32_t iCurrentFrame)
+	void update()
 	{
 		auto& ubo = viewProjBuffer.data;
 
@@ -64,19 +71,19 @@ public:
 		// combination
 		ubo.viewProj = ubo.proj * ubo.view;
 		
-		viewProjBuffer.update(iCurrentFrame);
+		viewProjBuffer.update();
 	}
-	vk::DescriptorSet& get_desc_set(uint32_t iFrame)
+	vk::DescriptorSet& get_desc_set()
 	{
-		return viewProjBuffer.get_desc_set(iFrame);
+		return viewProjBuffer.get_desc_set();
 	}
 	vk::DescriptorSetLayout& get_desc_set_layout()
 	{
-		return viewProjBuffer.get_desc_set_layout();
+		return viewProjBuffer.descSetLayout;
 	}
 
 private:
-	UniformBufferWrapper<ViewProjectionBuffer> viewProjBuffer;
+	UniformBufferDynamic<ViewProjectionBuffer> viewProjBuffer;
 
 	// camera position in world space
 	float3 position = { 0.0f, 0.0f, -5.0f };

@@ -72,19 +72,13 @@ public:
 	ROF_COPY_MOVE_DELETE(RingBuffer)
 
 public:
-
 	template<typename... Args>
 	void init(Args... args)
 	{
-		// set up linked list
-		for (size_t i = 0; i < frames.size() - 1; i++) {
-			frames[i].pNext = &frames[i];
+		reset();
+		for (size_t i = 0; i < frames.size(); i++) {
 			frames[i].data.init(args...);
 		}
-		frames.back().pNext = &frames.front();
-
-		// set initial active frame
-		pCurrent = &frames.front();
 	}
 	template<typename... Args>
 	void destroy(Args... args)
@@ -97,14 +91,36 @@ public:
 	RingBuffer& set_size(uint32_t nFrames)
 	{
 		frames.resize(nFrames);
+		reset();
 		return *this;
 	}
 	uint32_t get_size() { return frames.size(); }
 
-	Data& get_next()
+	void reset()
+	{
+		// set up linked list
+		for (size_t i = 0; i < frames.size() - 1; i++) {
+			frames[i].pNext = &frames[i];
+		}
+		frames.back().pNext = &frames.front();
+		pCurrent = &frames.front();
+	}
+	void advance()
 	{
 		pCurrent = pCurrent->pNext;
+	}
+	Data& get_current()
+	{
 		return pCurrent->data;
+	}
+	Data& get_next()
+	{
+		advance();
+		return pCurrent->data;
+	}
+	Data& operator[](size_t i)
+	{
+		return frames[i].data;
 	}
 	std::vector<Data*> get_all()
 	{

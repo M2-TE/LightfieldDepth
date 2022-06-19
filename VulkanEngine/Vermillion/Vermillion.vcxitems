@@ -26,12 +26,11 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\ring_buffer.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\window.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\wrappers\device_wrapper.hpp" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\wrappers\image_wrapper.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\wrappers\imgui_wrapper.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\wrappers\render_pass_wrapper.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\wrappers\shader_wrapper.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\wrappers\swapchain_wrapper.hpp" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\wrappers\uniform_buffer_wrapper.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\uniform_buffer.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\pch\pch.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\utils\logging.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\utils\rule_of_five.hpp" />

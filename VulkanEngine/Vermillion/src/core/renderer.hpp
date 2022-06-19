@@ -200,11 +200,11 @@ private:
 		commandBuffer.begin(beginInfo);
 		
 		// update camera buffer
-		camera.update(iFrame);
+		camera.update();
 
 		// deferred renderpass
 		deferredRenderpass.begin(commandBuffer);
-		deferredRenderpass.bind_desc_sets(commandBuffer, camera.get_desc_set(iFrame));
+		deferredRenderpass.bind_desc_sets(commandBuffer, camera.get_desc_set());
 		geometry.draw(commandBuffer);
 		deferredRenderpass.end(commandBuffer);
 
