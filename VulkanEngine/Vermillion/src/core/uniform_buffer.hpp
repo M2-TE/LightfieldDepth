@@ -32,9 +32,21 @@ public:
 		deviceWrapper.logicalDevice.destroyDescriptorSetLayout(descSetLayout); 
 		destroy_buffer(allocator);
 	}
-	virtual void update() = 0;
+	void update()
+	{
+		if (bDirty) {
+			write_buffer();
+			bDirty = false;
+		}
+	}
+	inline T& get() 
+	{ 
+		bDirty = true;
+		return data; 
+	}
 
 protected:
+	virtual void write_buffer() = 0;
 	virtual void destroy_buffer(vma::Allocator& allocator) = 0;
 	virtual void create_buffer(BufferInfo& info) = 0;
 	virtual void create_descriptor_sets(BufferInfo& info) = 0;
@@ -57,8 +69,11 @@ private:
 	}
 
 public:
-	T data;
 	vk::DescriptorSetLayout descSetLayout;
+	bool bDirty = true;
+
+protected:
+	T data;
 };
 
 template<class T>
@@ -85,18 +100,20 @@ public:
 	ROF_COPY_MOVE_DELETE(UniformBufferDynamic)
 
 public:
-	void update() override
-	{
-		// already mapped, so just copy over
-		// additionally, advance frame by one, so the next free buffer frame gets written to
-		memcpy(bufferFrames.get_next().allocInfo.pMappedData, &(UniformBufferBase<T>::data), sizeof(T));
-	}
+	// init()
+	// destroy()
 	vk::DescriptorSet& get_desc_set()
 	{
 		return bufferFrames.get_current().descSet;
 	}
 
 private:
+	void write_buffer() override
+	{
+		// already mapped, so just copy over
+		// additionally, advance frame by one, so the next free buffer frame gets written to
+		memcpy(bufferFrames.get_next().allocInfo.pMappedData, &(UniformBufferBase<T>::data), sizeof(T));
+	}
 	void destroy_buffer(vma::Allocator& allocator) override
 	{
 		bufferFrames.destroy(allocator);
@@ -168,5 +185,4 @@ private:
 		vk::DescriptorSet descSet;
 	};
 	RingBuffer<BufferFrame> bufferFrames;
-	//bool bDirty; TODO: move this to base class perhaps?
 };

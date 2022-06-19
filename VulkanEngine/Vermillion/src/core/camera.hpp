@@ -20,15 +20,6 @@ public:
 	{
 		aspectRatio = (float)swapchainWrapper.extent.width / (float)swapchainWrapper.extent.height;
 
-		auto& ubo = viewProjBuffer.data;
-		// view matrix
-		ubo.view = glm::mat4_cast(glm::inverse(rotation));
-		ubo.view = glm::translate(ubo.view, -position);
-		// projection matrix
-		ubo.proj = glm::perspective(fov, aspectRatio, near, far);
-		// combination
-		ubo.viewProj = ubo.proj * ubo.view;
-
 		BufferInfo info = {
 			deviceWrapper,
 			allocator,
@@ -59,7 +50,7 @@ public:
 	
 	void update()
 	{
-		auto& ubo = viewProjBuffer.data;
+		auto& ubo = viewProjBuffer.get();
 
 		// view matrix
 		ubo.view = glm::mat4_cast(glm::inverse(rotation));
