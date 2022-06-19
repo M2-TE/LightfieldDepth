@@ -7,7 +7,6 @@
 #include "wrappers/imgui_wrapper.hpp"
 #include "wrappers/swapchain_wrapper.hpp"
 #include "wrappers/shader_wrapper.hpp"
-#include "wrappers/render_pass_wrapper.hpp"
 #include "geometry/indexed_geometry.hpp"
 #include "render_passes/deferred_renderpass.hpp"
 #include "render_passes/swapchain_write.hpp"

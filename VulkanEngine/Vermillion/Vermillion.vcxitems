@@ -19,6 +19,7 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\device_manager.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\geometry\indexed_geometry.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\geometry\vertex.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\Input.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\renderer.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\render_passes\deferred_renderpass.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\render_passes\gbuffer.hpp" />
@@ -27,7 +28,6 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\window.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\wrappers\device_wrapper.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\wrappers\imgui_wrapper.hpp" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\wrappers\render_pass_wrapper.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\wrappers\shader_wrapper.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\wrappers\swapchain_wrapper.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\uniform_buffer.hpp" />

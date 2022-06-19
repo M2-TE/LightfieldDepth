@@ -3,6 +3,7 @@
 #include "window.hpp"
 #include "device_manager.hpp"
 #include "renderer.hpp"
+#include "Input.hpp"
 
 class Application
 {
@@ -33,11 +34,13 @@ public:
 private:
 	bool update()
 	{
+		bool bRendering = true;
+		bool bResizing = false;
+
 		ImGui_ImplVulkan_NewFrame();
 		ImGui_ImplSDL2_NewFrame();
 		ImGui::NewFrame();
 
-		// Poll for user input (encapsulate in input.hpp?)
 		SDL_Event event;
 		while (SDL_PollEvent(&event)) {
 
@@ -46,76 +49,72 @@ private:
 			switch (event.type) {
 				case SDL_QUIT: return false;
 
+				case SDL_MOUSEBUTTONDOWN:
+				case SDL_MOUSEBUTTONUP: input.register_mouse_button_event(event.button); break;
+				case SDL_MOUSEMOTION: input.register_mouse_motion_event(event.motion); break;
+
 				case SDL_KEYUP:
-				case SDL_KEYDOWN: {
-					if (event.key.repeat > 0) break;
-					switch (event.key.keysym.sym) {
-						case SDLK_F11: {
-							if (event.key.type == SDL_KEYDOWN) {
-								deviceManager.get_logical_device().waitIdle();
-								//SDL_SetWindowFullscreen(window.get_window(), SDL_WINDOW_FULLSCREEN); // crash when tabbing out, need to investigate
-								SDL_SetWindowFullscreen(window.get_window(), SDL_WINDOW_FULLSCREEN_DESKTOP); // borderless
-								bSwapchainRebuildQueued = true;
-							}
-						}
-						case SDLK_F10: {
-							if (event.key.type == SDL_KEYDOWN) {
-								renderer.dump_mem_vma();
-							}
-						}
-					}
-				}
+				case SDL_KEYDOWN: input.register_keyboard_event(event.key); break;
 
 				case SDL_WINDOWEVENT: {
 					switch (event.window.event) {
-						case SDL_WINDOWEVENT_RESIZED: {
+						case SDL_WINDOWEVENT_RESIZED: 
 							SDL_Log("Window %d resized to %dx%d", event.window.windowID, event.window.data1, event.window.data2);
-							
 							deviceManager.get_logical_device().waitIdle();
 							SDL_SetWindowSize(window.get_window(), event.window.data1, event.window.data2);
-							bSwapchainRebuildQueued = true;
+							bResizing = true;
 							break;
-						}
 
 						case SDL_WINDOWEVENT_FOCUS_LOST:
-						case SDL_WINDOWEVENT_MINIMIZED: {
-							bRendering = false;
-							break;
-						}
+						case SDL_WINDOWEVENT_MINIMIZED: bRendering = false; break;
 
-						case SDL_WINDOWEVENT_RESTORED: bSwapchainRebuildQueued = true;
-						case SDL_WINDOWEVENT_FOCUS_GAINED:
-						{
-							bRendering = true;
-							break;
-						}
+						case SDL_WINDOWEVENT_RESTORED: bResizing = true; //fallthrough
+						case SDL_WINDOWEVENT_FOCUS_GAINED: bRendering = true; break;
 					}
 				}
 			}
 		}
 
+		// TODO: move this to a higher-level class?
+		if (input.keysPressed.count(SDLK_F11)) {
+			deviceManager.get_logical_device().waitIdle();
+			//SDL_SetWindowFullscreen(window.get_window(), SDL_WINDOW_FULLSCREEN); // crash when tabbing out, need to investigate
+			SDL_SetWindowFullscreen(window.get_window(), SDL_WINDOW_FULLSCREEN_DESKTOP); // borderless
+			bResizing = true;
+		}
+		if (input.keysPressed.count(SDLK_F10)) {
+			renderer.dump_mem_vma();
+		}
+
+		input.flush();
+
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 
-		if (bSwapchainRebuildQueued) {
-			deviceManager.get_logical_device().waitIdle();
-			renderer.recreate_KHR(deviceManager.get_device_wrapper(), window);
-			bSwapchainRebuildQueued = false;
-		}
-
-		if (bRendering) renderer.render(deviceManager.get_device_wrapper());
-		else {
-			ImGui::EndFrame(); // manually end imgui frame
-			SDL_Delay(200); // slow down update loop while no rendering occurs
-		}
+		if (bResizing = false) resize();
+		if (bRendering) render();
+		else stall();
 
 		return true;
+	}
+
+	void resize()
+	{
+		deviceManager.get_logical_device().waitIdle();
+		renderer.recreate_KHR(deviceManager.get_device_wrapper(), window);
+	}
+	void render()
+	{
+		renderer.render(deviceManager.get_device_wrapper());
+	}
+	void stall()
+	{
+		ImGui::EndFrame(); // manually end imgui frame
+		SDL_Delay(200); // slow down update loop while no rendering occurs
 	}
 
 private:
 	Window window;
 	DeviceManager deviceManager;
 	Renderer renderer;
-
-	bool bRendering = true;
-	bool bSwapchainRebuildQueued = false;
+	Input input;
 };
