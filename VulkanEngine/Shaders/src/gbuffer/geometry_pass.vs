@@ -12,17 +12,23 @@ struct Output
 };
 
 [[vk::binding(0, 0)]] // binding slot 0, descriptor set 0
-cbuffer MVP
+cbuffer ModelBuffer
 {
     float4x4 model;
+};
+[[vk::binding(1, 0)]] // binding slot 1, descriptor set 0
+cbuffer ViewProjectionBuffer
+{
     float4x4 view;
     float4x4 proj;
 };
 
+
 Output main(Input input)
 {
     Output output;
-    output.worldPos = mul(model, input.position);
+    //output.worldPos = mul(model, input.position); // no model matrix needed atm
+    output.worldPos = input.position;
     output.screenPos = mul(view, output.worldPos);
     output.screenPos = mul(proj, output.screenPos);
     output.color = input.color;

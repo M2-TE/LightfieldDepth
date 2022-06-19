@@ -3,18 +3,31 @@
 template<class T>
 class UniformBufferWrapper
 {
-	friend class DescriptorWrapper;
 public:
 	UniformBufferWrapper() = default;
 	~UniformBufferWrapper() = default;
 	ROF_COPY_MOVE_DELETE(UniformBufferWrapper)
 
 public:
+	void init(DeviceWrapper& deviceWrapper, vma::Allocator& allocator, vk::DescriptorPool& descPool, uint32_t binding, vk::ShaderStageFlags stageFlags, size_t nBuffers)
+	{
+		create_buffer(allocator, nBuffers);
+		create_descriptor_set_layout(deviceWrapper, binding, stageFlags);
+		create_descriptor_sets(deviceWrapper, descPool, binding, nBuffers);
+	}
+	void destroy(DeviceWrapper& deviceWrapper, vma::Allocator& allocator)
+	{
+		for (size_t i = 0; i < buffers.size(); i++) {
+			allocator.destroyBuffer(buffers[i].first, buffers[i].second);
+		}
+		deviceWrapper.logicalDevice.destroyDescriptorSetLayout(descSetLayout);
+	}
 	void update(size_t iBuffer)
 	{
 		// already mapped, so just copy over
 		memcpy(allocInfos[iBuffer].pMappedData, &data, sizeof(T));
 	}
+
 	vk::DescriptorSet get_desc_set(uint32_t iDescSet)
 	{
 		return descSets[iDescSet];
@@ -24,21 +37,8 @@ public:
 		return descSetLayout;
 	}
 
-	void allocate(DeviceWrapper& deviceWrapper, vma::Allocator& allocator, vk::DescriptorPool& descPool, uint32_t binding, vk::ShaderStageFlags stageFlags, size_t nBuffers)
-	{
-		allocate_buffer(allocator, nBuffers);
-		allocate_descriptor(deviceWrapper, descPool, binding, stageFlags, nBuffers);
-	}
-	void deallocate(DeviceWrapper& deviceWrapper, vma::Allocator& allocator)
-	{
-		for (size_t i = 0; i < buffers.size(); i++) {
-			allocator.destroyBuffer(buffers[i].first, buffers[i].second);
-		}
-		deviceWrapper.logicalDevice.destroyDescriptorSetLayout(descSetLayout);
-	}
-
 private:
-	void allocate_buffer(vma::Allocator& allocator, size_t nBuffers)
+	void create_buffer(vma::Allocator& allocator, size_t nBuffers)
 	{
 		// buffer
 		vk::BufferCreateInfo bufferInfo = vk::BufferCreateInfo()
@@ -56,9 +56,9 @@ private:
 			allocator.setAllocationName(buffers[i].second, "Uniform Buffer");
 		}
 	}
-	void allocate_descriptor(DeviceWrapper& deviceWrapper, vk::DescriptorPool& descPool, uint32_t binding, vk::ShaderStageFlags stageFlags, uint32_t nBuffers)
+	void create_descriptor_set_layout(DeviceWrapper& deviceWrapper, uint32_t binding, vk::ShaderStageFlags stageFlags)
 	{
-		auto layoutBinding = vk::DescriptorSetLayoutBinding()
+		vk::DescriptorSetLayoutBinding layoutBinding = vk::DescriptorSetLayoutBinding()
 			.setBinding(binding)
 			.setStageFlags(stageFlags)
 			.setDescriptorType(vk::DescriptorType::eUniformBuffer)
@@ -70,7 +70,9 @@ private:
 			.setBindingCount(1)
 			.setBindings(layoutBinding);
 		descSetLayout = deviceWrapper.logicalDevice.createDescriptorSetLayout(createInfo);
-
+	}
+	void create_descriptor_sets(DeviceWrapper& deviceWrapper, vk::DescriptorPool& descPool, uint32_t binding, uint32_t nBuffers)
+	{
 		// duplicate layout to have one for each frame in flight
 		std::vector<vk::DescriptorSetLayout> layouts(nBuffers, descSetLayout);
 
@@ -91,10 +93,10 @@ private:
 
 			descBufferWrites[i] = vk::WriteDescriptorSet()
 				.setDstSet(descSets[i])
-				.setDstBinding(layoutBinding.binding)
+				.setDstBinding(binding)
 				.setDstArrayElement(0)
-				.setDescriptorType(layoutBinding.descriptorType)
-				.setDescriptorCount(layoutBinding.descriptorCount)
+				.setDescriptorType(vk::DescriptorType::eUniformBuffer)
+				.setDescriptorCount(1)
 				//
 				.setPBufferInfo(&descBufferInfos[i])
 				.setPImageInfo(nullptr)

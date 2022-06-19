@@ -72,22 +72,22 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <OutDir>$(SolutionDir)bin\$(SDKIdentifier)\$(Configuration)\</OutDir>
+    <OutDir>$(SolutionDir)bin-int\$(SDKIdentifier)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)bin-int\$(SDKIdentifier)\$(Configuration)\lib\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug-Linux|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <OutDir>$(SolutionDir)bin\$(SDKIdentifier)\$(Configuration)\</OutDir>
+    <OutDir>$(SolutionDir)bin-int\$(SDKIdentifier)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)bin-int\$(SDKIdentifier)\$(Configuration)\lib\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>$(SolutionDir)bin\$(SDKIdentifier)\$(Configuration)\</OutDir>
+    <OutDir>$(SolutionDir)bin-int\$(SDKIdentifier)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)bin-int\$(SDKIdentifier)\$(Configuration)\lib\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release-Linux|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>$(SolutionDir)bin\$(SDKIdentifier)\$(Configuration)\</OutDir>
+    <OutDir>$(SolutionDir)bin-int\$(SDKIdentifier)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)bin-int\$(SDKIdentifier)\$(Configuration)\lib\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -163,6 +163,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="dxc\dxc.targets" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\Source.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
