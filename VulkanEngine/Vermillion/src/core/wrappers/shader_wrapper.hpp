@@ -1,11 +1,11 @@
 #pragma once
 
-#include "headers/lighting_pass.vs.hpp"
-#include "headers/lighting_pass.ps.hpp"
-#include "headers/geometry_pass.vs.hpp"
-#include "headers/geometry_pass.ps.hpp"
-#include "headers/swapchain_write.vs.hpp"
-#include "headers/swapchain_write.ps.hpp"
+#include "./../shaders/lighting_pass.vs.hpp"
+#include "./../shaders/lighting_pass.ps.hpp"
+#include "./../shaders/geometry_pass.vs.hpp"
+#include "./../shaders/geometry_pass.ps.hpp"
+#include "./../shaders/swapchain_write.vs.hpp"
+#include "./../shaders/swapchain_write.ps.hpp"
 
 struct ShaderData { const unsigned char* pData; size_t size; };
 struct ShaderPack { ShaderData vs, ps; };

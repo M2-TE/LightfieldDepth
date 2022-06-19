@@ -25,9 +25,9 @@
 				<AdditionalInputs>$(ShaderHeaders)</AdditionalInputs>
 				<Message>%(Filename)%(Extension)</Message>
 				<Command>
-					$(VULKAN_SDK)/Bin/dxc.exe -spirv -T vs_6_0 -E main %(Identity) -Fh include/headers/%(Filename).vs.hpp -Vn %(Filename)_vs
+					$(VULKAN_SDK)/Bin/dxc.exe -spirv -T vs_6_0 -E main %(Identity) -Fh ./../Vermillion/src/core/shaders/%(Filename).vs.hpp -Vn %(Filename)_vs
 				</Command>
-				<Outputs>include/headers/%(Filename).vs.hpp</Outputs>
+				<Outputs>./../Vermillion/src/core/shaders/%(Filename).vs.hpp</Outputs>
 			</DXCShaderVS>
 		</ItemGroup>
 
@@ -46,9 +46,9 @@
 			<DXCShaderPS>
 				<Message>%(Filename)%(Extension)</Message>
 				<Command>
-					$(VULKAN_SDK)/Bin/dxc.exe -spirv -T ps_6_0 -E main %(Identity) -Fh include/headers/%(Filename).ps.hpp -Vn %(Filename)_ps
+					$(VULKAN_SDK)/Bin/dxc.exe -spirv -T ps_6_0 -E main %(Identity) -Fh ./../Vermillion/src/core/shaders/%(Filename).ps.hpp -Vn %(Filename)_ps
 				</Command>
-				<Outputs>include/headers/%(Filename).ps.hpp</Outputs>
+				<Outputs>./../Vermillion/src/core/shaders/%(Filename).ps.hpp</Outputs>
 			</DXCShaderPS>
 		</ItemGroup>
 
