@@ -52,12 +52,18 @@ public:
 	}
 
 	// runtime
-	void recreate_KHR(DeviceWrapper& deviceWrapper, Window& window) // TODO use better approach of recreating swapchain using old swapchain pointer
+	void recreate_KHR(DeviceWrapper& deviceWrapper, Window& window, bool bForceRebuild) // TODO use better approach of recreating swapchain using old swapchain pointer
 	{
-		VMI_LOG("Rebuilding KHR");
+		// check if resize is necessary
+		Sint32 w, h;
+		SDL_GetWindowSize(window.get_window(), &w, &h);
+		if (w != swapchainWrapper.extent.width || h != swapchainWrapper.extent.height || bForceRebuild) {
 
-		destroy_KHR(deviceWrapper);
-		create_KHR(deviceWrapper, window);
+			VMI_LOG("Rebuilding KHR");
+			deviceWrapper.logicalDevice.waitIdle();
+			destroy_KHR(deviceWrapper);
+			create_KHR(deviceWrapper, window);
+		}
 	}
 	void dump_mem_vma()
 	{
@@ -79,7 +85,7 @@ public:
 			switch (imgResult.result) {
 				case vk::Result::eSuccess: break;
 				case vk::Result::eSuboptimalKHR: VMI_LOG("Suboptimal image acquisition."); break;
-				case vk::Result::eErrorOutOfDateKHR: VMI_ERR("Swapchain: KHR out of date.");
+				case vk::Result::eErrorOutOfDateKHR: VMI_ERR("Swapchain (Image Acquisition): KHR out of date."); break;
 				default: assert(false);
 			}
 			iFrame = imgResult.value;
@@ -120,10 +126,11 @@ public:
 				.setWaitSemaphoreCount(1).setPWaitSemaphores(&syncFrame.renderFinished)
 				// swapchains
 				.setSwapchainCount(1).setPSwapchains(&swapchainWrapper.swapchain);
+
 			vk::Result result = deviceWrapper.queue.presentKHR(&presentInfo);
 			switch (result) {
 				case vk::Result::eSuccess: break;
-				case vk::Result::eErrorOutOfDateKHR: VMI_ERR("Swapchain: KHR out of date.");
+				case vk::Result::eErrorOutOfDateKHR: VMI_ERR("Swapchain (Present): KHR out of date."); break;
 				default: assert(false);
 			}
 		}

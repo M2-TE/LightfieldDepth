@@ -34,9 +34,6 @@ public:
 private:
 	bool update()
 	{
-		bool bRendering = true;
-		bool bResizing = false;
-
 		ImGui_ImplVulkan_NewFrame();
 		ImGui_ImplSDL2_NewFrame();
 		ImGui::NewFrame();
@@ -57,19 +54,16 @@ private:
 				case SDL_KEYDOWN: input.register_keyboard_event(event.key); break;
 
 				case SDL_WINDOWEVENT: {
+					//print_event(&event);
 					switch (event.window.event) {
-						case SDL_WINDOWEVENT_RESIZED: 
-							SDL_Log("Window %d resized to %dx%d", event.window.windowID, event.window.data1, event.window.data2);
-							deviceManager.get_logical_device().waitIdle();
-							SDL_SetWindowSize(window.get_window(), event.window.data1, event.window.data2);
-							bResizing = true;
-							break;
+						case SDL_WINDOWEVENT_SIZE_CHANGED:
+						case SDL_WINDOWEVENT_RESIZED: resize(event); break;
 
-						case SDL_WINDOWEVENT_FOCUS_LOST:
-						case SDL_WINDOWEVENT_MINIMIZED: bRendering = false; break;
+						case SDL_WINDOWEVENT_MINIMIZED:
+						case SDL_WINDOWEVENT_FOCUS_LOST: bRendering = false; break;
 
-						case SDL_WINDOWEVENT_RESTORED: bResizing = true; //fallthrough
-						case SDL_WINDOWEVENT_FOCUS_GAINED: bRendering = true; break;
+						case SDL_WINDOWEVENT_FOCUS_GAINED: if (fullscreenMode == SDL_WINDOW_FULLSCREEN) break;
+						case SDL_WINDOWEVENT_RESTORED: bRendering = true; break;
 					}
 				}
 			}
@@ -77,10 +71,7 @@ private:
 
 		// TODO: move this to a higher-level class?
 		if (input.keysPressed.count(SDLK_F11)) {
-			deviceManager.get_logical_device().waitIdle();
-			//SDL_SetWindowFullscreen(window.get_window(), SDL_WINDOW_FULLSCREEN); // crash when tabbing out, need to investigate
-			SDL_SetWindowFullscreen(window.get_window(), SDL_WINDOW_FULLSCREEN_DESKTOP); // borderless
-			bResizing = true;
+			toggle_fullscreen();
 		}
 		if (input.keysPressed.count(SDLK_F10)) {
 			renderer.dump_mem_vma();
@@ -90,18 +81,120 @@ private:
 
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 
-		if (bResizing = false) resize();
 		if (bRendering) render();
 		else stall();
 
 		return true;
 	}
 
-	void resize()
+	void print_event(SDL_Event* event)
 	{
-		deviceManager.get_logical_device().waitIdle();
-		renderer.recreate_KHR(deviceManager.get_device_wrapper(), window);
+		if (event->type == SDL_WINDOWEVENT) {
+			switch (event->window.event) {
+				case SDL_WINDOWEVENT_SHOWN:
+					SDL_Log("Window %d shown", event->window.windowID);
+					break;
+				case SDL_WINDOWEVENT_HIDDEN:
+					SDL_Log("Window %d hidden", event->window.windowID);
+					break;
+				case SDL_WINDOWEVENT_EXPOSED:
+					SDL_Log("Window %d exposed", event->window.windowID);
+					break;
+				case SDL_WINDOWEVENT_MOVED:
+					SDL_Log("Window %d moved to %d,%d",
+						event->window.windowID, event->window.data1,
+						event->window.data2);
+					break;
+				case SDL_WINDOWEVENT_RESIZED:
+					SDL_Log("Window %d resized to %dx%d",
+						event->window.windowID, event->window.data1,
+						event->window.data2);
+					break;
+				case SDL_WINDOWEVENT_SIZE_CHANGED:
+					SDL_Log("Window %d size changed to %dx%d",
+						event->window.windowID, event->window.data1,
+						event->window.data2);
+					break;
+				case SDL_WINDOWEVENT_MINIMIZED:
+					SDL_Log("Window %d minimized", event->window.windowID);
+					break;
+				case SDL_WINDOWEVENT_MAXIMIZED:
+					SDL_Log("Window %d maximized", event->window.windowID);
+					break;
+				case SDL_WINDOWEVENT_RESTORED:
+					SDL_Log("Window %d restored", event->window.windowID);
+					break;
+				case SDL_WINDOWEVENT_ENTER:
+					SDL_Log("Mouse entered window %d",
+						event->window.windowID);
+					break;
+				case SDL_WINDOWEVENT_LEAVE:
+					SDL_Log("Mouse left window %d", event->window.windowID);
+					break;
+				case SDL_WINDOWEVENT_FOCUS_GAINED:
+					SDL_Log("Window %d gained keyboard focus",
+						event->window.windowID);
+					break;
+				case SDL_WINDOWEVENT_FOCUS_LOST:
+					SDL_Log("Window %d lost keyboard focus",
+						event->window.windowID);
+					break;
+				case SDL_WINDOWEVENT_CLOSE:
+					SDL_Log("Window %d closed", event->window.windowID);
+					break;
+#if SDL_VERSION_ATLEAST(2, 0, 5)
+				case SDL_WINDOWEVENT_TAKE_FOCUS:
+					SDL_Log("Window %d is offered a focus", event->window.windowID);
+					break;
+				case SDL_WINDOWEVENT_HIT_TEST:
+					SDL_Log("Window %d has a special hit test", event->window.windowID);
+					break;
+#endif
+				default:
+					SDL_Log("Window %d got unknown event %d",
+						event->window.windowID, event->window.event);
+					break;
+			}
+		}
 	}
+
+	void resize(Sint32 width, Sint32 height) // give specific dimensions
+	{
+		// TODO
+	}
+	void resize(SDL_Event& event) // get dimensions from window event
+	{
+		// check if resize is necessary
+		Sint32 w, h;
+		SDL_GetWindowSize(window.get_window(), &w, &h);
+		if (w != event.window.data1 || h != event.window.data2) {
+			SDL_Log("Window %d resized to %dx%d", event.window.windowID, event.window.data1, event.window.data2);
+			SDL_SetWindowSize(window.get_window(), event.window.data1, event.window.data2);
+
+			resize();
+		}
+	}
+	void resize(bool bForceRebuild = false) // resize swapchain using actual window size TODO: DISABLE BOOL?
+	{
+		Sint32 w, h;
+		SDL_GetWindowSize(window.get_window(), &w, &h);
+		VMI_LOG("Attempting swapchain rebuild: (" << bForceRebuild << ") " << w << "x" << h);
+		renderer.recreate_KHR(deviceManager.get_device_wrapper(), window, bForceRebuild);
+	}
+	void toggle_fullscreen()
+	{
+		if (fullscreenMode) {
+			SDL_SetWindowFullscreen(window.get_window(), 0);
+			fullscreenMode = 0;
+		}
+		else {
+			SDL_SetWindowFullscreen(window.get_window(), fullscreenModeTarget);
+			fullscreenMode = fullscreenModeTarget;
+		}
+
+		resize(true);
+	}
+
 	void render()
 	{
 		renderer.render(deviceManager.get_device_wrapper());
@@ -117,4 +210,12 @@ private:
 	DeviceManager deviceManager;
 	Renderer renderer;
 	Input input;
+
+	bool bRendering = true;
+	bool bTempFullscreen = false;
+	uint32_t fullscreenMode;
+	uint32_t fullscreenModeTarget = SDL_WINDOW_FULLSCREEN;
+	//uint32_t fullscreenModeTarget = SDL_WINDOW_FULLSCREEN_DESKTOP;
+	std::pair<Sint32, Sint32> fullscreenResolution = { 1920, 1080 };
+	std::pair<Sint32, Sint32> windowedResolution = { 1280, 720 };
 };
