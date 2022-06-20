@@ -2,7 +2,6 @@
 
 #include "vk_mem_alloc.hpp"
 #include "utils/types.hpp"
-#include "ring_buffer.hpp"
 #include "camera.hpp"
 #include "wrappers/imgui_wrapper.hpp"
 #include "wrappers/swapchain_wrapper.hpp"

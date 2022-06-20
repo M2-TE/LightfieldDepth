@@ -24,13 +24,13 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\render_passes\deferred_renderpass.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\render_passes\gbuffer.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\render_passes\swapchain_write.hpp" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\ring_buffer.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\buffers\ring_buffer.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\window.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\wrappers\device_wrapper.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\wrappers\imgui_wrapper.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\wrappers\shader_wrapper.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\wrappers\swapchain_wrapper.hpp" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\uniform_buffer.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\buffers\uniform_buffer.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\pch\pch.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\utils\logging.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\utils\rule_of_five.hpp" />

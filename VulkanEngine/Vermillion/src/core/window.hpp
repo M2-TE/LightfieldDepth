@@ -8,16 +8,14 @@ public:
 	ROF_COPY_MOVE_DELETE(Window)
 
 public:
-	void init()
+	void init(std::pair<Sint32, Sint32> resolution, uint32_t fullscreenMode)
 	{
-		init_sdl_window();
+		init_sdl_window(resolution, fullscreenMode);
 		create_vulkan_instance();
 		create_vulkan_surface();
 
 		ImGui::CreateContext();
 		ImGui_ImplSDL2_InitForVulkan(pWindow);
-
-
 		ImGui::StyleColorsDark();
 	}
 	void destroy()
@@ -38,13 +36,15 @@ public:
 	SDL_Window* get_window() { return pWindow; }
 
 private:
-	void init_sdl_window()
+	void init_sdl_window(std::pair<Sint32, Sint32> resolution, uint32_t fullscreenMode)
 	{
 		DEBUG_ONLY(VMI_LOG("Debug build.\n"));
 
 		// Create an SDL window that supports Vulkan rendering.
 		if (SDL_InitSubSystem(SDL_INIT_VIDEO) != 0) VMI_SDL_ERR();
-		pWindow = SDL_CreateWindow(WND_NAME.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WIDTH, HEIGHT, SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
+		pWindow = SDL_CreateWindow(WND_NAME.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 
+			resolution.first, resolution.second, 
+			SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | fullscreenMode);
 		if (pWindow == NULL) VMI_SDL_ERR();
 	}
 	void create_vulkan_instance()
@@ -122,6 +122,4 @@ private:
 
 	// lazy constants (settings?)
 	const std::string WND_NAME = "Vermillion";
-	const uint32_t WIDTH = 1280;
-	const uint32_t HEIGHT = 720;
 };

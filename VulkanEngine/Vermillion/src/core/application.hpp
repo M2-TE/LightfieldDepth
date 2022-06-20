@@ -10,7 +10,9 @@ class Application
 public:
 	Application()
 	{
-		window.init();
+		if (fullscreenMode) window.init(fullscreenResolution, fullscreenMode);
+		else window.init(windowedResolution, fullscreenMode);
+
 		deviceManager.init(window.get_vulkan_instance(), window.get_vulkan_surface());
 		renderer.init(deviceManager.get_device_wrapper(), window);
 	}
@@ -38,32 +40,33 @@ private:
 		ImGui_ImplSDL2_NewFrame();
 		ImGui::NewFrame();
 
-		SDL_Event event;
-		while (SDL_PollEvent(&event)) {
+		input.flush();
+		SDL_Event sdlEevent;
+		while (SDL_PollEvent(&sdlEevent)) {
 
-			ImGui_ImplSDL2_ProcessEvent(&event);
+			ImGui_ImplSDL2_ProcessEvent(&sdlEevent);
 
-			switch (event.type) {
+			switch (sdlEevent.type) {
 				case SDL_QUIT: return false;
 
 				case SDL_MOUSEBUTTONDOWN:
-				case SDL_MOUSEBUTTONUP: input.register_mouse_button_event(event.button); break;
-				case SDL_MOUSEMOTION: input.register_mouse_motion_event(event.motion); break;
+				case SDL_MOUSEBUTTONUP: input.register_mouse_button_event(sdlEevent.button); break;
+				case SDL_MOUSEMOTION: input.register_mouse_motion_event(sdlEevent.motion); break;
 
 				case SDL_KEYUP:
-				case SDL_KEYDOWN: input.register_keyboard_event(event.key); break;
+				case SDL_KEYDOWN: input.register_keyboard_event(sdlEevent.key); break;
 
 				case SDL_WINDOWEVENT: {
 					//print_event(&event);
-					switch (event.window.event) {
-						case SDL_WINDOWEVENT_SIZE_CHANGED:
-						case SDL_WINDOWEVENT_RESIZED: resize(event); break;
+					switch (sdlEevent.window.event) {
+						//case SDL_WINDOWEVENT_SIZE_CHANGED:
+						case SDL_WINDOWEVENT_RESIZED: resize(true); break;
 
 						case SDL_WINDOWEVENT_MINIMIZED:
-						case SDL_WINDOWEVENT_FOCUS_LOST: bRendering = false; break;
+						case SDL_WINDOWEVENT_FOCUS_LOST: bPaused = false; break;
 
 						case SDL_WINDOWEVENT_FOCUS_GAINED: if (fullscreenMode == SDL_WINDOW_FULLSCREEN) break;
-						case SDL_WINDOWEVENT_RESTORED: bRendering = true; break;
+						case SDL_WINDOWEVENT_RESTORED: bPaused = true; break;
 					}
 				}
 			}
@@ -77,11 +80,9 @@ private:
 			renderer.dump_mem_vma();
 		}
 
-		input.flush();
-
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 
-		if (bRendering) render();
+		if (bPaused) render();
 		else stall();
 
 		return true;
@@ -157,23 +158,6 @@ private:
 			}
 		}
 	}
-
-	void resize(Sint32 width, Sint32 height) // give specific dimensions
-	{
-		// TODO
-	}
-	void resize(SDL_Event& event) // get dimensions from window event
-	{
-		// check if resize is necessary
-		Sint32 w, h;
-		SDL_GetWindowSize(window.get_window(), &w, &h);
-		if (w != event.window.data1 || h != event.window.data2) {
-			SDL_Log("Window %d resized to %dx%d", event.window.windowID, event.window.data1, event.window.data2);
-			SDL_SetWindowSize(window.get_window(), event.window.data1, event.window.data2);
-
-			resize();
-		}
-	}
 	void resize(bool bForceRebuild = false) // resize swapchain using actual window size TODO: DISABLE BOOL?
 	{
 		Sint32 w, h;
@@ -211,11 +195,10 @@ private:
 	Renderer renderer;
 	Input input;
 
-	bool bRendering = true;
-	bool bTempFullscreen = false;
-	uint32_t fullscreenMode;
-	uint32_t fullscreenModeTarget = SDL_WINDOW_FULLSCREEN;
-	//uint32_t fullscreenModeTarget = SDL_WINDOW_FULLSCREEN_DESKTOP;
+	bool bPaused = true;
+	uint32_t fullscreenMode = 0;
+	//const uint32_t fullscreenModeTarget = SDL_WINDOW_FULLSCREEN;
+	const uint32_t fullscreenModeTarget = SDL_WINDOW_FULLSCREEN_DESKTOP;
 	std::pair<Sint32, Sint32> fullscreenResolution = { 1920, 1080 };
 	std::pair<Sint32, Sint32> windowedResolution = { 1280, 720 };
 };
