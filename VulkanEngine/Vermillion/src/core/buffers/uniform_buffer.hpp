@@ -33,6 +33,21 @@ public:
 		destroy_buffer(allocator);
 	}
 	virtual void write_buffer() = 0;
+	static vk::DescriptorSetLayout get_temp_desc_set_layout(DeviceWrapper& deviceWrapper, uint32_t binding, vk::ShaderStageFlags stageFlags)
+	{
+		vk::DescriptorSetLayoutBinding layoutBinding = vk::DescriptorSetLayoutBinding()
+			.setBinding(binding)
+			.setStageFlags(stageFlags)
+			.setDescriptorType(vk::DescriptorType::eUniformBuffer)
+			.setDescriptorCount(1)
+			.setPImmutableSamplers(nullptr);
+
+		// create descriptor set layout from all the bindings
+		vk::DescriptorSetLayoutCreateInfo createInfo = vk::DescriptorSetLayoutCreateInfo()
+			.setBindingCount(1)
+			.setBindings(layoutBinding);
+		return deviceWrapper.logicalDevice.createDescriptorSetLayout(createInfo);
+	}
 
 protected:
 	virtual void destroy_buffer(vma::Allocator& allocator) = 0;

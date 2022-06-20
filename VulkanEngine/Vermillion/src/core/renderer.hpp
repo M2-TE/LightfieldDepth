@@ -27,6 +27,7 @@ public:
 		syncFrames.set_size(nMaxFrames).init(deviceWrapper);
 
 		create_KHR(deviceWrapper, window);
+		camera.init(deviceWrapper, allocator, descPool, swapchainWrapper);
 
 		imguiWrapper.init(deviceWrapper, window, deferredRenderpass.get_render_pass(), syncFrames);
 
@@ -37,6 +38,7 @@ public:
 		vk::Device& device = deviceWrapper.logicalDevice;
 		
 		destroy_KHR(deviceWrapper);
+		camera.destroy(deviceWrapper, allocator);
 
 		device.destroyCommandPool(transientCommandPool);
 		device.destroyDescriptorPool(descPool);
@@ -174,16 +176,17 @@ private:
 	void create_KHR(DeviceWrapper& deviceWrapper, Window& window)
 	{
 		swapchainWrapper.init(deviceWrapper, window, nMaxFrames);
-		camera.init(deviceWrapper, allocator, descPool, swapchainWrapper);
 
 		// create deferred render pass
-		std::vector<vk::DescriptorSetLayout> geometryPassDescSetLayouts = { camera.get_desc_set_layout() };
+		auto descLayout = camera.get_temp_desc_set_layout(deviceWrapper);
+		std::vector<vk::DescriptorSetLayout> geometryPassDescSetLayouts = { descLayout };
 		std::vector<vk::DescriptorSetLayout> lightingPassDescSetLayouts = {};
 		DeferredRenderpassCreateInfo createInfo = {
 			deviceWrapper, swapchainWrapper, allocator, descPool,
 			geometryPassDescSetLayouts, lightingPassDescSetLayouts
 		};
 		deferredRenderpass.init(createInfo);
+		deviceWrapper.logicalDevice.destroyDescriptorSetLayout(descLayout);
 
 		swapchainWriteRenderpass.init(deviceWrapper, swapchainWrapper, descPool, deferredRenderpass.get_output_image_view());
 	}
@@ -192,7 +195,6 @@ private:
 		deferredRenderpass.destroy(deviceWrapper, allocator);
 		swapchainWriteRenderpass.destroy(deviceWrapper);
 		swapchainWrapper.destroy(deviceWrapper);
-		camera.destroy(deviceWrapper, allocator);
 	}
 
 	// runtime

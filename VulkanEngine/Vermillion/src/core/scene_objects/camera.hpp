@@ -7,7 +7,6 @@
 #undef near
 #undef far
 
-struct ViewProjectionBuffer { float4x4 view, proj, viewProj; };
 class Camera
 {
 public:
@@ -24,8 +23,8 @@ public:
 			deviceWrapper,
 			allocator,
 			descPool,
-			vk::ShaderStageFlagBits::eVertex,
-			1, swapchainWrapper.images.size()
+			stageFlags, binding,
+			swapchainWrapper.images.size()
 		};
 		viewProjBuffer.init(info);
 		update();
@@ -69,13 +68,20 @@ public:
 	{
 		return viewProjBuffer.get_desc_set();
 	}
-	vk::DescriptorSetLayout& get_desc_set_layout()
+	vk::DescriptorSetLayout get_desc_set_layout()
 	{
 		return viewProjBuffer.descSetLayout;
 	}
+	static vk::DescriptorSetLayout get_temp_desc_set_layout(DeviceWrapper& deviceWrapper)
+	{
+		return UniformBufferDynamic<ViewProjection>::get_temp_desc_set_layout(deviceWrapper, binding, stageFlags);
+	}
 
 private:
-	UniformBufferDynamic<ViewProjectionBuffer> viewProjBuffer;
+	static constexpr uint32_t binding = 1;
+	static constexpr vk::ShaderStageFlags stageFlags = vk::ShaderStageFlagBits::eVertex;
+	struct ViewProjection { float4x4 view, proj, viewProj; };
+	UniformBufferDynamic<ViewProjection> viewProjBuffer;
 
 	// camera position in world space
 	float3 position = { 0.0f, 0.0f, -5.0f };

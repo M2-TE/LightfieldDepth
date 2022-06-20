@@ -1,9 +1,10 @@
 #pragma once
 
+#include "Input.hpp"
+#include "scene_objects/scene.hpp"
 #include "window.hpp"
 #include "device_manager.hpp"
 #include "renderer.hpp"
-#include "Input.hpp"
 
 class Application
 {
@@ -194,6 +195,7 @@ private:
 	DeviceManager deviceManager;
 	Renderer renderer;
 	Input input;
+	Scene scene;
 
 	bool bPaused = true;
 	uint32_t fullscreenMode = 0;
