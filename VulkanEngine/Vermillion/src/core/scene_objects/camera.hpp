@@ -68,10 +68,6 @@ public:
 	{
 		return viewProjBuffer.get_desc_set();
 	}
-	vk::DescriptorSetLayout get_desc_set_layout()
-	{
-		return viewProjBuffer.descSetLayout;
-	}
 	static vk::DescriptorSetLayout get_temp_desc_set_layout(DeviceWrapper& deviceWrapper)
 	{
 		return UniformBufferDynamic<ViewProjection>::get_temp_desc_set_layout(deviceWrapper, binding, stageFlags);

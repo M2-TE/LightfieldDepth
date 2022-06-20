@@ -24,15 +24,12 @@ public:
 	void init(BufferInfo& info)
 	{
 		create_buffer(info);
-		create_descriptor_set_layout(info);
 		create_descriptor_sets(info);
 	}
 	void destroy(DeviceWrapper& deviceWrapper, vma::Allocator& allocator)
 	{
-		deviceWrapper.logicalDevice.destroyDescriptorSetLayout(descSetLayout); 
 		destroy_buffer(allocator);
 	}
-	virtual void write_buffer() = 0;
 	static vk::DescriptorSetLayout get_temp_desc_set_layout(DeviceWrapper& deviceWrapper, uint32_t binding, vk::ShaderStageFlags stageFlags)
 	{
 		vk::DescriptorSetLayoutBinding layoutBinding = vk::DescriptorSetLayoutBinding()
@@ -54,26 +51,8 @@ protected:
 	virtual void create_buffer(BufferInfo& info) = 0;
 	virtual void create_descriptor_sets(BufferInfo& info) = 0;
 
-private:
-	void create_descriptor_set_layout(BufferInfo& info)
-	{
-		vk::DescriptorSetLayoutBinding layoutBinding = vk::DescriptorSetLayoutBinding()
-			.setBinding(info.binding)
-			.setStageFlags(info.stageFlags)
-			.setDescriptorType(vk::DescriptorType::eUniformBuffer)
-			.setDescriptorCount(1)
-			.setPImmutableSamplers(nullptr);
-
-		// create descriptor set layout from all the bindings
-		vk::DescriptorSetLayoutCreateInfo createInfo = vk::DescriptorSetLayoutCreateInfo()
-			.setBindingCount(1)
-			.setBindings(layoutBinding);
-		descSetLayout = info.deviceWrapper.logicalDevice.createDescriptorSetLayout(createInfo);
-	}
-
 public:
 	T data;
-	vk::DescriptorSetLayout descSetLayout;
 };
 
 template<class T>
@@ -106,7 +85,7 @@ public:
 	{
 		return bufferFrames.get_current().descSet;
 	}
-	void write_buffer() override
+	void write_buffer()
 	{
 		// already mapped, so just copy over
 		// additionally, advance frame by one, so the next free buffer frame gets written to
@@ -136,8 +115,12 @@ private:
 	}
 	void create_descriptor_sets(BufferInfo& info) override
 	{
+		// temp layout
+		vk::DescriptorSetLayout descSetLayout = UniformBufferBase<T>::get_temp_desc_set_layout(
+			info.deviceWrapper, info.binding, info.stageFlags);
+
 		// duplicate layout to have one for each frame in flight
-		std::vector<vk::DescriptorSetLayout> layouts(info.nBuffers, UniformBufferBase<T>::descSetLayout);
+		std::vector<vk::DescriptorSetLayout> layouts(info.nBuffers, descSetLayout);
 
 		// allocate the descriptor sets using descriptor pool
 		vk::DescriptorSetAllocateInfo allocInfo = vk::DescriptorSetAllocateInfo()
@@ -169,6 +152,7 @@ private:
 
 		}
 		info.deviceWrapper.logicalDevice.updateDescriptorSets(descBufferWrites, {});
+		info.deviceWrapper.logicalDevice.destroyDescriptorSetLayout(descSetLayout);
 	}
 
 private:
