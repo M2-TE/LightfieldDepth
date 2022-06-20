@@ -2,11 +2,11 @@
 
 #include "vk_mem_alloc.hpp"
 #include "utils/types.hpp"
-#include "camera.hpp"
+#include "scene_objects/camera.hpp"
+#include "scene_objects/geometry/indexed_geometry.hpp"
 #include "wrappers/imgui_wrapper.hpp"
 #include "wrappers/swapchain_wrapper.hpp"
 #include "wrappers/shader_wrapper.hpp"
-#include "geometry/indexed_geometry.hpp"
 #include "render_passes/deferred_renderpass.hpp"
 #include "render_passes/swapchain_write.hpp"
 
