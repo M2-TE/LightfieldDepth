@@ -95,7 +95,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)Vermillion\src\;$(SolutionDir)Vermillion\src\pch\;$(SolutionDir)Vermillion\vendor\vma-hpp\include\;$(SolutionDir)Shaders\include\;$(SolutionDir)ImGui\vendor\imgui\;$(VULKAN_SDK)\Include\;$(VULKAN_SDK)\Include\SDL2\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Vermillion\src\;$(SolutionDir)Vermillion\src\core\;$(SolutionDir)Vermillion\src\pch\;$(SolutionDir)Vermillion\vendor\vma-hpp\include\;$(SolutionDir)Shaders\include\;$(SolutionDir)ImGui\vendor\imgui\;$(VULKAN_SDK)\Include\;$(VULKAN_SDK)\Include\SDL2\</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.hpp</PrecompiledHeaderFile>
     </ClCompile>
@@ -113,7 +113,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)Vermillion\src\;$(SolutionDir)Vermillion\src\pch\;$(SolutionDir)Vermillion\vendor\vma-hpp\include\;$(SolutionDir)Shaders\include\;$(SolutionDir)ImGui\vendor\imgui\;$(VULKAN_SDK)\Include\;$(VULKAN_SDK)\Include\SDL2\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Vermillion\src\;$(SolutionDir)Vermillion\src\core\;$(SolutionDir)Vermillion\src\pch\;$(SolutionDir)Vermillion\vendor\vma-hpp\include\;$(SolutionDir)Shaders\include\;$(SolutionDir)ImGui\vendor\imgui\;$(VULKAN_SDK)\Include\;$(VULKAN_SDK)\Include\SDL2\</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.hpp</PrecompiledHeaderFile>
     </ClCompile>
@@ -133,7 +133,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)Vermillion\src\;$(SolutionDir)Vermillion\src\pch\;$(SolutionDir)Vermillion\vendor\vma-hpp\include\;$(SolutionDir)Shaders\include\;$(SolutionDir)ImGui\vendor\imgui\;$(VULKAN_SDK)\Include\;$(VULKAN_SDK)\Include\SDL2\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Vermillion\src\;$(SolutionDir)Vermillion\src\core\;$(SolutionDir)Vermillion\src\pch\;$(SolutionDir)Vermillion\vendor\vma-hpp\include\;$(SolutionDir)Shaders\include\;$(SolutionDir)ImGui\vendor\imgui\;$(VULKAN_SDK)\Include\;$(VULKAN_SDK)\Include\SDL2\</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.hpp</PrecompiledHeaderFile>
     </ClCompile>
@@ -155,7 +155,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)Vermillion\src\;$(SolutionDir)Vermillion\src\pch\;$(SolutionDir)Vermillion\vendor\vma-hpp\include\;$(SolutionDir)Shaders\include\;$(SolutionDir)ImGui\vendor\imgui\;$(VULKAN_SDK)\Include\;$(VULKAN_SDK)\Include\SDL2\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Vermillion\src\;$(SolutionDir)Vermillion\src\core\;$(SolutionDir)Vermillion\src\pch\;$(SolutionDir)Vermillion\vendor\vma-hpp\include\;$(SolutionDir)Shaders\include\;$(SolutionDir)ImGui\vendor\imgui\;$(VULKAN_SDK)\Include\;$(VULKAN_SDK)\Include\SDL2\</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.hpp</PrecompiledHeaderFile>
     </ClCompile>

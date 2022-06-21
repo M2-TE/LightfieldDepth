@@ -1,5 +1,6 @@
 #pragma once
 
+#include "wrappers/device_wrapper.hpp"
 #include "vertex.hpp"
 
 class IndexedGeometry

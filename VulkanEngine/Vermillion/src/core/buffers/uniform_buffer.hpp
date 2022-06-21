@@ -64,7 +64,10 @@ public:
 	ROF_COPY_MOVE_DELETE(UniformBufferStatic)
 
 public:
+	void write_buffer_slow()
+	{
 
+	}
 private:
 	std::pair<vk::Buffer, vma::Allocation> buffer;
 	vk::DescriptorSet descSet;
