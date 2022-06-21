@@ -1,5 +1,7 @@
 #pragma once
 
+#include "ecs/manager.hpp"
+
 class Scene
 {
 public:
@@ -8,7 +10,11 @@ public:
 	ROF_COPY_MOVE_DELETE(Scene)
 
 public:
-	void start()
+	void init()
+	{
+
+	}
+	void destroy()
 	{
 
 	}
@@ -16,10 +22,7 @@ public:
 	{
 
 	}
-	void end()
-	{
-
-	}
 
 private:
+	ECS ecs;
 };

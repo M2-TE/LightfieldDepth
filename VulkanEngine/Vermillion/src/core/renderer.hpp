@@ -20,6 +20,7 @@ public:
 public:
 	void init(DeviceWrapper& deviceWrapper, Window& window)
 	{
+		VMI_LOG("[Initializing] Renderer...");
 		create_vma_allocator(deviceWrapper, window);
 		create_descriptor_pools(deviceWrapper);
 		create_command_pools(deviceWrapper);
@@ -158,6 +159,7 @@ private:
 			vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer, poolSize)
 			// TODO: other stuff this pool will need
 		};
+		vk::DescriptorPoolCreateFlags flags;
 
 		vk::DescriptorPoolCreateInfo info = vk::DescriptorPoolCreateInfo()
 			.setFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet)

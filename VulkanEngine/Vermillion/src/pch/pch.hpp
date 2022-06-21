@@ -3,6 +3,7 @@
 #include <chrono>
 #include <iostream>
 #include <vector>
+#include <queue>
 #include <optional>
 #include <set>
 #include <cstdint>
@@ -43,3 +44,9 @@
 #include "utils/logging.hpp"
 #include "utils/timer.hpp"
 #include "utils/rule_of_five.hpp"
+
+
+
+// undefine some whacky stuff that are defined in one of these headers for some reason
+#undef near
+#undef far

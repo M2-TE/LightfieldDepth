@@ -10,10 +10,14 @@ public:
 public:
 	void init(std::pair<Sint32, Sint32> resolution, uint32_t fullscreenMode)
 	{
+		VMI_LOG("[Initializing] SDL window...");
 		init_sdl_window(resolution, fullscreenMode);
+
+		VMI_LOG("[Initializing] Vulkan instance...");
 		create_vulkan_instance();
 		create_vulkan_surface();
 
+		VMI_LOG("[Initializing] ImGui...");
 		ImGui::CreateContext();
 		ImGui_ImplSDL2_InitForVulkan(pWindow);
 		ImGui::StyleColorsDark();
@@ -38,8 +42,6 @@ public:
 private:
 	void init_sdl_window(std::pair<Sint32, Sint32> resolution, uint32_t fullscreenMode)
 	{
-		DEBUG_ONLY(VMI_LOG("Debug build.\n"));
-
 		// Create an SDL window that supports Vulkan rendering.
 		if (SDL_InitSubSystem(SDL_INIT_VIDEO) != 0) VMI_SDL_ERR();
 		pWindow = SDL_CreateWindow(WND_NAME.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 
@@ -71,7 +73,6 @@ private:
 		std::string spacing = "    ";
 		VMI_LOG(spacing << "Required instance extensions:");
 		for (const auto& extension : extensions) VMI_LOG(spacing << "- " << extension);
-		VMI_LOG("");
 
 		// Create app info
 		vk::ApplicationInfo appInfo = vk::ApplicationInfo()

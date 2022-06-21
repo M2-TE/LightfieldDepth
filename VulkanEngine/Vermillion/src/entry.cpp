@@ -2,6 +2,9 @@
 #include "core/application.hpp"
 
 int main() {
+
+    DEBUG_ONLY(VMI_LOG("Debug build.\n"));
+
     try {
         Application app;
         app.run();

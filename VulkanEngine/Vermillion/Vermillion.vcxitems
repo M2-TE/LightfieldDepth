@@ -15,6 +15,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\application.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\scene_objects\ecs\components.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\scene_objects\ecs\entities.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\scene_objects\ecs\manager.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\scene_objects\ecs\systems.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\scene_objects\camera.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\device_manager.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\scene_objects\geometry\indexed_geometry.hpp" />
@@ -26,7 +30,6 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\render_passes\swapchain_write.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\buffers\ring_buffer.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\scene_objects\scene.hpp" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\scene_objects\scene_object.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\window.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\wrappers\device_wrapper.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\wrappers\imgui_wrapper.hpp" />

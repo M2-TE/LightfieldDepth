@@ -12,6 +12,7 @@ public:
 public:
 	void init(vk::Instance& instance, vk::SurfaceKHR& surface)
 	{
+		VMI_LOG("[Initializing] Device manager...");
 		std::vector<vk::PhysicalDevice> physicalDevices = instance.enumeratePhysicalDevices();
 		if (physicalDevices.empty()) VMI_ERR("Failed to find GPUs with Vulkan support.");
 

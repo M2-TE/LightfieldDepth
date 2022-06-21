@@ -3,10 +3,6 @@
 #include "buffers/uniform_buffer.hpp"
 #include "wrappers/swapchain_wrapper.hpp"
 
-// why were these defined in the first place.. tf?
-#undef near
-#undef far
-
 class Camera
 {
 public:
