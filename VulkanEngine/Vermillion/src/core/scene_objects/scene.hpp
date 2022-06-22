@@ -15,13 +15,12 @@ public:
 		VMI_LOG("[Initializing] Scene...");
 		ecs.init();
 
-		Entity entity = ecs.create_entity();
-		Entity entity2 = ecs.create_entity();
+		entity = ecs.create_entity(ComponentFlagBits::eGeometry);
 		ecs.destroy_entity(entity);
 	}
 	void destroy()
 	{
-
+		ecs.destroy();
 	}
 	void update()
 	{
@@ -30,4 +29,6 @@ public:
 
 private:
 	ECS ecs;
+
+	Entity entity; // cube thingy
 };

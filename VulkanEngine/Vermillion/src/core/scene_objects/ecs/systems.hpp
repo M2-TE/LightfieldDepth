@@ -1,6 +1,15 @@
 #pragma once
 
-struct System
+struct SystemBase
 {
-	// TODO
+	std::set<Entity> entities;
+};
+
+struct Allocator : SystemBase
+{
+
+};
+struct Deallocator : SystemBase
+{
+
 };
