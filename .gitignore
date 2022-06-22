@@ -398,9 +398,9 @@ FodyWeavers.xsd
 *.sln.iml
 
 # spir-v shader headers
-*vs.hpp
-*ps.hpp
-*cs.hpp
+*.vs.hpp
+*.ps.hpp
+*.cs.hpp
 
 # vma memory dump outputs
 *\stats.jpg
