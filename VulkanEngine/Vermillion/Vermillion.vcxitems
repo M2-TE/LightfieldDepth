@@ -17,7 +17,7 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\application.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\scene_objects\ecs\components.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\scene_objects\ecs\entities.hpp" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\scene_objects\ecs\manager.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\scene_objects\ecs\ecs.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\scene_objects\ecs\systems.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\scene_objects\camera.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\device_manager.hpp" />

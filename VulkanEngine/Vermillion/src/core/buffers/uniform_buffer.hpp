@@ -82,13 +82,11 @@ public:
 	ROF_COPY_MOVE_DELETE(UniformBufferDynamic)
 
 public:
-	// init()
-	// destroy()
-	vk::DescriptorSet& get_desc_set()
+	inline vk::DescriptorSet& get_desc_set()
 	{
 		return bufferFrames.get_current().descSet;
 	}
-	void write_buffer()
+	inline void write_buffer()
 	{
 		// already mapped, so just copy over
 		// additionally, advance frame by one, so the next free buffer frame gets written to
