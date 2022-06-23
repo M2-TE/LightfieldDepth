@@ -12,22 +12,15 @@ class ECS;
 class ECS
 {
 public:
-	ECS() = default;
-	~ECS() = default;
-	ROF_COPY_MOVE_DELETE(ECS)
-
-public:
-	void init()
+	ECS()
 	{
 		// set all entity IDs to available
 		for (uint32_t i = 0; i < nMaxEntities; i++) {
 			availableEntityIndices.insert(i);
 		}
 	}
-	void destroy()
-	{
-
-	}
+	~ECS() = default;
+	ROF_COPY_MOVE_DELETE(ECS)
 
 public:
 	Entity create_entity(size_t components)
@@ -36,8 +29,11 @@ public:
 		Entity entity = *availableEntityIndices.begin();
 		availableEntityIndices.erase(availableEntityIndices.begin());
 
+		// assign component flags
+		entities[entity] = components;
+
+		// add entity to the system's entity tracker
 		for (auto& it : systemEntities) {
-			// add entity to the system's entity tracker
 			if ((it.first & components) == it.first) it.second.insert(entity);
 		}
 
@@ -49,17 +45,33 @@ public:
 		// TODO
 	}
 
+	void add_components(Entity entity, size_t components)
+	{
+		components = entities[entity] | components;
+		entities[entity] = components;
+
+		for (auto& it : systemEntities) {
+			// add entity to the system's entity tracker
+			if ((it.first & components) == it.first) it.second.insert(entity);
+		}
+	}
+
 	template<typename SystemType, typename... Args> void execute_system(Args... args)
 	{
 		SystemType::execute(components, systemEntities, args...);
 	}
 
 public:
+	template<typename T> void unregister_component()
+	{
+		auto* p = components[typeid(T).hash_code()];
+		delete static_cast<Components::ComponentArray<T>*>(p);
+	}
 	template<typename T> void register_component()
 	{
 		using namespace Components;
 		auto* pBase = static_cast<ComponentArrayBase*>(new ComponentArray<T>());
-		components.insert({ typeid(ComponentArray<T>).hash_code(), pBase });
+		components.insert({ typeid(T).hash_code(), pBase });
 	}
 	template<typename T, typename... Args> void register_system(Args... args)
 	{

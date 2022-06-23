@@ -31,10 +31,8 @@ public:
 		camera.init(deviceWrapper, allocator, descPool, swapchainWrapper);
 
 		imguiWrapper.init(deviceWrapper, window, deferredRenderpass.get_render_pass(), syncFrames);
-
-		geometry.allocate(allocator, transientCommandPool, deviceWrapper);
 	}
-	void destroy(DeviceWrapper& deviceWrapper)
+	void destroy(DeviceWrapper& deviceWrapper, ECS& ecs)
 	{
 		vk::Device& device = deviceWrapper.logicalDevice;
 		
@@ -49,7 +47,7 @@ public:
 		imguiWrapper.destroy(deviceWrapper);
 		ImGui_ImplVulkan_Shutdown();
 
-		geometry.deallocate(allocator);
+		ecs.execute_system<Systems::Geometry::Deallocator>(allocator);
 		allocator.destroy();
 	}
 
@@ -75,7 +73,7 @@ public:
 		out.close();
 		VMI_LOG("Dumped VMA stats to vma_stats.json");
 	}
-	void render(DeviceWrapper& deviceWrapper)
+	void render(DeviceWrapper& deviceWrapper, ECS& ecs)
 	{
 		// get next frame of sync objects
 		auto& syncFrame = syncFrames.get_next();
@@ -103,7 +101,7 @@ public:
 
 			// reset command pool and then record into it (using command buffer)
 			deviceWrapper.logicalDevice.resetCommandPool(syncFrame.commandPool);
-			record_command_buffer(iFrame, syncFrame.commandBuffer);
+			record_command_buffer(ecs, syncFrame.commandBuffer, iFrame);
 		}
 
 		// Render (submit)
@@ -141,6 +139,7 @@ public:
 	// TESTING
 	void handle_ecs(DeviceWrapper& deviceWrapper, ECS& ecs)
 	{
+		//ecs.execute_system<Systems::Geometry::Deallocator>(allocator);
 		ecs.execute_system<Systems::Geometry::Allocator>(deviceWrapper, allocator, transientCommandPool);
 	}
 
@@ -206,7 +205,7 @@ private:
 	}
 
 	// runtime
-	void record_command_buffer(uint32_t iFrame, vk::CommandBuffer& commandBuffer)
+	void record_command_buffer(ECS& ecs, vk::CommandBuffer& commandBuffer, uint32_t iFrame)
 	{
 		// setting up command buffer
 		vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo()
@@ -220,7 +219,8 @@ private:
 		// deferred renderpass
 		deferredRenderpass.begin(commandBuffer);
 		deferredRenderpass.bind_desc_sets(commandBuffer, camera.get_desc_set());
-		geometry.draw(commandBuffer);
+		//geometry.draw(commandBuffer); // DEPR
+		ecs.execute_system<Systems::Geometry::Renderer>(commandBuffer);
 		deferredRenderpass.end(commandBuffer);
 
 		// direct write to swapchain image
@@ -246,5 +246,4 @@ private:
 
 	// scene objects
 	Camera camera;
-	IndexedGeometry geometry;
 };

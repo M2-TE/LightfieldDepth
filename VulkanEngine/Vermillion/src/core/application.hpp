@@ -24,7 +24,8 @@ public:
 		deviceManager.get_logical_device().waitIdle();
 
 		scene.destroy();
-		renderer.destroy(deviceManager.get_device_wrapper());
+		renderer.destroy(deviceManager.get_device_wrapper(), scene.get_ecs());
+
 		deviceManager.destroy();
 		window.destroy();
 	}
@@ -54,7 +55,7 @@ private:
 	}
 	void render()
 	{
-		renderer.render(deviceManager.get_device_wrapper());
+		renderer.render(deviceManager.get_device_wrapper(), scene.get_ecs());
 	}
 	void stall()
 	{
