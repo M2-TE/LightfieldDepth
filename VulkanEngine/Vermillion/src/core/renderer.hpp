@@ -138,6 +138,12 @@ public:
 		}
 	}
 
+	// TESTING
+	void handle_ecs(DeviceWrapper& deviceWrapper, ECS& ecs)
+	{
+		ecs.execute_system<Systems::Geometry::Allocator>(deviceWrapper, allocator, transientCommandPool);
+	}
+
 private:
 	void create_vma_allocator(DeviceWrapper& deviceWrapper, Window& window)
 	{

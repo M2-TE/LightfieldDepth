@@ -9,3 +9,5 @@
 #else
 	#define DEBUG_ONLY(x)
 #endif
+
+#define FLAG(type) inline size_t get_flag() const noexcept { return typeid(type).hash_code(); }

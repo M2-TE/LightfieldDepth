@@ -15,8 +15,18 @@ public:
 		VMI_LOG("[Initializing] Scene...");
 		ecs.init();
 
-		entity = ecs.create_entity(ComponentFlagBits::eGeometry);
-		ecs.destroy_entity(entity);
+		// could eliminate the need to manually create these, can infer from objects that are created?
+		ecs.register_component<Components::Geometry>();
+		ecs.register_component<Components::Allocator>();
+		ecs.register_component<Components::Deallocator>();
+		ecs.register_system<Systems::Geometry::Allocator>();
+		ecs.register_system<Systems::Geometry::Deallocator>();
+		ecs.register_system<Systems::Geometry::Renderer>();
+
+		size_t components = Component_Flag(Components::Geometry) | Component_Flag(Components::Allocator);
+		entity = ecs.create_entity(components);
+
+		//createObject<Scene, Input>();
 	}
 	void destroy()
 	{
@@ -26,6 +36,9 @@ public:
 	{
 
 	}
+
+
+	inline ECS& get_ecs() { return ecs; }
 
 private:
 	ECS ecs;

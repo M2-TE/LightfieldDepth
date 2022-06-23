@@ -44,6 +44,7 @@ private:
 		if (!poll_inputs()) return false;
 		handle_inputs();
 		scene.update();
+		renderer.handle_ecs(deviceManager.get_device_wrapper(), scene.get_ecs());
 		imgui_end();
 
 		if (!bPaused) render();
@@ -138,7 +139,6 @@ private:
 		VMI_LOG("Attempting swapchain rebuild: (" << bForceRebuild << ") " << w << "x" << h);
 		renderer.recreate_KHR(deviceManager.get_device_wrapper(), window, bForceRebuild);
 	}
-
 
 private:
 	Window window;
