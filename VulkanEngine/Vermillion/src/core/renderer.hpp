@@ -140,9 +140,6 @@ public:
 	void handle_input(Input& input)
 	{
 		camera.handle_input(input);
-
-		// update camera buffer
-		camera.update();
 	}
 	void handle_ecs(DeviceWrapper& deviceWrapper, ECS& ecs)
 	{
@@ -219,6 +216,9 @@ private:
 			.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit)
 			.setPInheritanceInfo(nullptr);
 		commandBuffer.begin(beginInfo);
+
+		// update camera buffer
+		camera.update();
 
 		// deferred renderpass
 		deferredRenderpass.begin(commandBuffer);
