@@ -29,10 +29,37 @@ public:
 	{
 		viewProjBuffer.destroy(deviceWrapper, allocator);
 	}
-	void rebuild(DeviceWrapper& deviceWrapper, vma::Allocator& allocator, vk::DescriptorPool& descPool, SwapchainWrapper& swapchainWrapper)
+
+	void handle_input(Input& input)
 	{
-		destroy(deviceWrapper, allocator);
-		init(deviceWrapper, allocator, descPool, swapchainWrapper);
+		static auto startTime = std::chrono::high_resolution_clock::now();
+		auto currentTime = std::chrono::high_resolution_clock::now();
+		float dt = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+		float speed = dt * 0.01f;
+
+		// forward/backward
+		if (input.keysDown.count(SDLK_w)) {
+			translate(float3(0.0f, 0.0f, speed));
+		}
+		else if (input.keysDown.count(SDLK_s)) {
+			translate(float3(0.0f, 0.0f, -speed));
+		}
+
+		// left/right
+		if (input.keysDown.count(SDLK_d)) {
+			translate(float3(speed, 0.0f, 0.0f));
+		}
+		else if (input.keysDown.count(SDLK_a)) {
+			translate(float3(-speed, 0.0f, 0.0f));
+		}
+
+		// up/down
+		if (input.keysDown.count(SDLK_q)) {
+			translate(float3(0.0f, speed, 0.0f));
+		}
+		else if (input.keysDown.count(SDLK_e)) {
+			translate(float3(0.0f, -speed, 0.0f));
+		}
 	}
 
 	void translate(float3 dir)

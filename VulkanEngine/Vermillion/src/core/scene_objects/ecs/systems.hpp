@@ -17,24 +17,21 @@ namespace Systems
 	{
 		struct Allocator
 		{
-			const size_t componentFlags = Component_Flag(Components::Geometry) | Component_Flag(Components::Allocator);
-
 			EXECUTE(DeviceWrapper& deviceWrapper, vma::Allocator& allocator, vk::CommandPool& commandPool)
 			{
+				// retrieve components needed
 				auto& arr = GET_COMPONENTS(Components::Geometry);
 
-				// can prolly put this into a macro
+				// iterate over all the entitites that fit this system
 				auto& entities = GET_ENTITIES(Allocator);
-				auto cur = entities.cbegin();
-				auto end = entities.cend();
-				for (; cur != end; cur++) {
-					VMI_LOG("allocating " << *cur);
+				for (auto cur = entities.cbegin(), end = entities.cend(); cur != end; cur++) {
 					allocate(arr[*cur], deviceWrapper, allocator, commandPool);
 				}
 
 				// clear the allocated objects so they only get allocated once
 				GET_ENTITIES(Allocator).clear();
 			}
+			const size_t componentFlags = Component_Flag(Components::Geometry) | Component_Flag(Components::Allocator);
 
 		private:
 			static inline void allocate(Components::Geometry& geometry, DeviceWrapper& deviceWrapper, vma::Allocator& allocator, vk::CommandPool& commandPool)
@@ -105,24 +102,24 @@ namespace Systems
 
 		struct Deallocator
 		{
-			const size_t componentFlags = Component_Flag(Components::Geometry) | Component_Flag(Components::Deallocator);
-
 			EXECUTE(vma::Allocator& allocator)
 			{
+				// retrieve components needed
 				auto& arr = GET_COMPONENTS(Components::Geometry);
 
+				// iterate over all the entitites that fit this system
 				auto& entities = GET_ENTITIES(Renderer);
-				auto cur = entities.cbegin();
-				auto end = entities.cend();
-				for (; cur != end; cur++) {
-					VMI_LOG("deallocating " << *cur);
+				for (auto cur = entities.cbegin(), end = entities.cend(); cur != end; cur++) {
 					deallocate(arr[*cur], allocator);
 				}
 
 				// remove so they dont get deallocated/rendered again
 				GET_ENTITIES(Deallocator).clear();
 				GET_ENTITIES(Renderer).clear();
+
+				// TODO: restore entity to availableEntities?
 			}
+			const size_t componentFlags = Component_Flag(Components::Geometry) | Component_Flag(Components::Deallocator);
 
 		private:
 			static inline void deallocate(Components::Geometry& geometry, vma::Allocator& allocator)
@@ -133,17 +130,16 @@ namespace Systems
 
 		struct Renderer
 		{
-			const size_t componentFlags = Component_Flag(Components::Geometry);
-
 			EXECUTE(vk::CommandBuffer& commandBuffer)
 			{
 				auto& arr = GET_COMPONENTS(Components::Geometry);
 
 				auto& entities = GET_ENTITIES(Renderer);
-				auto cur = entities.cbegin();
-				auto end = entities.cend();
-				for (; cur != end; cur++) render(arr[*cur], commandBuffer);
+				for (auto cur = entities.cbegin(), end = entities.cend(); cur != end; cur++) {
+					render(arr[*cur], commandBuffer);
+				}
 			}
+			const size_t componentFlags = Component_Flag(Components::Geometry);
 
 		private:
 			static inline void render(Components::Geometry& geometry, vk::CommandBuffer& commandBuffer)

@@ -45,6 +45,7 @@ private:
 		if (!poll_inputs()) return false;
 		handle_inputs();
 		scene.update();
+		renderer.handle_input(input);
 		renderer.handle_ecs(deviceManager.get_device_wrapper(), scene.get_ecs());
 		imgui_end();
 
