@@ -28,7 +28,6 @@ public:
 		syncFrames.set_size(nMaxFrames).init(deviceWrapper);
 
 		create_KHR(deviceWrapper, window);
-		camera.init(deviceWrapper, allocator, descPool, swapchainWrapper);
 
 		imguiWrapper.init(deviceWrapper, window, deferredRenderpass.get_render_pass(), syncFrames);
 	}
@@ -37,7 +36,6 @@ public:
 		vk::Device& device = deviceWrapper.logicalDevice;
 		
 		destroy_KHR(deviceWrapper);
-		camera.destroy(deviceWrapper, allocator);
 
 		device.destroyCommandPool(transientCommandPool);
 		device.destroyDescriptorPool(descPool);
@@ -187,6 +185,7 @@ private:
 	void create_KHR(DeviceWrapper& deviceWrapper, Window& window)
 	{
 		swapchainWrapper.init(deviceWrapper, window, nMaxFrames);
+		camera.init(deviceWrapper, allocator, descPool, swapchainWrapper);
 
 		// create deferred render pass
 		auto descLayout = camera.get_temp_desc_set_layout(deviceWrapper);
@@ -203,6 +202,7 @@ private:
 	}
 	void destroy_KHR(DeviceWrapper& deviceWrapper)
 	{
+		camera.destroy(deviceWrapper, allocator);
 		deferredRenderpass.destroy(deviceWrapper, allocator);
 		swapchainWriteRenderpass.destroy(deviceWrapper);
 		swapchainWrapper.destroy(deviceWrapper);
@@ -217,7 +217,7 @@ private:
 			.setPInheritanceInfo(nullptr);
 		commandBuffer.begin(beginInfo);
 
-		// update camera buffer
+		// update camera buffer (and other buffers later)
 		camera.update();
 
 		// deferred renderpass
