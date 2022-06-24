@@ -40,7 +40,13 @@ public:
 
 		float speed = dt * 2.0f;
 
-		// TODO: relative mouse movement
+		// rotation
+		if (input.mouseButtonsDown.count(3) || input.mouseButtonsDown.count(1)) {
+			float mouseSpeed = .1f;
+			float xRot = glm::radians(static_cast<float>(input.xMouseRel) * mouseSpeed);
+			float yRot = glm::radians(static_cast<float>(input.yMouseRel) * mouseSpeed);
+			rotationEuler += float3(-yRot, xRot, 0.0f);
+		}
 
 		// forward/backward
 		if (input.keysDown.count(SDLK_w)) translate(float3(0.0f, 0.0f, speed));
@@ -54,22 +60,15 @@ public:
 		if (input.keysDown.count(SDLK_q)) translate(float3(0.0f, speed, 0.0f));
 		else if (input.keysDown.count(SDLK_e)) translate(float3(0.0f, -speed, 0.0f));
 
-		// rotation
-		if (input.mouseButtonsDown.count(3) || input.mouseButtonsDown.count(1)) {
-			float mouseSpeed = .1f;
-			float xRot = glm::radians(static_cast<float>(input.xMouseRel) * mouseSpeed);
-			float yRot = glm::radians(static_cast<float>(input.yMouseRel) * mouseSpeed);
-			rotationEuler += float3(-yRot, xRot, 0.0f);
-		}
 	}
 
 	void translate(float3 dir)
 	{
-		position += dir;
+		position += glm::quat(rotationEuler) * dir;
 	}
 	void rotate_euler(float3 rot)
 	{
-		rotationEuler = rot;
+		rotationEuler += rot;
 	}
 	
 	void update()
