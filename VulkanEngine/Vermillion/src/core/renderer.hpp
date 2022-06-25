@@ -70,6 +70,11 @@ public:
 		out.close();
 		VMI_LOG("Dumped VMA stats to vma_stats.json");
 	}
+	void handle_allocations(DeviceWrapper& deviceWrapper, entt::registry& reg)
+	{
+		deallocate_entities(deviceWrapper, reg);
+		allocate_entities(deviceWrapper, reg);
+	}
 	void render(DeviceWrapper& deviceWrapper, entt::registry& reg)
 	{
 		// get next frame of sync objects
@@ -137,11 +142,6 @@ public:
 	void handle_input(Input& input)
 	{
 		camera.handle_input(input);
-	}
-	void handle_allocations(DeviceWrapper& deviceWrapper, entt::registry& reg)
-	{
-		deallocate_entities(deviceWrapper, reg);
-		allocate_entities(deviceWrapper, reg);
 	}
 
 private:
@@ -301,8 +301,8 @@ private:
 		deferredRenderpass.begin(commandBuffer);
 		deferredRenderpass.bind_desc_sets(commandBuffer, camera.get_desc_set());
 
-		// draw geometry (TODO: use group instead of view)
-		reg.view<Components::Geometry>().each([&](auto entity, auto& geometry) {
+		// draw geometry (TODO: use group instead of view when >1 component)
+		reg.view<Components::Geometry>().each([&](auto& geometry) {
 			vk::DeviceSize offsets[] = { 0 };
 			commandBuffer.bindVertexBuffers(0, 1, &geometry.buffer, offsets);
 			commandBuffer.bindIndexBuffer(geometry.buffer, sizeof(Vertex) * geometry.vertices.size(), vk::IndexType::eUint32);

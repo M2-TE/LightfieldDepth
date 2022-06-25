@@ -44,20 +44,55 @@ namespace Components
 		vk::Buffer buffer;
 		vma::Allocation alloc;
 
-		std::vector<Vertex> vertices = {
-			Vertex(float4(-0.5f, -0.5f, 0.0f, 1.0f), float4(1.0f, 0.0f, 0.0f, 1.0f)),
-			Vertex(float4(0.5f, -0.5f, 0.0f, 1.0f), float4(0.0f, 1.0f, 0.0f, 1.0f)),
-			Vertex(float4(0.5f,  0.5f, 0.0f, 1.0f), float4(0.0f, 0.0f, 1.0f, 1.0f)),
-			Vertex(float4(-0.5f,  0.5f, 0.0f, 1.0f), float4(1.0f, 1.0f, 0.0f, 1.0f)),
+		static constexpr float p = 1.0f, n = -1.0f, z = 0.0f;
+		static constexpr float4 white = float4(1.0f, 1.0f, 1.0f, 1.0f);
 
-			Vertex(float4(-0.5f, -0.5f, 0.5f, 1.0f), float4(1.0f, 0.0f, 0.0f, 1.0f)),
-			Vertex(float4(0.5f, -0.5f, 0.5f, 1.0f), float4(0.0f, 1.0f, 0.0f, 1.0f)),
-			Vertex(float4(0.5f,  0.5f, 0.5f, 1.0f), float4(0.0f, 0.0f, 1.0f, 1.0f)),
-			Vertex(float4(-0.5f,  0.5f, 0.5f, 1.0f), float4(1.0f, 1.0f, 0.0f, 1.0f))
+		// todo: calc the vertices using rotations of a single surface?
+		std::vector<Vertex> vertices = {
+			// right
+			Vertex(float4(p, n, n, 1.0f), white, float4(p, z, z, z)),
+			Vertex(float4(p, n, p, 1.0f), white, float4(p, z, z, z)),
+			Vertex(float4(p, p, n, 1.0f), white, float4(p, z, z, z)),
+			Vertex(float4(p, p, p, 1.0f), white, float4(p, z, z, z)),
+
+			// left
+			Vertex(float4(n, n, n, 1.0f), white, float4(n, z, z, z)),
+			Vertex(float4(n, p, n, 1.0f), white, float4(n, z, z, z)),
+			Vertex(float4(n, n, p, 1.0f), white, float4(n, z, z, z)),
+			Vertex(float4(n, p, p, 1.0f), white, float4(n, z, z, z)),
+
+			// bottom
+			Vertex(float4(n, p, n, 1.0f), white, float4(z, p, z, z)),
+			Vertex(float4(p, p, n, 1.0f), white, float4(z, p, z, z)),
+			Vertex(float4(n, p, p, 1.0f), white, float4(z, p, z, z)),
+			Vertex(float4(p, p, p, 1.0f), white, float4(z, p, z, z)),
+
+			// top
+			Vertex(float4(n, n, n, 1.0f), white, float4(z, n, z, z)),
+			Vertex(float4(n, n, p, 1.0f), white, float4(z, n, z, z)),
+			Vertex(float4(p, n, n, 1.0f), white, float4(z, n, z, z)),
+			Vertex(float4(p, n, p, 1.0f), white, float4(z, n, z, z)),
+
+			// forward
+			Vertex(float4(n, n, p, 1.0f), white, float4(z, z, p, z)),
+			Vertex(float4(n, p, p, 1.0f), white, float4(z, z, p, z)),
+			Vertex(float4(p, n, p, 1.0f), white, float4(z, z, p, z)),
+			Vertex(float4(p, p, p, 1.0f), white, float4(z, z, p, z)),
+
+			// backward
+			Vertex(float4(n, n, n, 1.0f), white, float4(z, z, n, z)),
+			Vertex(float4(p, n, n, 1.0f), white, float4(z, z, n, z)),
+			Vertex(float4(n, p, n, 1.0f), white, float4(z, z, n, z)),
+			Vertex(float4(p, p, n, 1.0f), white, float4(z, z, n, z)),
 		};
+
 		std::vector<Index> indices = {
-			0, 1, 2, 2, 3, 0,
-			4, 5, 6, 6, 7, 4
+			0,  1,  2,  2,  1,  3,
+			4,  5,  6,  6,  5,  7,
+			8,  9,  10, 10, 9,  11,
+			12, 13, 14, 14, 13, 15,
+			16, 17, 18, 18, 17, 19,
+			20, 21, 22, 22, 21, 23,
 		};
 	};
 

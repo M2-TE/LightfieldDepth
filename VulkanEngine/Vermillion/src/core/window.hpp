@@ -1,6 +1,6 @@
 #pragma once
 
-// already defined in linux apparently, so this is an easy substitute
+// already defined as typedef in linux apparently, so this is an easy substitute
 #define Window Window_VMI
 
 class Window
