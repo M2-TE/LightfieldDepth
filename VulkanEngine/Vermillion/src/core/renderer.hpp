@@ -211,8 +211,6 @@ private:
 	void allocate_entities(DeviceWrapper& deviceWrapper, entt::registry& reg)
 	{
 		reg.view<Components::Geometry, Components::Allocator>().each([&](auto entity, auto& geometry) {
-			reg.erase<Components::Allocator>(entity);
-
 			size_t vertexSize = geometry.vertices.size() * sizeof(Vertex);
 			size_t indexSize = geometry.indices.size() * sizeof(Index);
 			size_t bufferSize = vertexSize + indexSize;
@@ -275,12 +273,18 @@ private:
 
 			allocator.destroyBuffer(stagingBuffer.first, stagingBuffer.second);
 		});
+
+		auto view = reg.view<Components::Allocator>();
+		reg.erase<Components::Allocator>(view.begin(), view.end());
 	}
 	void deallocate_entities(DeviceWrapper& deviceWrapper, entt::registry& reg)
 	{
 		reg.view<Components::Geometry, Components::Deallocator>().each([&](auto entity, auto& geometry) {
 			allocator.destroyBuffer(geometry.buffer, geometry.alloc);
 		});
+
+		auto view = reg.view<Components::Deallocator>();
+		reg.destroy(view.begin(), view.end());
 	}
 	void record_command_buffer(entt::registry& reg, vk::CommandBuffer& commandBuffer, uint32_t iFrame)
 	{
@@ -297,7 +301,7 @@ private:
 		deferredRenderpass.begin(commandBuffer);
 		deferredRenderpass.bind_desc_sets(commandBuffer, camera.get_desc_set());
 
-		// draw geometry
+		// draw geometry (TODO: use group instead of view)
 		reg.view<Components::Geometry>().each([&](auto entity, auto& geometry) {
 			vk::DeviceSize offsets[] = { 0 };
 			commandBuffer.bindVertexBuffers(0, 1, &geometry.buffer, offsets);
