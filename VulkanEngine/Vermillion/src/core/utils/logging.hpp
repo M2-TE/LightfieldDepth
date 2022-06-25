@@ -5,7 +5,7 @@
 #define VMI_LOG(msg) std::cout << msg << std::endl
 #define VMI_LOG_MUL(msg) std::cout << msg
 #define VMI_WARN(msg) std::cout << "\n--> WARNING: " << msg << std::endl
-#define VMI_ERR(msg) std::cout << "\n--> ERROR: " << msg << std::endl; throw std::exception()
+#define VMI_ERR(msg) std::cout << "\n--> ERROR: " << msg << std::endl
 #define VMI_SDL_ERR() VMI_LOG("Error: " << std::string(SDL_GetError()) << std::endl << CODE_LOCATION)
 
 // currently enabled debug logging for both debug and release builds
