@@ -48,7 +48,6 @@ private:
 
 		// position
 		vk::Result result;
-		imageCreateInfo.setFormat(vk::Format::eR16G16B16A16Sfloat); // 16-bit signed float
 		imageCreateInfo.setFormat(vk::Format::eR32G32B32A32Sfloat); // 32-bit signed float
 		result = allocator.createImage(&imageCreateInfo, &allocCreateInfo, &posImage, &posAlloc, nullptr);
 		if (result != vk::Result::eSuccess) VMI_ERR("Gbuffer position image creation unsuccessful");
@@ -68,7 +67,6 @@ private:
 
 		// output
 		imageCreateInfo.setFormat(colorFormat);
-		imageCreateInfo.setUsage(vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment);
 		result = allocator.createImage(&imageCreateInfo, &allocCreateInfo, &outputImage, &outputAlloc, nullptr);
 		if (result != vk::Result::eSuccess) VMI_ERR("GBuffer output image creation unsuccessful");
 		allocator.setAllocationName(outputAlloc, std::string("GBuffer output").c_str());
@@ -94,13 +92,12 @@ private:
 			.setSubresourceRange(subresourceRange);
 
 		// positions view
-		imageViewInfo.setFormat(vk::Format::eR16G16B16A16Sfloat); // 16-bit signed float
 		imageViewInfo.setFormat(vk::Format::eR32G32B32A32Sfloat); // 32-bit signed float
 		imageViewInfo.setImage(posImage);
 		posImageView = deviceWrapper.logicalDevice.createImageView(imageViewInfo);
 
 		// colors view
-		imageViewInfo.setFormat(colorViewFormat);
+		imageViewInfo.setFormat(colorFormat);
 		imageViewInfo.setImage(colImage);
 		colImageView = deviceWrapper.logicalDevice.createImageView(imageViewInfo);
 
@@ -110,7 +107,7 @@ private:
 		normImageView = deviceWrapper.logicalDevice.createImageView(imageViewInfo);
 
 		// output view
-		imageViewInfo.setFormat(colorViewFormat);
+		imageViewInfo.setFormat(colorFormat);
 		imageViewInfo.setImage(outputImage);
 		outputImageView = deviceWrapper.logicalDevice.createImageView(imageViewInfo);
 
@@ -184,7 +181,6 @@ public:
 private:
 	friend class DeferredRenderpass;
 	static constexpr vk::Format colorFormat = vk::Format::eR8G8B8A8Srgb;
-	static constexpr vk::Format colorViewFormat = vk::Format::eR8G8B8A8Srgb;
 
 	vma::Allocation posAlloc, colAlloc, normAlloc, outputAlloc, depthStencilAlloc;
 	vk::Image posImage, colImage, normImage, outputImage, depthStencilImage;

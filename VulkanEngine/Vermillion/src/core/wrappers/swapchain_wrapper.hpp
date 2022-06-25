@@ -38,6 +38,7 @@ private:
 		}
 
 		// settle with first format if the requested one isnt available
+		VMI_WARN("Matching format not found. Falling back to backup surface format.");
 		surfaceFormat = availableFormats[0];
 	}
 	void choose_present_mode(DeviceWrapper& deviceWrapper)
@@ -68,7 +69,9 @@ private:
 	{
 		if (deviceWrapper.capabilities.minImageCount > nImages) VMI_ERR("Swapchain has higher minimum image count requirement");
 
-
+		VMI_LOG("    Selected swapchain formatting:");
+		VMI_LOG("    - Format: " << (uint32_t)surfaceFormat.format);
+		VMI_LOG("    - Color space: " << (uint32_t)surfaceFormat.colorSpace);
 		vk::SwapchainCreateInfoKHR swapchainInfo = vk::SwapchainCreateInfoKHR()
 			// image settings
 			.setMinImageCount(nImages)
@@ -129,7 +132,7 @@ private:
 	}
 
 private:
-	static constexpr vk::Format targetFormat = vk::Format::eR8G8B8A8Srgb;
+	static constexpr vk::Format targetFormat = vk::Format::eB8G8R8A8Srgb;
 	static constexpr vk::ColorSpaceKHR targetColorSpace = vk::ColorSpaceKHR::eSrgbNonlinear;
 	static constexpr vk::PresentModeKHR targetPresentMode = vk::PresentModeKHR::eFifo; // vsync
 	//static constexpr vk::PresentModeKHR targetPresentMode = vk::PresentModeKHR::eMailbox;

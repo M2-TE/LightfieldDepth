@@ -185,7 +185,7 @@ private:
 		// output color attachment
 		{
 			attachments[3] = vk::AttachmentDescription()
-				.setFormat(gbuffer.colorViewFormat)
+				.setFormat(gbuffer.colorFormat)
 				.setSamples(vk::SampleCountFlagBits::e1)
 				.setLoadOp(vk::AttachmentLoadOp::eClear)
 				.setStoreOp(vk::AttachmentStoreOp::eStore)
