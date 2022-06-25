@@ -45,8 +45,7 @@ private:
 		if (!poll_inputs()) return false;
 		handle_inputs();
 		scene.update();
-		renderer.handle_input(input);
-		renderer.handle_ecs(deviceManager.get_device_wrapper(), scene.get_ecs());
+		renderer.handle_allocations(deviceManager.get_device_wrapper(), scene.get_ecs());
 		imgui_end();
 
 		if (!bPaused) render();
@@ -112,6 +111,8 @@ private:
 	}
 	void handle_inputs()
 	{
+		renderer.handle_input(input);
+
 		if (input.keysPressed.count(SDLK_F11)) {
 			toggle_fullscreen();
 		}

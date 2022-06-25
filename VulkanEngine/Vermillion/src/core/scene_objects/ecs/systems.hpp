@@ -124,6 +124,7 @@ namespace Systems
 		private:
 			static inline void deallocate(Components::Geometry& geometry, vma::Allocator& allocator)
 			{
+				VMI_LOG("yeet");
 				allocator.destroyBuffer(geometry.buffer, geometry.alloc);
 			}
 		};

@@ -3,8 +3,6 @@
 static constexpr uint32_t nMaxEntities = 5;
 static constexpr uint32_t nMaxComponents = 5;
 
-class ECS;
-
 #include "entities.hpp"
 #include "components.hpp"
 #include "systems.hpp"
@@ -34,7 +32,9 @@ public:
 
 		// add entity to the system's entity tracker
 		for (auto& it : systemEntities) {
-			if ((it.first & components) == it.first) it.second.insert(entity);
+			if ((it.first & components) == it.first) {
+				it.second.insert(entity);
+			}
 		}
 
 		return entity;
@@ -105,6 +105,7 @@ private:
 	std::set<Entity> availableEntityIndices;
 	std::array<size_t, nMaxEntities> entities;
 
+public:
 	// ecs data
 	// indexed with component hash
 	std::unordered_map<size_t, Components::ComponentArrayBase*> components;
