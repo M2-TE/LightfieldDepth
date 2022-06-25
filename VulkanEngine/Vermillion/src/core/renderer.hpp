@@ -3,7 +3,6 @@
 #include "vk_mem_alloc.hpp"
 #include "utils/types.hpp"
 #include "scene_objects/camera.hpp"
-#include "scene_objects/geometry/indexed_geometry.hpp"
 #include "wrappers/imgui_wrapper.hpp"
 #include "wrappers/swapchain_wrapper.hpp"
 #include "wrappers/shader_wrapper.hpp"
@@ -31,7 +30,7 @@ public:
 
 		imguiWrapper.init(deviceWrapper, window, deferredRenderpass.get_render_pass(), syncFrames);
 	}
-	void destroy(DeviceWrapper& deviceWrapper, ECS& ecs)
+	void destroy(DeviceWrapper& deviceWrapper, entt::registry& reg)
 	{
 		vk::Device& device = deviceWrapper.logicalDevice;
 		
@@ -45,7 +44,7 @@ public:
 		imguiWrapper.destroy(deviceWrapper);
 		ImGui_ImplVulkan_Shutdown();
 
-		ecs.execute_system<Systems::Geometry::Deallocator>(allocator);
+		deallocate_entities(deviceWrapper, reg);
 		allocator.destroy();
 	}
 
@@ -71,7 +70,7 @@ public:
 		out.close();
 		VMI_LOG("Dumped VMA stats to vma_stats.json");
 	}
-	void render(DeviceWrapper& deviceWrapper, ECS& ecs)
+	void render(DeviceWrapper& deviceWrapper, entt::registry& reg)
 	{
 		// get next frame of sync objects
 		auto& syncFrame = syncFrames.get_next();
@@ -99,7 +98,7 @@ public:
 
 			// reset command pool and then record into it (using command buffer)
 			deviceWrapper.logicalDevice.resetCommandPool(syncFrame.commandPool);
-			record_command_buffer(ecs, syncFrame.commandBuffer, iFrame);
+			record_command_buffer(reg, syncFrame.commandBuffer, iFrame);
 		}
 
 		// Render (submit)
@@ -139,10 +138,10 @@ public:
 	{
 		camera.handle_input(input);
 	}
-	void handle_allocations(DeviceWrapper& deviceWrapper, ECS& ecs)
+	void handle_allocations(DeviceWrapper& deviceWrapper, entt::registry& reg)
 	{
-		//ecs.execute_system<Systems::Geometry::Deallocator>(allocator);
-		ecs.execute_system<Systems::Geometry::Allocator>(deviceWrapper, allocator, transientCommandPool);
+		deallocate_entities(deviceWrapper, reg);
+		allocate_entities(deviceWrapper, reg);
 	}
 
 private:
@@ -207,9 +206,83 @@ private:
 		swapchainWriteRenderpass.destroy(deviceWrapper);
 		swapchainWrapper.destroy(deviceWrapper);
 	}
-
+	
 	// runtime
-	void record_command_buffer(ECS& ecs, vk::CommandBuffer& commandBuffer, uint32_t iFrame)
+	void allocate_entities(DeviceWrapper& deviceWrapper, entt::registry& reg)
+	{
+		reg.view<Components::Geometry, Components::Allocator>().each([&](auto entity, auto& geometry) {
+			reg.erase<Components::Allocator>(entity);
+
+			size_t vertexSize = geometry.vertices.size() * sizeof(Vertex);
+			size_t indexSize = geometry.indices.size() * sizeof(Index);
+			size_t bufferSize = vertexSize + indexSize;
+
+			// buffer
+			vk::BufferCreateInfo bufferInfo = vk::BufferCreateInfo()
+				.setSize(bufferSize)
+				.setUsage(vk::BufferUsageFlagBits::eTransferDst |
+					vk::BufferUsageFlagBits::eVertexBuffer |
+					vk::BufferUsageFlagBits::eIndexBuffer);
+			vma::AllocationCreateInfo allocCreateInfo = vma::AllocationCreateInfo()
+				.setUsage(vma::MemoryUsage::eAutoPreferDevice);
+			allocator.createBuffer(&bufferInfo, &allocCreateInfo, &geometry.buffer, &geometry.alloc, nullptr);
+
+			// staging buffer
+			bufferInfo = vk::BufferCreateInfo()
+				.setSize(bufferSize)
+				.setUsage(vk::BufferUsageFlagBits::eTransferSrc);
+			allocCreateInfo = vma::AllocationCreateInfo()
+				.setUsage(vma::MemoryUsage::eAuto)
+				.setFlags(vma::AllocationCreateFlagBits::eHostAccessSequentialWrite | vma::AllocationCreateFlagBits::eMapped);
+			vma::AllocationInfo allocInfo;
+			auto stagingBuffer = allocator.createBuffer(bufferInfo, allocCreateInfo, allocInfo);
+
+			// already mapped, so just copy over
+			memcpy(allocInfo.pMappedData, geometry.vertices.data(), vertexSize);
+			memcpy(static_cast<char*>(allocInfo.pMappedData) + vertexSize, geometry.indices.data(), indexSize);
+
+			// memory transfer
+			{
+				vk::CommandBufferAllocateInfo allocInfo = vk::CommandBufferAllocateInfo()
+					.setLevel(vk::CommandBufferLevel::ePrimary)
+					.setCommandPool(transientCommandPool)
+					.setCommandBufferCount(1);
+
+				vk::CommandBuffer commandBuffer;
+				auto res = deviceWrapper.logicalDevice.allocateCommandBuffers(&allocInfo, &commandBuffer);
+
+				// begin recording to temporary command buffer
+				vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo()
+					.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
+				commandBuffer.begin(beginInfo);
+
+				vk::BufferCopy copyRegion = vk::BufferCopy()
+					.setSrcOffset(0)
+					.setDstOffset(0)
+					.setSize(bufferSize);
+				commandBuffer.copyBuffer(stagingBuffer.first, geometry.buffer, copyRegion);
+				commandBuffer.end();
+
+				vk::SubmitInfo submitInfo = vk::SubmitInfo()
+					.setCommandBufferCount(1)
+					.setPCommandBuffers(&commandBuffer);
+				deviceWrapper.queue.submit(submitInfo);
+				deviceWrapper.queue.waitIdle(); // TODO: change this to wait on a fence instead (upon queue submit) so multiple memory transfers would be possible
+
+				// free command buffer directly after use
+				deviceWrapper.logicalDevice.freeCommandBuffers(transientCommandPool, commandBuffer);
+			}
+
+			allocator.destroyBuffer(stagingBuffer.first, stagingBuffer.second);
+		});
+	}
+	void deallocate_entities(DeviceWrapper& deviceWrapper, entt::registry& reg)
+	{
+		reg.view<Components::Geometry, Components::Deallocator>().each([&](auto entity, auto& geometry) {
+			allocator.destroyBuffer(geometry.buffer, geometry.alloc);
+		});
+	}
+	void record_command_buffer(entt::registry& reg, vk::CommandBuffer& commandBuffer, uint32_t iFrame)
 	{
 		// setting up command buffer
 		vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo()
@@ -223,8 +296,15 @@ private:
 		// deferred renderpass
 		deferredRenderpass.begin(commandBuffer);
 		deferredRenderpass.bind_desc_sets(commandBuffer, camera.get_desc_set());
-		//geometry.draw(commandBuffer); // DEPR
-		ecs.execute_system<Systems::Geometry::Renderer>(commandBuffer);
+
+		// draw geometry
+		reg.view<Components::Geometry>().each([&](auto entity, auto& geometry) {
+			vk::DeviceSize offsets[] = { 0 };
+			commandBuffer.bindVertexBuffers(0, 1, &geometry.buffer, offsets);
+			commandBuffer.bindIndexBuffer(geometry.buffer, sizeof(Vertex) * geometry.vertices.size(), vk::IndexType::eUint32);
+			commandBuffer.drawIndexed((uint32_t)geometry.indices.size(), 1, 0, 0, 0);
+		});
+		//
 		deferredRenderpass.end(commandBuffer);
 
 		// direct write to swapchain image

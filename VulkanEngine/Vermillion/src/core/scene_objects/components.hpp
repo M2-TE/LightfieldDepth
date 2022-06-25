@@ -3,16 +3,12 @@
 #include "utils/types.hpp"
 #include "vk_mem_alloc.hpp"
 #include "buffers/ring_buffer.hpp"
-#include "scene_objects/geometry/vertex.hpp"
+#include "geometry/vertex.hpp"
 
 #define Component_Flag(comp) typeid(comp).hash_code()
 
 namespace Components
 {
-	// represents an array of components to index into using entity ids
-	struct ComponentArrayBase {};
-	template<class T> struct ComponentArray : public ComponentArrayBase { std::array<T, nMaxEntities> components; };
-
 	struct Allocator {  };
 	struct Deallocator {  };
 

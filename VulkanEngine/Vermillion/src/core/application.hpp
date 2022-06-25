@@ -24,7 +24,7 @@ public:
 		deviceManager.get_logical_device().waitIdle();
 
 		scene.destroy();
-		renderer.destroy(deviceManager.get_device_wrapper(), scene.get_ecs());
+		renderer.destroy(deviceManager.get_device_wrapper(), scene.reg);
 
 		deviceManager.destroy();
 		window.destroy();
@@ -45,7 +45,7 @@ private:
 		if (!poll_inputs()) return false;
 		handle_inputs();
 		scene.update();
-		renderer.handle_allocations(deviceManager.get_device_wrapper(), scene.get_ecs());
+		renderer.handle_allocations(deviceManager.get_device_wrapper(), scene.reg);
 		imgui_end();
 
 		if (!bPaused) render();
@@ -55,7 +55,7 @@ private:
 	}
 	void render()
 	{
-		renderer.render(deviceManager.get_device_wrapper(), scene.get_ecs());
+		renderer.render(deviceManager.get_device_wrapper(), scene.reg);
 	}
 	void stall()
 	{
