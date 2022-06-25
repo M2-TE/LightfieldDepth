@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Input.hpp"
+#include "input.hpp"
 #include "scene_objects/scene.hpp"
 #include "window.hpp"
 #include "device_manager.hpp"

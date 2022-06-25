@@ -28,8 +28,8 @@ public:
 	// keyboard
 	void register_keyboard_event(SDL_KeyboardEvent keyEvent)
 	{
-		// do not register repeat inputs
-		if (keyEvent.repeat) return;
+		// do not register repeat inputs and ignore when imgui already consumes them
+		if (keyEvent.repeat || ImGui::GetIO().WantCaptureKeyboard) return;
 
 		switch (keyEvent.type) {
 			case SDL_KEYDOWN:
@@ -50,6 +50,9 @@ public:
 	// mouse
 	void register_mouse_button_event(SDL_MouseButtonEvent mbEvent)
 	{
+		// ignore mouse inputs when imgui wants to capture
+		if (ImGui::GetIO().WantCaptureMouse) return;
+
 		switch (mbEvent.type) {
 			case SDL_MOUSEBUTTONDOWN:
 			{
