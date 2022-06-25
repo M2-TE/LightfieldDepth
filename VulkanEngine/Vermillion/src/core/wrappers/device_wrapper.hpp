@@ -31,7 +31,6 @@ public:
 	void create_logical_device()
 	{
 		std::string spacing = "    ";
-		VMI_LOG("Device Extensions:");
 		VMI_LOG(spacing << "Required device extensions:");
 		std::vector<const char*> requiredDeviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 		for (const auto& extension : requiredDeviceExtensions) VMI_LOG(spacing << "- " << extension);

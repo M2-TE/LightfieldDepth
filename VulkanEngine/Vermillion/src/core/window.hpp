@@ -72,7 +72,6 @@ private:
 		DEBUG_ONLY(vk::DebugUtilsMessengerCreateInfoEXT messengerInfo = Logging::SetupDebugMessenger(extensions));
 
 		// Log output:
-		VMI_LOG("Instance Extensions:");
 		std::string spacing = "    ";
 		VMI_LOG(spacing << "Required instance extensions:");
 		for (const auto& extension : extensions) VMI_LOG(spacing << "- " << extension);
