@@ -141,7 +141,7 @@ public:
 	}
 	void handle_allocations(DeviceWrapper& deviceWrapper, ECS& ecs)
 	{
-		ecs.execute_system<Systems::Geometry::Deallocator>(allocator);
+		//ecs.execute_system<Systems::Geometry::Deallocator>(allocator);
 		ecs.execute_system<Systems::Geometry::Allocator>(deviceWrapper, allocator, transientCommandPool);
 	}
 

@@ -36,6 +36,7 @@
 #include <SDL_vulkan.h>
 
 // 3rd party libs
+#include "entt.hpp"
 #include "imgui.h"
 #include "backends/imgui_impl_sdl.h"
 #include "backends/imgui_impl_vulkan.h"

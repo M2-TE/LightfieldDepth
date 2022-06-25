@@ -78,8 +78,8 @@ public:
 		using namespace Systems;
 		systemEntities.insert({ T().componentFlags, {args...}});
 	}
-private:
 
+private:
 	// TODO
 	template<typename T>
 	void create()

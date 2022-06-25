@@ -37,10 +37,19 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\wrappers\swapchain_wrapper.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\buffers\uniform_buffer.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\pch\pch.hpp" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)src\utils\logging.hpp" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)src\utils\rule_of_five.hpp" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)src\utils\timer.hpp" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)src\utils\types.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\utils\logging.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\utils\rule_of_five.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\utils\timer.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\utils\types.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)vendor\entt\single_include\entt\entt.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)vendor\imgui\backends\imgui_impl_sdl.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)vendor\imgui\backends\imgui_impl_vulkan.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)vendor\imgui\imconfig.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)vendor\imgui\imgui.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)vendor\imgui\imgui_internal.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)vendor\imgui\imstb_rectpack.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)vendor\imgui\imstb_textedit.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)vendor\imgui\imstb_truetype.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)vendor\vma-hpp\include\vk_mem_alloc.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)vendor\vma-hpp\include\vk_mem_alloc.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)vendor\vma-hpp\include\vk_mem_alloc_enums.hpp" />
@@ -57,6 +66,48 @@
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">pch.hpp</PrecompiledHeaderFile>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)vendor\imgui\backends\imgui_impl_sdl.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug-Linux|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release-Linux|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)vendor\imgui\backends\imgui_impl_vulkan.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug-Linux|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release-Linux|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)vendor\imgui\imgui.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug-Linux|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release-Linux|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)vendor\imgui\imgui_demo.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug-Linux|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release-Linux|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)vendor\imgui\imgui_draw.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug-Linux|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release-Linux|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)vendor\imgui\imgui_tables.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug-Linux|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release-Linux|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)vendor\imgui\imgui_widgets.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug-Linux|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release-Linux|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
   </ItemGroup>
 </Project>

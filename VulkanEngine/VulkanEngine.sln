@@ -11,8 +11,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Vermillion-Linux", "Vermill
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Vermillion", "Vermillion\Vermillion.vcxitems", "{2519C4CF-25CE-45D0-BEA2-700B57ACF167}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ImGui", "ImGui\ImGui.vcxitems", "{644DB85A-B854-4FD1-93D9-FF5EB6DD59D0}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -51,10 +49,8 @@ Global
 		SolutionGuid = {3B1AF14D-D0F0-49B8-AC50-2DBAD2003D90}
 	EndGlobalSection
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
-		ImGui\ImGui.vcxitems*{0c5c39c9-82b9-4544-83d2-83394ef43434}*SharedItemsImports = 4
 		Vermillion\Vermillion.vcxitems*{0c5c39c9-82b9-4544-83d2-83394ef43434}*SharedItemsImports = 4
 		Vermillion\Vermillion.vcxitems*{2519c4cf-25ce-45d0-bea2-700b57acf167}*SharedItemsImports = 9
-		ImGui\ImGui.vcxitems*{644db85a-b854-4fd1-93d9-ff5eb6dd59d0}*SharedItemsImports = 9
 		ImGui\ImGui.vcxitems*{8a34ef34-2d9e-4564-866c-0d0c9574fcb4}*SharedItemsImports = 4
 		Vermillion\Vermillion.vcxitems*{8a34ef34-2d9e-4564-866c-0d0c9574fcb4}*SharedItemsImports = 4
 	EndGlobalSection
