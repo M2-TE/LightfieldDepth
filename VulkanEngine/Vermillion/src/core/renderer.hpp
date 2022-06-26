@@ -7,6 +7,7 @@
 #include "wrappers/swapchain_wrapper.hpp"
 #include "wrappers/shader_wrapper.hpp"
 #include "render_passes/deferred_renderpass.hpp"
+#include "render_passes/forward_renderpass.hpp"
 #include "render_passes/swapchain_write.hpp"
 
 class Renderer
@@ -187,15 +188,8 @@ private:
 		camera.init(deviceWrapper, allocator, descPool, swapchainWrapper);
 
 		// create deferred render pass
-		auto descLayout = camera.get_temp_desc_set_layout(deviceWrapper);
-		std::vector<vk::DescriptorSetLayout> geometryPassDescSetLayouts = { descLayout };
-		std::vector<vk::DescriptorSetLayout> lightingPassDescSetLayouts = {};
-		DeferredRenderpassCreateInfo createInfo = {
-			deviceWrapper, swapchainWrapper, allocator, descPool,
-			geometryPassDescSetLayouts, lightingPassDescSetLayouts
-		};
+		DeferredRenderpassCreateInfo createInfo = { deviceWrapper, swapchainWrapper, allocator, descPool };
 		deferredRenderpass.init(createInfo);
-		deviceWrapper.logicalDevice.destroyDescriptorSetLayout(descLayout);
 
 		swapchainWriteRenderpass.init(deviceWrapper, swapchainWrapper, descPool, deferredRenderpass.get_output_image_view());
 	}

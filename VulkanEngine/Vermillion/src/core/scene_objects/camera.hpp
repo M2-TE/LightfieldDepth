@@ -42,10 +42,15 @@ public:
 
 		// rotation
 		if (input.mouseButtonsDown.count(3) || input.mouseButtonsDown.count(1)) {
+			if (!SDL_GetRelativeMouseMode()) SDL_SetRelativeMouseMode(SDL_TRUE);
+
 			float mouseSpeed = .1f;
 			float xRot = glm::radians(static_cast<float>(input.xMouseRel) * mouseSpeed);
 			float yRot = glm::radians(static_cast<float>(input.yMouseRel) * mouseSpeed);
 			rotationEuler += float3(-yRot, xRot, 0.0f);
+		}
+		else {
+			if (SDL_GetRelativeMouseMode()) SDL_SetRelativeMouseMode(SDL_FALSE);
 		}
 
 		// forward/backward

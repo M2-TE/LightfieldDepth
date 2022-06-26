@@ -6,9 +6,6 @@ struct DeferredRenderpassCreateInfo
 	SwapchainWrapper& swapchainWrapper;
 	vma::Allocator& allocator;
 	vk::DescriptorPool& descPool;
-	// TODO: write to intermediate output image instead of writing to swapchain directly, no need for vector here
-	std::vector<vk::DescriptorSetLayout>& geometryPassDescSetLayouts;
-	std::vector<vk::DescriptorSetLayout>& lightingPassDescSetLayouts;
 };
 
 #include "gbuffer.hpp"
@@ -310,10 +307,12 @@ private:
 	// graphics pipelines
 	void create_geometry_pass_pipeline_layout(DeferredRenderpassCreateInfo& info)
 	{
+		auto camLayout = Camera::get_temp_desc_set_layout(info.deviceWrapper);
 		vk::PipelineLayoutCreateInfo pipelineLayoutInfo = vk::PipelineLayoutCreateInfo()
-			.setSetLayouts(info.geometryPassDescSetLayouts)
+			.setSetLayouts(camLayout)
 			.setPushConstantRangeCount(0).setPushConstantRanges(nullptr);
 		geometryPassPipelineLayout = info.deviceWrapper.logicalDevice.createPipelineLayout(pipelineLayoutInfo);
+		info.deviceWrapper.logicalDevice.destroyDescriptorSetLayout(camLayout);
 	}
 	void create_geometry_pass_pipeline(DeferredRenderpassCreateInfo& info)
 	{
@@ -477,13 +476,8 @@ private:
 	}
 	void create_lighting_pass_pipeline_layout(DeferredRenderpassCreateInfo& info)
 	{
-		// merge parameterized layouts in info struct with local descSetLayout
-		std::vector<vk::DescriptorSetLayout> layouts(info.lightingPassDescSetLayouts.size() + 1);
-		for (size_t i = 1; i < layouts.size(); i++) layouts[i] = info.lightingPassDescSetLayouts[i - 1];
-		layouts[0] = gbuffer.descSetLayout;
-
 		vk::PipelineLayoutCreateInfo pipelineLayoutInfo = vk::PipelineLayoutCreateInfo()
-			.setSetLayouts(layouts)
+			.setSetLayouts(gbuffer.descSetLayout)
 			.setPushConstantRangeCount(0).setPushConstantRanges(nullptr);
 		lightingPassPipelineLayout = info.deviceWrapper.logicalDevice.createPipelineLayout(pipelineLayoutInfo);
 	}
