@@ -36,14 +36,7 @@ public:
 		create_lighting_pass_pipeline(info);
 
 		// other
-		fullscreenRect = vk::Rect2D({ 0, 0 }, info.swapchainWrapper.extent);
-		clearValues = {
-			vk::ClearValue(vk::ClearColorValue().setFloat32({ 0.0f, 0.0f, 0.0f, 0.0f })),
-			vk::ClearValue(vk::ClearColorValue().setFloat32({ 0.0f, 0.0f, 0.0f, 0.0f })),
-			vk::ClearValue(vk::ClearColorValue().setFloat32({ 0.0f, 0.0f, 0.0f, 0.0f })),
-			vk::ClearValue(vk::ClearColorValue().setFloat32({ 0.0f, 0.0f, 0.0f, 0.0f })),
-			vk::ClearValue(vk::ClearDepthStencilValue().setDepth(1.0f).setStencil(0))
-		};
+		create_misc(info);
 	}
 	void destroy(DeviceWrapper& deviceWrapper, vma::Allocator& allocator)
 	{
@@ -138,6 +131,17 @@ private:
 			.setLayers(1);
 
 		framebuffer = info.deviceWrapper.logicalDevice.createFramebuffer(framebufferInfo);
+	}
+	void create_misc(DeferredRenderpassCreateInfo& info)
+	{
+		fullscreenRect = vk::Rect2D({ 0, 0 }, info.swapchainWrapper.extent);
+		clearValues = {
+			vk::ClearValue(vk::ClearColorValue().setFloat32({ 0.0f, 0.0f, 0.0f, 0.0f })),
+			vk::ClearValue(vk::ClearColorValue().setFloat32({ 0.0f, 0.0f, 0.0f, 0.0f })),
+			vk::ClearValue(vk::ClearColorValue().setFloat32({ 0.0f, 0.0f, 0.0f, 0.0f })),
+			vk::ClearValue(vk::ClearColorValue().setFloat32({ 0.0f, 0.0f, 0.0f, 0.0f })),
+			vk::ClearValue(vk::ClearDepthStencilValue().setDepth(1.0f).setStencil(0))
+		};
 	}
 
 	// render pass creation
