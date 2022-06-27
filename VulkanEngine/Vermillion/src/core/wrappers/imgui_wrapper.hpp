@@ -56,7 +56,7 @@ private:
 		info.Queue = deviceWrapper.queue;
 		info.PipelineCache = nullptr;
 		info.DescriptorPool = descPool;
-		info.Subpass = 1;
+		info.Subpass = 0;
 		info.MinImageCount = syncFrames.get_size();
 		info.ImageCount = syncFrames.get_size();
 		info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;

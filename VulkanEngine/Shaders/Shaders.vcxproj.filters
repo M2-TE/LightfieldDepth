@@ -18,11 +18,13 @@
     <DXCShaderPS Include="src\gbuffer\lighting_pass.ps" />
     <DXCShaderPS Include="src\gbuffer\geometry_pass.ps" />
     <DXCShaderPS Include="src\swapchain_write\swapchain_write.ps" />
+    <DXCShaderPS Include="src\lightfield\lightfield_write.ps" />
   </ItemGroup>
   <ItemGroup>
     <DXCShaderVS Include="src\gbuffer\lighting_pass.vs" />
     <DXCShaderVS Include="src\gbuffer\geometry_pass.vs" />
     <DXCShaderVS Include="src\swapchain_write\swapchain_write.vs" />
+    <DXCShaderVS Include="src\lightfield\lightfield_write.vs" />
   </ItemGroup>
   <ItemGroup>
     <Xml Include="dxc\dxc.xml" />

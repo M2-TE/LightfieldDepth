@@ -6,8 +6,9 @@
 #include "wrappers/imgui_wrapper.hpp"
 #include "wrappers/swapchain_wrapper.hpp"
 #include "wrappers/shader_wrapper.hpp"
-#include "render_passes/deferred_renderpass.hpp"
-#include "render_passes/forward_renderpass.hpp"
+#include "render_passes/deferred_rendering/deferred_renderpass.hpp"
+#include "render_passes/lightfield/forward_renderpass.hpp"
+#include "render_passes/lightfield/lightfield.hpp"
 #include "render_passes/swapchain_write.hpp"
 
 class Renderer
@@ -29,7 +30,7 @@ public:
 
 		create_KHR(deviceWrapper, window);
 
-		imguiWrapper.init(deviceWrapper, window, deferredRenderpass.get_render_pass(), syncFrames);
+		imguiWrapper.init(deviceWrapper, window, swapchainWriteRenderpass.get_render_pass(), syncFrames);
 	}
 	void destroy(DeviceWrapper& deviceWrapper, entt::registry& reg)
 	{
@@ -187,16 +188,18 @@ private:
 		swapchainWrapper.init(deviceWrapper, window, nMaxFrames);
 		camera.init(deviceWrapper, allocator, descPool, swapchainWrapper);
 
-		// create deferred render pass
-		DeferredRenderpassCreateInfo createInfo = { deviceWrapper, swapchainWrapper, allocator, descPool };
-		deferredRenderpass.init(createInfo);
+		// create lightfield and the renderpass that writes to it
+		ForwardRenderpassCreateInfo info = { deviceWrapper, swapchainWrapper, allocator, descPool };
+		lightfield.init(info);
+		forwardRenderpass.init(info, lightfield.get_output_views());
 
-		swapchainWriteRenderpass.init(deviceWrapper, swapchainWrapper, descPool, deferredRenderpass.get_output_image_view());
+		swapchainWriteRenderpass.init(deviceWrapper, swapchainWrapper, descPool, lightfield.get_input_view());
 	}
 	void destroy_KHR(DeviceWrapper& deviceWrapper)
 	{
 		camera.destroy(deviceWrapper, allocator);
-		deferredRenderpass.destroy(deviceWrapper, allocator);
+		lightfield.destroy(deviceWrapper, allocator);
+		forwardRenderpass.destroy(deviceWrapper, allocator);
 		swapchainWriteRenderpass.destroy(deviceWrapper);
 		swapchainWrapper.destroy(deviceWrapper);
 	}
@@ -291,23 +294,26 @@ private:
 		// update camera buffer (and other buffers later)
 		camera.update();
 
-		// deferred renderpass
-		deferredRenderpass.begin(commandBuffer);
-		deferredRenderpass.bind_desc_sets(commandBuffer, camera.get_desc_set());
+		// writing to lightfield (9 cams)
+		for (auto i = 0u; i < 9; i++) {
+			forwardRenderpass.begin(commandBuffer, i);
+			forwardRenderpass.bind_desc_sets(commandBuffer, camera.get_desc_set());
 
-		// draw geometry (TODO: use group instead of view when >1 component)
-		reg.view<Components::Geometry>().each([&](auto& geometry) {
-			vk::DeviceSize offsets[] = { 0 };
-			commandBuffer.bindVertexBuffers(0, 1, &geometry.buffer, offsets);
-			commandBuffer.bindIndexBuffer(geometry.buffer, sizeof(Vertex) * geometry.vertices.size(), vk::IndexType::eUint32);
-			commandBuffer.drawIndexed((uint32_t)geometry.indices.size(), 1, 0, 0, 0);
-		});
-		//
-		deferredRenderpass.end(commandBuffer);
+			// draw geometry (TODO: use group instead of view when >1 component)
+			reg.view<Components::Geometry>().each([&](auto& geometry) {
+				vk::DeviceSize offsets[] = { 0 };
+				commandBuffer.bindVertexBuffers(0, 1, &geometry.buffer, offsets);
+				commandBuffer.bindIndexBuffer(geometry.buffer, sizeof(Vertex) * geometry.vertices.size(), vk::IndexType::eUint32);
+				commandBuffer.drawIndexed((uint32_t)geometry.indices.size(), 1, 0, 0, 0);
+			});
+
+			forwardRenderpass.end(commandBuffer);
+		}
 
 		// direct write to swapchain image
 		swapchainWriteRenderpass.begin(commandBuffer, iFrame);
 		swapchainWriteRenderpass.end(commandBuffer);
+
 
 		// finalize command buffer
 		commandBuffer.end();
@@ -317,7 +323,8 @@ private:
 	uint32_t nMaxFrames = 2; // max frames in flight (minimum for swapchain)
 
 	vma::Allocator allocator;
-	DeferredRenderpass deferredRenderpass;
+	Lightfield lightfield;
+	ForwardRenderpass forwardRenderpass;
 	SwapchainWrite swapchainWriteRenderpass;
 	SwapchainWrapper swapchainWrapper;
 	ImguiWrapper imguiWrapper;

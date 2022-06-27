@@ -15,15 +15,16 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\application.hpp" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\render_passes\forward_renderpass.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\render_passes\lightfield\forward_renderpass.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\render_passes\lightfield\lightfield.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\scene_objects\components.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\scene_objects\camera.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\device_manager.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\scene_objects\geometry\vertex.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\input.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\renderer.hpp" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\render_passes\deferred_renderpass.hpp" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\render_passes\gbuffer.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\render_passes\deferred_rendering\deferred_renderpass.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\render_passes\deferred_rendering\gbuffer.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\render_passes\swapchain_write.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\buffers\ring_buffer.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\scene_objects\scene.hpp" />

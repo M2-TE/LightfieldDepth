@@ -1,0 +1,13 @@
+struct Input
+{
+    float4 worldPos : WorldPos;
+    float4 color : Color;
+    float4 normal : Normal;
+};
+
+float4 main(Input input) : SV_Target
+{
+    float4 col = input.worldPos + input.normal;
+    col *= 0.0001f; // simply add these for the sake of not discarding the input values
+    return input.color + col;
+}
