@@ -7,7 +7,15 @@ struct Input
 
 float4 main(Input input) : SV_Target
 {
-    float4 col = input.worldPos + input.normal;
-    col *= 0.0001f; // simply add these for the sake of not discarding the input values
-    return input.color + col;
+    float3 lightPos = float3(5.0f, -5.0f, -5.0f); // hard coded point light
+    float3 dir = lightPos - input.worldPos.xyz;
+    float dist = length(dir);
+    float attenuation = 30.0f / (dist * dist);
+    float3 col = input.color.rgb * max(dot(normalize(dir), input.normal.xyz) * attenuation, 0.1f);
+
+    // another option for a more controlled attentuation curve (maybe for later)
+    float a, b, c;
+    float attenB = 1.0f / (a + b * dist + c * dist * dist);
+    
+    return float4(col, input.color.a);
 }
