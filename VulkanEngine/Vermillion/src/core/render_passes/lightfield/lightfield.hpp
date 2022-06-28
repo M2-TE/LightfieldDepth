@@ -1,5 +1,12 @@
 #pragma once
 
+struct LightfieldCreateInfo
+{
+	DeviceWrapper& deviceWrapper;
+	SwapchainWrapper& swapchainWrapper;
+	vma::Allocator& allocator;
+	vk::DescriptorPool& descPool;
+};
 class Lightfield
 {
 public:
@@ -8,7 +15,7 @@ public:
 	ROF_COPY_MOVE_DELETE(Lightfield)
 
 public:
-	void init(ForwardRenderpassCreateInfo& info)
+	void init(LightfieldCreateInfo& info)
 	{
 		create_images(info.allocator, info.swapchainWrapper);
 		create_image_views(info.deviceWrapper);
@@ -18,24 +25,21 @@ public:
 	void destroy(DeviceWrapper& deviceWrapper, vma::Allocator& allocator)
 	{
 		allocator.destroyImage(lightfieldImage, lightfieldAlloc);
+		allocator.destroyImage(gradientsImage, gradientsAlloc);
+		allocator.destroyImage(disparityImage, disparityAlloc);
+
 		deviceWrapper.logicalDevice.destroyImageView(lightfieldImageView);
+		deviceWrapper.logicalDevice.destroyImageView(gradientsImageView);
+		deviceWrapper.logicalDevice.destroyImageView(disparityImageView);
+
 		for (auto i = 0u; i < nCameras; i++) {
 			deviceWrapper.logicalDevice.destroyImageView(lightfieldSingleImageViews[i]);
 		}
 
 		deviceWrapper.logicalDevice.destroyDescriptorSetLayout(descSetLayout);
 	}
-	inline std::vector<vk::ImageView>& get_output_views()
-	{
-		return lightfieldSingleImageViews;
-	}
-	inline vk::ImageView& get_input_view()
-	{
-		return lightfieldImageView;
-	}
 
 private:
-	// TODO: create 3d image instead of 2d array?
 	void create_images(vma::Allocator& allocator, SwapchainWrapper& swapchainWrapper)
 	{
 		vk::ImageCreateInfo imageCreateInfo = vk::ImageCreateInfo()
@@ -55,7 +59,20 @@ private:
 		// color
 		vk::Result result = allocator.createImage(&imageCreateInfo, &allocCreateInfo, &lightfieldImage, &lightfieldAlloc, nullptr);
 		if (result != vk::Result::eSuccess) VMI_ERR("Lightfield image creation unsuccessful");
-		allocator.setAllocationName(lightfieldAlloc, std::string("Lightfield").c_str());
+		allocator.setAllocationName(lightfieldAlloc, std::string("Lightfield Array").c_str());
+
+		// gradients
+		imageCreateInfo.setArrayLayers(1);
+		imageCreateInfo.setFormat(vk::Format::eR16G16B16A16Sfloat);
+		result = allocator.createImage(&imageCreateInfo, &allocCreateInfo, &gradientsImage, &gradientsAlloc, nullptr);
+		if (result != vk::Result::eSuccess) VMI_ERR("Gradients image creation unsuccessful");
+		allocator.setAllocationName(lightfieldAlloc, std::string("Gradients").c_str());
+
+		// disparity
+		imageCreateInfo.setFormat(colorFormat);
+		result = allocator.createImage(&imageCreateInfo, &allocCreateInfo, &disparityImage, &disparityAlloc, nullptr);
+		if (result != vk::Result::eSuccess) VMI_ERR("Disparity image creation unsuccessful");
+		allocator.setAllocationName(lightfieldAlloc, std::string("Disparity Map").c_str());
 	}
 	void create_image_views(DeviceWrapper& deviceWrapper)
 	{
@@ -75,15 +92,26 @@ private:
 		lightfieldImageView = deviceWrapper.logicalDevice.createImageView(imageViewInfo);
 
 		// single image view for writing each image individually
-		subresourceRange.setLayerCount(1);
+		imageViewInfo.subresourceRange.layerCount = 1;
 		imageViewInfo.setViewType(vk::ImageViewType::e2D);
 		lightfieldSingleImageViews.resize(nCameras);
 		for (auto i = 0u; i < nCameras; i++) {
-			subresourceRange.setBaseArrayLayer(i);
-			imageViewInfo.setSubresourceRange(subresourceRange);
+			imageViewInfo.subresourceRange.baseArrayLayer = i;
 			lightfieldSingleImageViews[i] = deviceWrapper.logicalDevice.createImageView(imageViewInfo);
 		}
+
+		// gradients view
+		imageViewInfo.subresourceRange.baseArrayLayer = 0;
+		imageViewInfo.setFormat(vk::Format::eR16G16B16A16Sfloat);
+		imageViewInfo.setImage(gradientsImage);
+		gradientsImageView = deviceWrapper.logicalDevice.createImageView(imageViewInfo);
+
+		// disparity view
+		imageViewInfo.setFormat(colorFormat);
+		imageViewInfo.setImage(disparityImage);
+		disparityImageView = deviceWrapper.logicalDevice.createImageView(imageViewInfo);
 	}
+
 	void create_desc_set_layout(DeviceWrapper& deviceWrapper)
 	{
 		// one binding for each image in gbuffer
@@ -131,14 +159,14 @@ private:
 
 public:
 	static constexpr size_t nCameras = 9;
-private:
 	static constexpr vk::Format colorFormat = vk::Format::eR8G8B8A8Srgb;
 
-	vma::Allocation lightfieldAlloc;
-	vk::Image lightfieldImage;
-	std::vector<vk::ImageView> lightfieldSingleImageViews;
-	vk::ImageView lightfieldImageView;
+	vma::Allocation lightfieldAlloc, gradientsAlloc, disparityAlloc;
+	vk::Image lightfieldImage, gradientsImage, disparityImage;
+	vk::ImageView lightfieldImageView, gradientsImageView, disparityImageView;
+	std::vector<vk::ImageView> lightfieldSingleImageViews; // one view for each cam to render into
 
-	vk::DescriptorSet descSet;
+	// TODO: need separate desc sets for lightfield/gradients/disparity?
 	vk::DescriptorSetLayout descSetLayout;
+	vk::DescriptorSet descSet;
 };

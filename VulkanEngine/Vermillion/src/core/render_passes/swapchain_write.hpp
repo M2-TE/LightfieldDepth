@@ -353,7 +353,6 @@ private:
 		graphicsPipeline = result.value;
 	}
 	
-
 private:
 	vk::RenderPass renderPass;
 	std::vector<vk::Framebuffer> framebuffers;

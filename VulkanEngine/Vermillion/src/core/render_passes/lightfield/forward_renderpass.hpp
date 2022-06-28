@@ -6,6 +6,7 @@ struct ForwardRenderpassCreateInfo
 	SwapchainWrapper& swapchainWrapper;
 	vma::Allocator& allocator;
 	vk::DescriptorPool& descPool;
+	Lightfield& lightfield;
 };
 
 class ForwardRenderpass
@@ -16,11 +17,11 @@ public:
 	ROF_COPY_MOVE_DELETE(ForwardRenderpass)
 
 public:
-	void init(ForwardRenderpassCreateInfo& info, std::vector<vk::ImageView>& lightfieldViews)
+	void init(ForwardRenderpassCreateInfo& info)
 	{
 		create_shader_modules(info);
 		create_render_pass(info);
-		create_framebuffers(info, lightfieldViews);
+		create_framebuffers(info);
 
 		create_pipeline_layout(info);
 		create_pipeline(info);
@@ -115,8 +116,9 @@ private:
 
 		renderPass = info.deviceWrapper.logicalDevice.createRenderPass(renderPassInfo);
 	}
-	void create_framebuffers(ForwardRenderpassCreateInfo& info, std::vector<vk::ImageView>& lightfieldViews)
+	void create_framebuffers(ForwardRenderpassCreateInfo& info)
 	{
+		auto& lightfieldViews = info.lightfield.lightfieldSingleImageViews;
 		framebuffers.resize(lightfieldViews.size());
 		for (auto i = 0u; i < lightfieldViews.size(); i++) {
 

@@ -6,6 +6,7 @@ struct DisparityRenderpassCreateInfo
 	SwapchainWrapper& swapchainWrapper;
 	vma::Allocator& allocator;
 	vk::DescriptorPool& descPool;
+	Lightfield& lightfield;
 };
 class DisparityRenderpass
 {
@@ -15,80 +16,63 @@ public:
 	ROF_COPY_MOVE_DELETE(DisparityRenderpass)
 
 public:
-//	void init(ForwardRenderpassCreateInfo& info, vk::ImageView lightfieldView)
-//	{
-//		create_shader_modules(info);
-//		create_render_pass(info);
-//		create_framebuffers(info, lightfieldViews);
-//
-//		create_pipeline_layout(info);
-//		create_pipeline(info);
-//
-//		create_misc(info);
-//	}
-//	void destroy(DeviceWrapper& deviceWrapper, vma::Allocator& allocator)
-//	{
-//		auto& device = deviceWrapper.logicalDevice;
-//
-//		// Shaders
-//		device.destroyShaderModule(gradientsVS);
-//		device.destroyShaderModule(gradientsPS);
-//		device.destroyShaderModule(disparityVS);
-//		device.destroyShaderModule(disparityPS);
-//
-//		// Render Pass
-//		deviceWrapper.logicalDevice.destroyRenderPass(renderPass);
-//		for (size_t i = 0; i < framebuffers.size(); i++) {
-//			deviceWrapper.logicalDevice.destroyFramebuffer(framebuffers[i]);
-//		}
-//
-//		// Stages
-//		deviceWrapper.logicalDevice.destroyPipelineLayout(pipelineLayout);
-//		deviceWrapper.logicalDevice.destroyPipeline(pipeline);
-//
-//
-//	}
-//
-//	void begin(vk::CommandBuffer& commandBuffer, uint32_t iCam)
-//	{
-//		vk::RenderPassBeginInfo renderPassBeginInfo = vk::RenderPassBeginInfo()
-//			.setRenderPass(renderPass)
-//			.setFramebuffer(framebuffers[iCam])
-//			.setRenderArea(fullscreenRect)
-//			.setClearValues(clearValues);
-//
-//		commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
-//		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
-//	}
-//	void end(vk::CommandBuffer& commandBuffer)
-//	{
-//		commandBuffer.endRenderPass();
-//	}
-//	void bind_desc_sets(vk::CommandBuffer& commandBuffer, const vk::ArrayProxy<vk::DescriptorSet>& descSets)
-//	{
-//		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, descSets, {});
-//	}
-//
-//private:
-//	void create_shader_modules(ForwardRenderpassCreateInfo& info)
-//	{
-//		vs = create_shader_module(info.deviceWrapper, lightfieldWrite.vs);
-//		ps = create_shader_module(info.deviceWrapper, lightfieldWrite.ps);
-//	}
-//	void create_render_pass(ForwardRenderpassCreateInfo& info)
-//	{
-//		std::array<vk::AttachmentDescription, 1> attachments = {
-//			// Output
-//			vk::AttachmentDescription()
-//				.setFormat(colorFormat)
-//				.setSamples(vk::SampleCountFlagBits::e1)
-//				.setLoadOp(vk::AttachmentLoadOp::eClear)
-//				.setStoreOp(vk::AttachmentStoreOp::eStore)
-//				.setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
-//				.setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
-//				.setInitialLayout(vk::ImageLayout::eUndefined)
-//				.setFinalLayout(vk::ImageLayout::eColorAttachmentOptimal)
-//		};
+	void init(DisparityRenderpassCreateInfo& info)
+	{
+		create_shader_modules(info);
+		//create_render_pass(info);
+		create_framebuffers(info);
+
+		//create_pipeline_layout(info);
+		//create_pipeline(info);
+
+		//create_misc(info);
+	}
+
+	void destroy(DeviceWrapper& deviceWrapper, vma::Allocator& allocator)
+	{
+		auto& device = deviceWrapper.logicalDevice;
+
+		// Shaders
+		device.destroyShaderModule(gradientsVS);
+		device.destroyShaderModule(gradientsPS);
+		device.destroyShaderModule(disparityVS);
+		device.destroyShaderModule(disparityPS);
+
+		//// Render Pass
+		//deviceWrapper.logicalDevice.destroyRenderPass(renderPass);
+		//for (size_t i = 0; i < framebuffers.size(); i++) {
+		//	deviceWrapper.logicalDevice.destroyFramebuffer(framebuffers[i]);
+		//}
+
+		//// Stages
+		//deviceWrapper.logicalDevice.destroyPipelineLayout(pipelineLayout);
+		//deviceWrapper.logicalDevice.destroyPipeline(pipeline);
+	}
+
+private:
+	void create_shader_modules(DisparityRenderpassCreateInfo& info)
+	{
+		gradientsVS = create_shader_module(info.deviceWrapper, lightfieldGradients.vs);
+		gradientsPS = create_shader_module(info.deviceWrapper, lightfieldGradients.ps);
+
+		disparityVS = create_shader_module(info.deviceWrapper, lightfieldDisparity.vs);
+		disparityPS = create_shader_module(info.deviceWrapper, lightfieldDisparity.ps);
+	}
+
+	//void create_render_pass(ForwardRenderpassCreateInfo& info)
+	//{
+	//	std::array<vk::AttachmentDescription, 1> attachments = {
+	//		// Output
+	//		vk::AttachmentDescription()
+	//			.setFormat(colorFormat)
+	//			.setSamples(vk::SampleCountFlagBits::e1)
+	//			.setLoadOp(vk::AttachmentLoadOp::eClear)
+	//			.setStoreOp(vk::AttachmentStoreOp::eStore)
+	//			.setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
+	//			.setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
+	//			.setInitialLayout(vk::ImageLayout::eUndefined)
+	//			.setFinalLayout(vk::ImageLayout::eColorAttachmentOptimal)
+	//	};
 //
 //		// Subpass Descriptions
 //		vk::AttachmentReference output = vk::AttachmentReference(0, vk::ImageLayout::eColorAttachmentOptimal);
@@ -116,23 +100,16 @@ public:
 //
 //		renderPass = info.deviceWrapper.logicalDevice.createRenderPass(renderPassInfo);
 //	}
-//	void create_framebuffers(ForwardRenderpassCreateInfo& info, std::vector<vk::ImageView>& lightfieldViews)
-//	{
-//		framebuffers.resize(lightfieldViews.size());
-//		for (auto i = 0u; i < lightfieldViews.size(); i++) {
-//
-//			std::array<vk::ImageView, 1> attachments = { lightfieldViews[i] };
-//
-//			vk::FramebufferCreateInfo framebufferInfo = vk::FramebufferCreateInfo()
-//				.setRenderPass(renderPass)
-//				.setWidth(info.swapchainWrapper.extent.width)
-//				.setHeight(info.swapchainWrapper.extent.height)
-//				.setAttachments(attachments)
-//				.setLayers(1);
-//
-//			framebuffers[i] = info.deviceWrapper.logicalDevice.createFramebuffer(framebufferInfo);
-//		}
-//	}
+	void create_framebuffers(DisparityRenderpassCreateInfo& info)
+	{
+		//vk::FramebufferCreateInfo framebufferInfo = vk::FramebufferCreateInfo()
+		//	.setRenderPass(renderPass)
+		//	.setWidth(info.swapchainWrapper.extent.width)
+		//	.setHeight(info.swapchainWrapper.extent.height)
+		//	.setAttachments(info.lightfield.gradientsImageView)
+		//	.setLayers(1);
+		//gradientsFramebuffer = info.deviceWrapper.logicalDevice.createFramebuffer(framebufferInfo);
+	}
 //
 //	void create_pipeline_layout(ForwardRenderpassCreateInfo& info)
 //	{
@@ -321,7 +298,8 @@ private:
 	vk::ShaderModule disparityVS, disparityPS;
 
 	// render resources
-	vk::Framebuffer framebuffer;
+	vk::Framebuffer gradientsFramebuffer;
+	vk::Framebuffer disparityFramebuffer;
 
 	// misc
 	vk::Rect2D fullscreenRect;

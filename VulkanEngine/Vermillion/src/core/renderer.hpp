@@ -6,9 +6,9 @@
 #include "wrappers/imgui_wrapper.hpp"
 #include "wrappers/swapchain_wrapper.hpp"
 #include "wrappers/shader_wrapper.hpp"
+#include "render_passes/lightfield/lightfield.hpp"
 #include "render_passes/lightfield/forward_renderpass.hpp"
 #include "render_passes/lightfield/disparity_renderpass.hpp"
-#include "render_passes/lightfield/lightfield.hpp"
 #include "render_passes/swapchain_write.hpp"
 
 class Renderer
@@ -187,18 +187,26 @@ private:
 		swapchainWrapper.init(deviceWrapper, window);
 		camera.init(deviceWrapper, allocator, descPool, swapchainWrapper);
 
-		// create lightfield and the renderpass that writes to it
-		ForwardRenderpassCreateInfo info = { deviceWrapper, swapchainWrapper, allocator, descPool };
-		lightfield.init(info);
-		forwardRenderpass.init(info, lightfield.get_output_views());
+		// 9 camera views, along with disparity and gradient maps
+		LightfieldCreateInfo lightfieldInfo = { deviceWrapper, swapchainWrapper, allocator, descPool };
+		lightfield.init(lightfieldInfo);
 
-		swapchainWriteRenderpass.init(deviceWrapper, swapchainWrapper, descPool, lightfield.get_input_view());
+		// create lightfield and the renderpass that writes to it
+		ForwardRenderpassCreateInfo forwardInfo = { deviceWrapper, swapchainWrapper, allocator, descPool, lightfield };
+		forwardRenderpass.init(forwardInfo);
+
+		DisparityRenderpassCreateInfo disparityInfo = { deviceWrapper, swapchainWrapper, allocator, descPool, lightfield };
+		disparityRenderpass.init(disparityInfo);
+
+
+		swapchainWriteRenderpass.init(deviceWrapper, swapchainWrapper, descPool, lightfield.lightfieldImageView);
 	}
 	void destroy_KHR(DeviceWrapper& deviceWrapper)
 	{
 		camera.destroy(deviceWrapper, allocator);
 		lightfield.destroy(deviceWrapper, allocator);
 		forwardRenderpass.destroy(deviceWrapper, allocator);
+		disparityRenderpass.destroy(deviceWrapper, allocator);
 		swapchainWriteRenderpass.destroy(deviceWrapper);
 		swapchainWrapper.destroy(deviceWrapper);
 	}
@@ -323,6 +331,7 @@ private:
 
 	Lightfield lightfield;
 	ForwardRenderpass forwardRenderpass;
+	DisparityRenderpass disparityRenderpass;
 	SwapchainWrite swapchainWriteRenderpass;
 
 	RingBuffer<SyncFrameData> syncFrames;
