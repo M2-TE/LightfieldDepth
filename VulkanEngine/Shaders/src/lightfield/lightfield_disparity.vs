@@ -1,4 +1,4 @@
-float4 main( float4 pos : POSITION ) : SV_POSITION
+float4 main(uint vertID : SV_VertexID) : SV_Position
 {
-	return pos;
+    return float4((vertID == 0) ? 3.0f : -1.0f, (vertID == 2) ? -3.0f : 1.0f, 1.0f, 1.0f);
 }

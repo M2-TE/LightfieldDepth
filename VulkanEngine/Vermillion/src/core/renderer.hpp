@@ -8,6 +8,7 @@
 #include "wrappers/shader_wrapper.hpp"
 #include "render_passes/lightfield/lightfield.hpp"
 #include "render_passes/lightfield/forward_renderpass.hpp"
+#include "render_passes/lightfield/gradients_renderpass.hpp"
 #include "render_passes/lightfield/disparity_renderpass.hpp"
 #include "render_passes/swapchain_write.hpp"
 
@@ -195,19 +196,24 @@ private:
 		ForwardRenderpassCreateInfo forwardInfo = { deviceWrapper, swapchainWrapper, allocator, descPool, lightfield };
 		forwardRenderpass.init(forwardInfo);
 
+		GradientsRenderpassCreateInfo gradientsInfo = { deviceWrapper, swapchainWrapper, allocator, descPool, lightfield };
+		gradientsRenderpass.init(gradientsInfo);
+
 		DisparityRenderpassCreateInfo disparityInfo = { deviceWrapper, swapchainWrapper, allocator, descPool, lightfield };
 		disparityRenderpass.init(disparityInfo);
-
 
 		swapchainWriteRenderpass.init(deviceWrapper, swapchainWrapper, descPool, lightfield.lightfieldImageView);
 	}
 	void destroy_KHR(DeviceWrapper& deviceWrapper)
 	{
 		camera.destroy(deviceWrapper, allocator);
+
 		lightfield.destroy(deviceWrapper, allocator);
 		forwardRenderpass.destroy(deviceWrapper, allocator);
-		disparityRenderpass.destroy(deviceWrapper, allocator);
+		gradientsRenderpass.destroy(deviceWrapper);
+		disparityRenderpass.destroy(deviceWrapper);
 		swapchainWriteRenderpass.destroy(deviceWrapper);
+
 		swapchainWrapper.destroy(deviceWrapper);
 	}
 	
@@ -317,6 +323,8 @@ private:
 			forwardRenderpass.end(commandBuffer);
 		}
 
+		gradientsRenderpass.execute(commandBuffer);
+
 		// direct write to swapchain image
 		swapchainWriteRenderpass.execute(commandBuffer, iFrame);
 
@@ -331,6 +339,7 @@ private:
 
 	Lightfield lightfield;
 	ForwardRenderpass forwardRenderpass;
+	GradientsRenderpass gradientsRenderpass;
 	DisparityRenderpass disparityRenderpass;
 	SwapchainWrite swapchainWriteRenderpass;
 

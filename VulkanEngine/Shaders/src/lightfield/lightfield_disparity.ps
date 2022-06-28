@@ -1,4 +1,8 @@
-float4 main() : SV_TARGET
+Texture2D gradients : register(t0);
+
+float4 main(float4 inputPos : SV_Position) : SV_Target
 {
-	return float4(1.0f, 1.0f, 1.0f, 1.0f);
+    uint2 pixelPos = uint2(inputPos.x, inputPos.y);
+    
+    return gradients[pixelPos];
 }

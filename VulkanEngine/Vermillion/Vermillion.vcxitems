@@ -17,6 +17,7 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\application.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\render_passes\lightfield\disparity_renderpass.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\render_passes\lightfield\forward_renderpass.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\render_passes\lightfield\gradients_renderpass.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\render_passes\lightfield\lightfield.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\scene_objects\components.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\scene_objects\camera.hpp" />
