@@ -33,16 +33,13 @@ public:
 	void handle_input(Input& input)
 	{
 		static auto startTime = std::chrono::high_resolution_clock::now();
-
 		auto currentTime = std::chrono::high_resolution_clock::now();
 		float dt = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 		startTime = std::chrono::high_resolution_clock::now();
 
-		float speed = dt * 2.0f;
-
 		// rotation
 		if (input.mouseButtonsDown.count(3) || input.mouseButtonsDown.count(1)) {
-			if (!SDL_GetRelativeMouseMode()) SDL_SetRelativeMouseMode(SDL_TRUE);
+			//if (!SDL_GetRelativeMouseMode()) SDL_SetRelativeMouseMode(SDL_TRUE);
 
 			float mouseSpeed = .1f;
 			float xRot = glm::radians(static_cast<float>(input.xMouseRel) * mouseSpeed);
@@ -50,9 +47,10 @@ public:
 			rotationEuler += float3(-yRot, xRot, 0.0f);
 		}
 		else {
-			if (SDL_GetRelativeMouseMode()) SDL_SetRelativeMouseMode(SDL_FALSE);
+			//if (SDL_GetRelativeMouseMode()) SDL_SetRelativeMouseMode(SDL_FALSE);
 		}
 
+		float speed = dt * 2.0f;
 		// forward/backward
 		if (input.keysDown.count(SDLK_w)) translate(float3(0.0f, 0.0f, speed));
 		else if (input.keysDown.count(SDLK_s)) translate(float3(0.0f, 0.0f, -speed));

@@ -6,8 +6,8 @@
 #include "wrappers/imgui_wrapper.hpp"
 #include "wrappers/swapchain_wrapper.hpp"
 #include "wrappers/shader_wrapper.hpp"
-#include "render_passes/deferred_rendering/deferred_renderpass.hpp"
 #include "render_passes/lightfield/forward_renderpass.hpp"
+#include "render_passes/lightfield/disparity_renderpass.hpp"
 #include "render_passes/lightfield/lightfield.hpp"
 #include "render_passes/swapchain_write.hpp"
 
@@ -26,9 +26,8 @@ public:
 		create_descriptor_pools(deviceWrapper);
 		create_command_pools(deviceWrapper);
 
-		syncFrames.set_size(nMaxFrames).init(deviceWrapper);
-
 		create_KHR(deviceWrapper, window);
+		syncFrames.set_size(swapchainWrapper.nImages).init(deviceWrapper);
 
 		imguiWrapper.init(deviceWrapper, window, swapchainWriteRenderpass.get_render_pass(), syncFrames);
 	}
@@ -185,7 +184,7 @@ private:
 	}
 	void create_KHR(DeviceWrapper& deviceWrapper, Window& window)
 	{
-		swapchainWrapper.init(deviceWrapper, window, nMaxFrames);
+		swapchainWrapper.init(deviceWrapper, window);
 		camera.init(deviceWrapper, allocator, descPool, swapchainWrapper);
 
 		// create lightfield and the renderpass that writes to it
@@ -311,23 +310,20 @@ private:
 		}
 
 		// direct write to swapchain image
-		swapchainWriteRenderpass.begin(commandBuffer, iFrame);
-		swapchainWriteRenderpass.end(commandBuffer);
-
+		swapchainWriteRenderpass.execute(commandBuffer, iFrame);
 
 		// finalize command buffer
 		commandBuffer.end();
 	}
 
 private:
-	uint32_t nMaxFrames = 2; // max frames in flight (minimum for swapchain)
-
 	vma::Allocator allocator;
+	SwapchainWrapper swapchainWrapper;
+	ImguiWrapper imguiWrapper;
+
 	Lightfield lightfield;
 	ForwardRenderpass forwardRenderpass;
 	SwapchainWrite swapchainWriteRenderpass;
-	SwapchainWrapper swapchainWrapper;
-	ImguiWrapper imguiWrapper;
 
 	RingBuffer<SyncFrameData> syncFrames;
 	vk::CommandPool transientCommandPool; // TODO: transfer queue!

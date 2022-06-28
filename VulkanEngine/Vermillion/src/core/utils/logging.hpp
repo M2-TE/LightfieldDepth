@@ -8,8 +8,7 @@
 #define VMI_ERR(msg) std::cout << "\n--> ERROR: " << msg << std::endl
 #define VMI_SDL_ERR() VMI_LOG("Error: " << std::string(SDL_GetError()) << std::endl << CODE_LOCATION)
 
-// currently enabled debug logging for both debug and release builds
-#if defined(_DEBUG) || defined(NDEBUG)
+#if defined(_DEBUG)
 class Logging
 {
 public:

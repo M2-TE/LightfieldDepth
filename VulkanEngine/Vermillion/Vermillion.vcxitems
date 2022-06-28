@@ -15,6 +15,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\application.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\render_passes\lightfield\disparity_renderpass.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\render_passes\lightfield\forward_renderpass.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\render_passes\lightfield\lightfield.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\scene_objects\components.hpp" />
@@ -30,6 +31,8 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\scene_objects\scene.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\shaders\geometry_pass.ps.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\shaders\geometry_pass.vs.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\shaders\lightfield_write.ps.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\shaders\lightfield_write.vs.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\shaders\lighting_pass.ps.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\shaders\lighting_pass.vs.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\shaders\swapchain_write.ps.hpp" />

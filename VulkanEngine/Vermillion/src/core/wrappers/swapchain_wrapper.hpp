@@ -7,13 +7,13 @@ public:
 	~SwapchainWrapper() = default;
 	ROF_COPY_MOVE_DELETE(SwapchainWrapper)
 
-	void init(DeviceWrapper& deviceWrapper, Window& window, uint32_t nImages)
+	void init(DeviceWrapper& deviceWrapper, Window& window)
 	{
 		choose_surface_format(deviceWrapper);
 		choose_present_mode(deviceWrapper);
 		choose_extent(deviceWrapper, window);
 
-		create_swapchain(deviceWrapper, window, nImages);
+		create_swapchain(deviceWrapper, window);
 		create_images(deviceWrapper);
 		create_image_views(deviceWrapper);
 	}
@@ -65,9 +65,10 @@ private:
 			.setWidth(width)
 			.setHeight(height);
 	}
-	void create_swapchain(DeviceWrapper& deviceWrapper, Window& window, uint32_t nImages)
+	void create_swapchain(DeviceWrapper& deviceWrapper, Window& window)
 	{
-		if (deviceWrapper.capabilities.minImageCount > nImages) VMI_ERR("Swapchain has higher minimum image count requirement");
+		if (deviceWrapper.capabilities.minImageCount > nTargetSwapchainImages) nImages = deviceWrapper.capabilities.minImageCount;
+		else nImages = nTargetSwapchainImages;
 
 		VMI_LOG("    Selected swapchain formatting:");
 		VMI_LOG("    - Format: " << (uint32_t)surfaceFormat.format);
@@ -143,6 +144,10 @@ public:
 	vk::PresentModeKHR presentMode;
 	vk::Extent2D extent;
 
+	uint32_t nImages;
 	std::vector<vk::Image> images;
 	std::vector<vk::ImageView> imageViews;
+
+private:
+	static constexpr uint32_t nTargetSwapchainImages = 2; // max frames in flight (minimum for swapchain)
 };

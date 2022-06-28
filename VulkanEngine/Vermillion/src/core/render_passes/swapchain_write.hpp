@@ -44,7 +44,7 @@ public:
 		deviceWrapper.logicalDevice.destroyDescriptorSetLayout(descSetLayout);
 	}
 
-	void begin(vk::CommandBuffer& commandBuffer, uint32_t iFrame)
+	void execute(vk::CommandBuffer& commandBuffer, uint32_t iFrame)
 	{
 		vk::RenderPassBeginInfo renderPassBeginInfo = vk::RenderPassBeginInfo()
 			.setRenderPass(renderPass)
@@ -53,9 +53,8 @@ public:
 
 		commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
 		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline);
-	}
-	void end(vk::CommandBuffer& commandBuffer)
-	{
+
+		// draw fullscreen triangle
 		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, descSet, {});
 		commandBuffer.draw(3, 1, 0, 0);
 

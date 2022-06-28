@@ -1,0 +1,16 @@
+#define N_IMAGES 9
+
+Texture2DArray lightfieldImages : register(t0);
+
+float4 main(float4 inputPos : SV_Position) : SV_Target
+{
+    uint2 pixelPos = uint2(inputPos.x, inputPos.y);
+    float3 colors[N_IMAGES];
+
+    [unroll] for (uint i = 0; i < N_IMAGES; i++)
+    {
+        colors[i] = lightfieldImages[uint3(pixelPos, i)];
+    }
+    
+    return float4(colors[0], 1.0f);
+}
