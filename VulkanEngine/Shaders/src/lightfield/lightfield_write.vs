@@ -26,8 +26,10 @@ Output main(Input input)
 {
     Output output;
     output.worldPos = input.position;
+    output.worldPos = mul(view, output.worldPos);
     output.worldPos += posOffset; // individual cam offset
-    output.screenPos = mul(viewProj, output.worldPos);
+    
+    output.screenPos = mul(proj, output.worldPos);
     output.color = input.color;
     output.normal = input.normal;
     return output;

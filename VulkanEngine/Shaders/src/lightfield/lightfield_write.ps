@@ -7,7 +7,7 @@ struct Input
 
 float4 main(Input input) : SV_Target
 {
-    float3 lightPos = float3(5.0f, -5.0f, -5.0f); // hard coded point light
+    float3 lightPos = float3(4.0f, -4.0f, -4.0f); // hard coded point light
     float3 dir = lightPos - input.worldPos.xyz;
     float dist = length(dir);
     float attenuation = 30.0f / (dist * dist);
