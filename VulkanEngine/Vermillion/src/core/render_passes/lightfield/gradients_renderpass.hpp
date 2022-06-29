@@ -15,7 +15,7 @@ public:
 	GradientsRenderpass() = default;
 	~GradientsRenderpass() = default;
 	ROF_COPY_MOVE_DELETE(GradientsRenderpass)
-
+		 
 public:
 	void init(GradientsRenderpassCreateInfo& info)
 	{
@@ -44,6 +44,9 @@ public:
 
 		// Render Pass
 		deviceWrapper.logicalDevice.destroyRenderPass(renderPass);
+
+		// Descriptors
+		deviceWrapper.logicalDevice.destroyDescriptorSetLayout(descSetLayout);
 
 		// Stages
 		deviceWrapper.logicalDevice.destroyPipelineLayout(pipelineLayout);
