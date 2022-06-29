@@ -202,7 +202,7 @@ private:
 		DisparityRenderpassCreateInfo disparityInfo = { deviceWrapper, swapchainWrapper, allocator, descPool, lightfield };
 		disparityRenderpass.init(disparityInfo);
 
-		swapchainWriteRenderpass.init(deviceWrapper, swapchainWrapper, descPool, lightfield.lightfieldImageView);
+		swapchainWriteRenderpass.init(deviceWrapper, swapchainWrapper, descPool, lightfield.disparityImageView);
 	}
 	void destroy_KHR(DeviceWrapper& deviceWrapper)
 	{

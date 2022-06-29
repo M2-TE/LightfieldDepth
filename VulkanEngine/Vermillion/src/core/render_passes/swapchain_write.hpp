@@ -87,7 +87,7 @@ private:
 				.setStoreOp(vk::AttachmentStoreOp::eDontCare)
 				.setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
 				.setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
-				.setInitialLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
+				.setInitialLayout(vk::ImageLayout::eColorAttachmentOptimal)
 				.setFinalLayout(vk::ImageLayout::eShaderReadOnlyOptimal),
 			// Output
 			vk::AttachmentDescription()
