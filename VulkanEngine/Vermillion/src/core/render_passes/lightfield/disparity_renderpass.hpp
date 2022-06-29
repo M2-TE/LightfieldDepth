@@ -72,15 +72,15 @@ public:
 private:
 	void create_shader_modules(DisparityRenderpassCreateInfo& info)
 	{
-		vs = create_shader_module(info.deviceWrapper, lightfieldGradients.vs);
-		ps = create_shader_module(info.deviceWrapper, lightfieldGradients.ps);
+		vs = create_shader_module(info.deviceWrapper, lightfieldDisparity.vs);
+		ps = create_shader_module(info.deviceWrapper, lightfieldDisparity.ps);
 	}
 	void create_render_pass(DisparityRenderpassCreateInfo& info)
 	{
 		std::array<vk::AttachmentDescription, 2> attachments = {
 			// Input
 			vk::AttachmentDescription()
-				.setFormat(colorFormat)
+				.setFormat(vk::Format::eR16G16B16A16Sfloat)
 				.setSamples(vk::SampleCountFlagBits::e1)
 				.setLoadOp(vk::AttachmentLoadOp::eLoad)
 				.setStoreOp(vk::AttachmentStoreOp::eDontCare)
@@ -91,7 +91,7 @@ private:
 
 			// Output
 			vk::AttachmentDescription()
-				.setFormat(vk::Format::eR16G16B16A16Sfloat)
+				.setFormat(colorFormat)
 				.setSamples(vk::SampleCountFlagBits::e1)
 				.setLoadOp(vk::AttachmentLoadOp::eDontCare)
 				.setStoreOp(vk::AttachmentStoreOp::eStore)
@@ -130,8 +130,8 @@ private:
 	void create_framebuffer(DisparityRenderpassCreateInfo& info)
 	{
 		std::array<vk::ImageView, 2> attachments = {
-			info.lightfield.lightfieldImageView,
-			info.lightfield.gradientsImageView
+			info.lightfield.gradientsImageView,
+			info.lightfield.disparityImageView
 		};
 
 		vk::FramebufferCreateInfo framebufferInfo = vk::FramebufferCreateInfo()
@@ -168,7 +168,7 @@ private:
 
 		vk::DescriptorImageInfo descriptor = vk::DescriptorImageInfo()
 			.setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
-			.setImageView(info.lightfield.lightfieldImageView)
+			.setImageView(info.lightfield.gradientsImageView)
 			.setSampler(nullptr);
 
 		// input image

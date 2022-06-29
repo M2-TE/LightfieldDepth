@@ -324,6 +324,7 @@ private:
 		}
 
 		gradientsRenderpass.execute(commandBuffer);
+		disparityRenderpass.execute(commandBuffer);
 
 		// direct write to swapchain image
 		swapchainWriteRenderpass.execute(commandBuffer, iFrame);
