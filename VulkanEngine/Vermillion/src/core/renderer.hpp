@@ -310,7 +310,7 @@ private:
 		// writing to lightfield (9 cams)
 		for (auto i = 0u; i < 9; i++) {
 			forwardRenderpass.begin(commandBuffer, i);
-			forwardRenderpass.bind_desc_sets(commandBuffer, camera.get_desc_set());
+			forwardRenderpass.bind_desc_sets(commandBuffer, camera.get_desc_set(), i);
 
 			// draw geometry (TODO: use group instead of view when >1 component)
 			reg.view<Components::Geometry>().each([&](auto& geometry) {

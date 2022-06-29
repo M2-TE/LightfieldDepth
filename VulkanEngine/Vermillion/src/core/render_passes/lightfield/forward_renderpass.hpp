@@ -19,6 +19,7 @@ public:
 public:
 	void init(ForwardRenderpassCreateInfo& info)
 	{
+		create_offset_buffers(info);
 		create_shader_modules(info);
 		create_render_pass(info);
 		create_framebuffers(info);
@@ -40,6 +41,7 @@ public:
 		deviceWrapper.logicalDevice.destroyRenderPass(renderPass);
 		for (size_t i = 0; i < framebuffers.size(); i++) {
 			deviceWrapper.logicalDevice.destroyFramebuffer(framebuffers[i]);
+			camOffsetBuffers[i].destroy(deviceWrapper, allocator);
 		}
 
 		// Stages
@@ -64,12 +66,44 @@ public:
 	{
 		commandBuffer.endRenderPass();
 	}
-	void bind_desc_sets(vk::CommandBuffer& commandBuffer, const vk::ArrayProxy<vk::DescriptorSet>& descSets)
+	void bind_desc_sets(vk::CommandBuffer& commandBuffer, vk::DescriptorSet& camDescSet, uint32_t iLightfieldCam)
 	{
-		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, descSets, {});
+		auto& offsetDescSet = camOffsetBuffers[iLightfieldCam].get_desc_set();
+		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, { camDescSet, offsetDescSet }, {});
 	}
 
 private:
+	void create_offset_buffers(ForwardRenderpassCreateInfo& info)
+	{
+		BufferInfo bufferInfo = { 
+			info.deviceWrapper, 
+			info.allocator, 
+			info.descPool, 
+			vk::ShaderStageFlagBits::eVertex, 
+			iOffsetBindSlot
+		};
+
+		float d = 1.0f;
+		std::array<float2, nCams> offsets = {
+			float2(0.0f, 0.0f),
+			float2(0.0f, 0.0f),
+			float2(0.0f, 0.0f),
+
+			float2(0.0f, 0.0f),
+			float2(0.0f, 0.0f),
+			float2(0.0f, 0.0f),
+			
+			float2(0.0f, 0.0f),
+			float2(0.0f, 0.0f),
+			float2(0.0f, 0.0f),
+		};
+
+		for (auto i = 0; i < nCams; i++) {
+			camOffsetBuffers[i].data = float4(offsets[i].x, offsets[i].y, 0.0f, 0.0f);
+			camOffsetBuffers[i].init(bufferInfo);
+			camOffsetBuffers[i].write_buffer();
+		}
+	}
 	void create_shader_modules(ForwardRenderpassCreateInfo& info)
 	{
 		vs = create_shader_module(info.deviceWrapper, lightfieldWrite.vs);
@@ -137,12 +171,17 @@ private:
 
 	void create_pipeline_layout(ForwardRenderpassCreateInfo& info)
 	{
-		auto camLayout = Camera::get_temp_desc_set_layout(info.deviceWrapper);
+		std::array<vk::DescriptorSetLayout, 2> layouts = {
+			Camera::get_temp_desc_set_layout(info.deviceWrapper),
+			UniformBufferDynamic<float4>::get_temp_desc_set_layout(info.deviceWrapper, iOffsetBindSlot, vk::ShaderStageFlagBits::eVertex),
+		};
+
 		vk::PipelineLayoutCreateInfo pipelineLayoutInfo = vk::PipelineLayoutCreateInfo()
-			.setSetLayouts(camLayout)
-			.setPushConstantRanges({});
+			.setSetLayouts(layouts);
 		pipelineLayout = info.deviceWrapper.logicalDevice.createPipelineLayout(pipelineLayoutInfo);
-		info.deviceWrapper.logicalDevice.destroyDescriptorSetLayout(camLayout);
+
+		info.deviceWrapper.logicalDevice.destroyDescriptorSetLayout(layouts[0]);
+		info.deviceWrapper.logicalDevice.destroyDescriptorSetLayout(layouts[1]);
 	}
 	void create_pipeline(ForwardRenderpassCreateInfo& info)
 	{
@@ -310,6 +349,7 @@ private:
 private:
 	static constexpr vk::Format colorFormat = vk::Format::eR8G8B8A8Srgb;
 	static constexpr uint32_t nCams = 9;
+	static constexpr uint32_t iOffsetBindSlot = 2;
 	vk::RenderPass renderPass;
 
 	// subpasses
@@ -322,6 +362,7 @@ private:
 
 	// render resources
 	std::vector<vk::Framebuffer> framebuffers;
+	std::array<UniformBufferDynamic<float4>, nCams> camOffsetBuffers;
 
 	// misc
 	vk::Rect2D fullscreenRect;
