@@ -61,14 +61,14 @@ public:
 
 		// graphics and transfer share the same family
 		if (iTransferQueue == UINT32_MAX) {
-			VMI_LOG("No dedicated transfer queue family found. Falling back to graphics queue family");
+			VMI_WARN("No dedicated transfer queue family found. Falling back to graphics queue family");
 			iTransferQueue = iQueue;
 
-			std::array<vk::DeviceQueueCreateInfo, 2> queueInfos;
+			std::array<vk::DeviceQueueCreateInfo, 1> queueInfos;
 			float qPriority = 1.0f;
 			queueInfos[0] = vk::DeviceQueueCreateInfo()
 				.setQueueFamilyIndex(iQueue)
-				.setQueueCount(1)
+				.setQueueCount(2)
 				.setPQueuePriorities(&qPriority);
 
 			vk::DeviceCreateInfo createInfo = vk::DeviceCreateInfo()
@@ -84,7 +84,7 @@ public:
 
 			// get actual handle for graphics queue
 			queue = logicalDevice.getQueue(iQueue, 0u);
-			transferQueue = logicalDevice.getQueue(iTransferQueue, 1);
+			transferQueue = logicalDevice.getQueue(iTransferQueue, 1u);
 		}
 		// dedicated transfer queue
 		else {
