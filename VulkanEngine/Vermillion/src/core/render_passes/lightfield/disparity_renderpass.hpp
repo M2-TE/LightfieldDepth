@@ -80,7 +80,7 @@ private:
 		std::array<vk::AttachmentDescription, 2> attachments = {
 			// Input
 			vk::AttachmentDescription()
-				.setFormat(vk::Format::eR16G16B16A16Sfloat)
+				.setFormat(vk::Format::eR32G32B32A32Sfloat)
 				.setSamples(vk::SampleCountFlagBits::e1)
 				.setLoadOp(vk::AttachmentLoadOp::eLoad)
 				.setStoreOp(vk::AttachmentStoreOp::eDontCare)

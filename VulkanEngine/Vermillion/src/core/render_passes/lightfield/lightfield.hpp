@@ -63,7 +63,7 @@ private:
 
 		// gradients
 		imageCreateInfo.setArrayLayers(1);
-		imageCreateInfo.setFormat(vk::Format::eR16G16B16A16Sfloat);
+		imageCreateInfo.setFormat(vk::Format::eR32G32B32A32Sfloat);
 		result = allocator.createImage(&imageCreateInfo, &allocCreateInfo, &gradientsImage, &gradientsAlloc, nullptr);
 		if (result != vk::Result::eSuccess) VMI_ERR("Gradients image creation unsuccessful");
 		allocator.setAllocationName(lightfieldAlloc, std::string("Gradients").c_str());
@@ -102,7 +102,7 @@ private:
 
 		// gradients view
 		imageViewInfo.subresourceRange.baseArrayLayer = 0;
-		imageViewInfo.setFormat(vk::Format::eR16G16B16A16Sfloat);
+		imageViewInfo.setFormat(vk::Format::eR32G32B32A32Sfloat);
 		imageViewInfo.setImage(gradientsImage);
 		gradientsImageView = deviceWrapper.logicalDevice.createImageView(imageViewInfo);
 
