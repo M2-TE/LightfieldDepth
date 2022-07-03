@@ -3,10 +3,10 @@
 	 <!--Associate DXCShaderVS item type with .vs files--> 
 	<ItemType Name="DXCShaderVS" DisplayName="DXC Vertex Shader" />
 	<ContentType Name="DXCShaderVS" ItemType="DXCShaderVS" DisplayName="DXC Vertex Shader" />
-	<FileExtension Name=".vs" ContentType="DXCShaderVS" />
+	<FileExtension Name="_vs.hlsl" ContentType="DXCShaderVS" />
 
 	<!--Associate DXCShaderVS item type with .ps files-->
 	<ItemType Name="DXCShaderPS" DisplayName="DXC Pixel Shader" />
 	<ContentType Name="DXCShaderPS" ItemType="DXCShaderPS" DisplayName="DXC Pixel Shader" />
-	<FileExtension Name=".ps" ContentType="DXCShaderPS" />
+	<FileExtension Name="_ps.hlsl" ContentType="DXCShaderPS" />
 </ProjectSchemaDefinitions>

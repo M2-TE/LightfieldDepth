@@ -15,20 +15,20 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <DXCShaderPS Include="src\gbuffer\lighting_pass.ps" />
-    <DXCShaderPS Include="src\gbuffer\geometry_pass.ps" />
-    <DXCShaderPS Include="src\swapchain_write\swapchain_write.ps" />
-    <DXCShaderPS Include="src\lightfield\lightfield_write.ps" />
-    <DXCShaderPS Include="src\lightfield\lightfield_gradients.ps" />
-    <DXCShaderPS Include="src\lightfield\lightfield_disparity.ps" />
+    <DXCShaderPS Include="src\gbuffer\lighting_pass_ps.hlsl" />
+    <DXCShaderPS Include="src\gbuffer\geometry_pass_ps.hlsl" />
+    <DXCShaderPS Include="src\swapchain_write\swapchain_write_ps.hlsl" />
+    <DXCShaderPS Include="src\lightfield\lightfield_write_ps.hlsl" />
+    <DXCShaderPS Include="src\lightfield\lightfield_gradients_ps.hlsl" />
+    <DXCShaderPS Include="src\lightfield\lightfield_disparity_ps.hlsl" />
   </ItemGroup>
   <ItemGroup>
-    <DXCShaderVS Include="src\gbuffer\lighting_pass.vs" />
-    <DXCShaderVS Include="src\gbuffer\geometry_pass.vs" />
-    <DXCShaderVS Include="src\swapchain_write\swapchain_write.vs" />
-    <DXCShaderVS Include="src\lightfield\lightfield_write.vs" />
-    <DXCShaderVS Include="src\lightfield\lightfield_gradients.vs" />
-    <DXCShaderVS Include="src\lightfield\lightfield_disparity.vs" />
+    <DXCShaderVS Include="src\gbuffer\lighting_pass_vs.hlsl" />
+    <DXCShaderVS Include="src\gbuffer\geometry_pass_vs.hlsl" />
+    <DXCShaderVS Include="src\swapchain_write\swapchain_write_vs.hlsl" />
+    <DXCShaderVS Include="src\lightfield\lightfield_write_vs.hlsl" />
+    <DXCShaderVS Include="src\lightfield\lightfield_gradients_vs.hlsl" />
+    <DXCShaderVS Include="src\lightfield\lightfield_disparity_vs.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <Xml Include="dxc\dxc.xml" />

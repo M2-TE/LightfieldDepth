@@ -1,17 +1,17 @@
 #pragma once
 
-#include "./../shaders/lighting_pass.vs.hpp"
-#include "./../shaders/lighting_pass.ps.hpp"
-#include "./../shaders/geometry_pass.vs.hpp"
-#include "./../shaders/geometry_pass.ps.hpp"
-#include "./../shaders/swapchain_write.vs.hpp"
-#include "./../shaders/swapchain_write.ps.hpp"
-#include "./../shaders/lightfield_write.vs.hpp"
-#include "./../shaders/lightfield_write.ps.hpp"
-#include "./../shaders/lightfield_gradients.vs.hpp"
-#include "./../shaders/lightfield_gradients.ps.hpp"
-#include "./../shaders/lightfield_disparity.vs.hpp"
-#include "./../shaders/lightfield_disparity.ps.hpp"
+#include "./../shaders/lighting_pass_vs.hpp"
+#include "./../shaders/lighting_pass_ps.hpp"
+#include "./../shaders/geometry_pass_vs.hpp"
+#include "./../shaders/geometry_pass_ps.hpp"
+#include "./../shaders/swapchain_write_vs.hpp"
+#include "./../shaders/swapchain_write_ps.hpp"
+#include "./../shaders/lightfield_write_vs.hpp"
+#include "./../shaders/lightfield_write_ps.hpp"
+#include "./../shaders/lightfield_gradients_vs.hpp"
+#include "./../shaders/lightfield_gradients_ps.hpp"
+#include "./../shaders/lightfield_disparity_vs.hpp"
+#include "./../shaders/lightfield_disparity_ps.hpp"
 
 struct ShaderData { const unsigned char* pData; size_t size; };
 struct ShaderPack { ShaderData vs, ps; };
