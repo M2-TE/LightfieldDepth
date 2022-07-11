@@ -312,7 +312,7 @@ private:
 			forwardRenderpass.begin(commandBuffer, i);
 			forwardRenderpass.bind_desc_sets(commandBuffer, camera.get_desc_set(), i);
 
-			// draw geometry (TODO: use group instead of view when >1 component)
+			// draw geometry (TODO: use group instead of view when >1 components)
 			reg.view<Components::Geometry>().each([&](auto& geometry) {
 				vk::DeviceSize offsets[] = { 0 };
 				commandBuffer.bindVertexBuffers(0, 1, &geometry.buffer, offsets);
