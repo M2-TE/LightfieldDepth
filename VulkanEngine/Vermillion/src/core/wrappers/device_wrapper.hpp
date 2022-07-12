@@ -68,7 +68,7 @@ public:
 			float qPriority = 1.0f;
 			queueInfos[0] = vk::DeviceQueueCreateInfo()
 				.setQueueFamilyIndex(iQueue)
-				.setQueueCount(2)
+				.setQueueCount(1)
 				.setPQueuePriorities(&qPriority);
 
 			vk::DeviceCreateInfo createInfo = vk::DeviceCreateInfo()
@@ -84,7 +84,7 @@ public:
 
 			// get actual handle for graphics queue
 			queue = logicalDevice.getQueue(iQueue, 0u);
-			transferQueue = logicalDevice.getQueue(iTransferQueue, 1u);
+			transferQueue = queue;
 		}
 		// dedicated transfer queue
 		else {

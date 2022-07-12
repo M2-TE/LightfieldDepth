@@ -124,16 +124,16 @@ namespace Components
 				}
 			}
 
-			UINT nLati = static_cast<UINT>(M);
-			UINT nLongi = static_cast<UINT>(N);
-			UINT nLatiP = nLati + 1u;
-			for (UINT lati = 0u; lati <= nLati; ++lati) {
-				for (UINT longi = 0u; longi < nLongi; ++longi) {
+			uint nLati = static_cast<uint>(M);
+			uint nLongi = static_cast<uint>(N);
+			uint nLatiP = nLati + 1u;
+			for (uint lati = 0u; lati <= nLati; ++lati) {
+				for (uint longi = 0u; longi < nLongi; ++longi) {
 
-					UINT latiIndex = lati * nLatiP;
-					UINT latiIndexP = (lati + 1) * nLatiP;
-					UINT longIndex = longi;
-					UINT longIndexP = longi + 1;
+					uint latiIndex = lati * nLatiP;
+					uint latiIndexP = (lati + 1) * nLatiP;
+					uint longIndex = longi;
+					uint longIndexP = longi + 1;
 
 					indices.push_back(latiIndex + longIndex);
 					indices.push_back(latiIndex + longIndexP);

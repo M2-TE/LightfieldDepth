@@ -23,7 +23,6 @@ public:
 		create_render_pass(info);
 		create_framebuffer(info);
 
-		create_sampler(info);
 		create_desc_set_layout(info);
 		create_desc_set(info);
 
@@ -48,7 +47,6 @@ public:
 
 		// Descriptors
 		deviceWrapper.logicalDevice.destroyDescriptorSetLayout(descSetLayout);
-		deviceWrapper.logicalDevice.destroySampler(sampler);
 
 		// Stages
 		deviceWrapper.logicalDevice.destroyPipelineLayout(pipelineLayout);
@@ -147,21 +145,6 @@ private:
 		framebuffer = info.deviceWrapper.logicalDevice.createFramebuffer(framebufferInfo);
 	}
 
-	void create_sampler(GradientsRenderpassCreateInfo& info)
-	{
-		vk::SamplerCreateInfo createInfo = vk::SamplerCreateInfo()
-			.setMinFilter(vk::Filter::eLinear)
-			.setMagFilter(vk::Filter::eLinear)
-			.setMipmapMode(vk::SamplerMipmapMode::eLinear)
-			.setAddressModeU(vk::SamplerAddressMode::eClampToEdge)
-			.setAddressModeV(vk::SamplerAddressMode::eClampToEdge)
-			.setAddressModeW(vk::SamplerAddressMode::eClampToEdge)
-			.setAnisotropyEnable(false)
-			.setCompareEnable(false)
-			.setUnnormalizedCoordinates(false);
-
-		sampler = info.deviceWrapper.logicalDevice.createSampler(createInfo);
-	}
 	void create_desc_set_layout(GradientsRenderpassCreateInfo& info)
 	{
 		vk::DescriptorSetLayoutBinding setLayoutBinding = vk::DescriptorSetLayoutBinding()
@@ -383,7 +366,6 @@ private:
 
 	// render resources
 	vk::Framebuffer framebuffer;
-	vk::Sampler sampler;
 
 	// misc
 	vk::Rect2D fullscreenRect;
