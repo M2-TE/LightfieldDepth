@@ -19,6 +19,7 @@ public:
 	{
 		create_images(info.allocator, info.swapchainWrapper);
 		create_image_views(info.deviceWrapper);
+		create_sampler(info.deviceWrapper);
 		create_desc_set_layout(info.deviceWrapper);
 		create_desc_set(info.deviceWrapper, info.descPool);
 	}
@@ -27,6 +28,8 @@ public:
 		allocator.destroyImage(lightfieldImage, lightfieldAlloc);
 		allocator.destroyImage(gradientsImage, gradientsAlloc);
 		allocator.destroyImage(disparityImage, disparityAlloc);
+
+		deviceWrapper.logicalDevice.destroySampler(sampler);
 
 		deviceWrapper.logicalDevice.destroyImageView(lightfieldImageView);
 		deviceWrapper.logicalDevice.destroyImageView(gradientsImageView);
@@ -111,6 +114,21 @@ private:
 		imageViewInfo.setImage(disparityImage);
 		disparityImageView = deviceWrapper.logicalDevice.createImageView(imageViewInfo);
 	}
+	void create_sampler(DeviceWrapper& deviceWrapper)
+	{
+		vk::SamplerCreateInfo createInfo = vk::SamplerCreateInfo()
+			.setMinFilter(vk::Filter::eLinear)
+			.setMagFilter(vk::Filter::eLinear)
+			.setMipmapMode(vk::SamplerMipmapMode::eLinear)
+			.setAddressModeU(vk::SamplerAddressMode::eClampToEdge)
+			.setAddressModeV(vk::SamplerAddressMode::eClampToEdge)
+			.setAddressModeW(vk::SamplerAddressMode::eClampToEdge)
+			.setAnisotropyEnable(false)
+			.setCompareEnable(false)
+			.setUnnormalizedCoordinates(false);
+
+		sampler = deviceWrapper.logicalDevice.createSampler(createInfo);
+	}
 
 	void create_desc_set_layout(DeviceWrapper& deviceWrapper)
 	{
@@ -119,7 +137,8 @@ private:
 		setLayoutBindings[0]
 			.setBinding(0)
 			.setDescriptorCount(1)
-			.setDescriptorType(vk::DescriptorType::eInputAttachment)
+			.setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
+			.setImmutableSamplers(sampler)
 			.setStageFlags(vk::ShaderStageFlagBits::eFragment);
 
 		// create descriptor set layout from the bindings
@@ -147,7 +166,7 @@ private:
 			.setDstSet(descSet)
 			.setDstBinding(0)
 			.setDstArrayElement(0)
-			.setDescriptorType(vk::DescriptorType::eInputAttachment)
+			.setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
 			.setDescriptorCount(descriptors.size())
 			//
 			.setPBufferInfo(nullptr)
@@ -169,4 +188,5 @@ public:
 	// TODO: need separate desc sets for lightfield/gradients/disparity?
 	vk::DescriptorSetLayout descSetLayout;
 	vk::DescriptorSet descSet;
+	vk::Sampler sampler;
 };

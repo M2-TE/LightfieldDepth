@@ -8,6 +8,7 @@ struct DisparityRenderpassCreateInfo
 	vk::DescriptorPool& descPool;
 	Lightfield& lightfield;
 };
+
 class DisparityRenderpass
 {
 public:

@@ -14,6 +14,7 @@ public:
 	{
 		VMI_LOG("[Initializing] Scene...");
 
+		// TODO: transform component
 		cube = reg.create();
 		reg.emplace<Components::Geometry>(cube, Components::Primitive::eSphere);
 		reg.emplace<Components::Allocator>(cube);
