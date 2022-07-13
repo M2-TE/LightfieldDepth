@@ -83,8 +83,8 @@ private:
 			iOffsetBindSlot
 		};
 
-		float d = .001f;
-		float z = .0f;
+		float d = 0.01f;
+		float z = 0.0f;
 		std::array<float2, nCams> offsets = {
 			float2( d, -d),
 			float2( z, -d),

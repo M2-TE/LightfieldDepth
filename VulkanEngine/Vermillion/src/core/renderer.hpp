@@ -220,81 +220,11 @@ private:
 	// runtime
 	void allocate_entities(DeviceWrapper& deviceWrapper, entt::registry& reg)
 	{
-		reg.view<Components::Geometry, Components::Allocator>().each([&](auto entity, auto& geometry) {
-			size_t vertexSize = geometry.vertices.size() * sizeof(Vertex);
-			size_t indexSize = geometry.indices.size() * sizeof(Index);
-			size_t bufferSize = vertexSize + indexSize;
-
-			// buffer
-			vk::BufferCreateInfo bufferInfo = vk::BufferCreateInfo()
-				.setSize(bufferSize)
-				.setUsage(vk::BufferUsageFlagBits::eTransferDst |
-					vk::BufferUsageFlagBits::eVertexBuffer |
-					vk::BufferUsageFlagBits::eIndexBuffer);
-			vma::AllocationCreateInfo allocCreateInfo = vma::AllocationCreateInfo()
-				.setUsage(vma::MemoryUsage::eAutoPreferDevice);
-			allocator.createBuffer(&bufferInfo, &allocCreateInfo, &geometry.buffer, &geometry.alloc, nullptr);
-
-			// staging buffer
-			bufferInfo = vk::BufferCreateInfo()
-				.setSize(bufferSize)
-				.setUsage(vk::BufferUsageFlagBits::eTransferSrc);
-			allocCreateInfo = vma::AllocationCreateInfo()
-				.setUsage(vma::MemoryUsage::eAuto)
-				.setFlags(vma::AllocationCreateFlagBits::eHostAccessSequentialWrite | vma::AllocationCreateFlagBits::eMapped);
-			vma::AllocationInfo allocInfo;
-			auto stagingBuffer = allocator.createBuffer(bufferInfo, allocCreateInfo, allocInfo);
-
-			// already mapped, so just copy over
-			memcpy(allocInfo.pMappedData, geometry.vertices.data(), vertexSize);
-			memcpy(static_cast<char*>(allocInfo.pMappedData) + vertexSize, geometry.indices.data(), indexSize);
-
-			// memory transfer
-			{
-				vk::CommandBufferAllocateInfo allocInfo = vk::CommandBufferAllocateInfo()
-					.setLevel(vk::CommandBufferLevel::ePrimary)
-					.setCommandPool(transientCommandPool)
-					.setCommandBufferCount(1);
-
-				vk::CommandBuffer commandBuffer;
-				auto res = deviceWrapper.logicalDevice.allocateCommandBuffers(&allocInfo, &commandBuffer);
-
-				// begin recording to temporary command buffer
-				vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo()
-					.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
-				commandBuffer.begin(beginInfo);
-
-				vk::BufferCopy copyRegion = vk::BufferCopy()
-					.setSrcOffset(0)
-					.setDstOffset(0)
-					.setSize(bufferSize);
-				commandBuffer.copyBuffer(stagingBuffer.first, geometry.buffer, copyRegion);
-				commandBuffer.end();
-
-				vk::SubmitInfo submitInfo = vk::SubmitInfo()
-					.setCommandBufferCount(1)
-					.setPCommandBuffers(&commandBuffer);
-				deviceWrapper.queue.submit(submitInfo);
-				deviceWrapper.queue.waitIdle(); // TODO: change this to wait on a fence instead (upon queue submit) so multiple memory transfers would be possible
-
-				// free command buffer directly after use
-				deviceWrapper.logicalDevice.freeCommandBuffers(transientCommandPool, commandBuffer);
-			}
-
-			allocator.destroyBuffer(stagingBuffer.first, stagingBuffer.second);
-		});
-
-		auto view = reg.view<Components::Allocator>();
-		reg.erase<Components::Allocator>(view.begin(), view.end());
+		systems::Geometry::allocate(reg, deviceWrapper, allocator, transientCommandPool);
 	}
 	void deallocate_entities(DeviceWrapper& deviceWrapper, entt::registry& reg)
 	{
-		reg.view<Components::Geometry, Components::Deallocator>().each([&](auto entity, auto& geometry) {
-			allocator.destroyBuffer(geometry.buffer, geometry.alloc);
-		});
-
-		auto view = reg.view<Components::Deallocator>();
-		reg.destroy(view.begin(), view.end());
+		systems::Geometry::deallocate(reg, allocator);
 	}
 	void record_command_buffer(entt::registry& reg, vk::CommandBuffer& commandBuffer, uint32_t iFrame)
 	{
@@ -311,15 +241,7 @@ private:
 		for (auto i = 0u; i < 9; i++) {
 			forwardRenderpass.begin(commandBuffer, i);
 			forwardRenderpass.bind_desc_sets(commandBuffer, camera.get_desc_set(), i);
-
-			// draw geometry (TODO: use group instead of view when >1 components)
-			reg.view<Components::Geometry>().each([&](auto& geometry) {
-				vk::DeviceSize offsets[] = { 0 };
-				commandBuffer.bindVertexBuffers(0, 1, &geometry.buffer, offsets);
-				commandBuffer.bindIndexBuffer(geometry.buffer, sizeof(Vertex) * geometry.vertices.size(), vk::IndexType::eUint32);
-				commandBuffer.drawIndexed((uint32_t)geometry.indices.size(), 1, 0, 0, 0);
-			});
-
+			systems::Geometry::bind(reg, commandBuffer);
 			forwardRenderpass.end(commandBuffer);
 		}
 

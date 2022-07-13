@@ -1,6 +1,8 @@
 #pragma once
 
 #include "components.hpp"
+#include "ecs/transform.hpp"
+#include "ecs/geometry.hpp"
 
 class Scene
 {
@@ -14,19 +16,22 @@ public:
 	{
 		VMI_LOG("[Initializing] Scene...");
 
-		// TODO: transform component
-		cube = reg.create();
-		reg.emplace<Components::Geometry>(cube, Components::Primitive::eSphere);
-		reg.emplace<Components::Allocator>(cube);
+		//cube = reg.create();
+		//reg.emplace<components::Geometry>(cube, Primitive::eSphere);
+		//reg.emplace<components::Allocator>(cube);
+		//reg.emplace<components::Transform>(cube);
+		//reg.emplace<components::TransformBufferStatic>(cube);
 
 		sphere = reg.create();
-		reg.emplace<Components::Geometry>(sphere, Components::Primitive::eSphere);
-		reg.emplace<Components::Allocator>(sphere);
+		reg.emplace<components::Geometry>(sphere, Primitive::eSphere);
+		reg.emplace<components::Allocator>(sphere);
+		reg.emplace<components::Transform>(sphere);
+		reg.emplace<components::TransformBufferStatic>(sphere);
 	}
 	void destroy()
 	{
-		reg.emplace<Components::Deallocator>(cube);
-		reg.emplace<Components::Deallocator>(sphere);
+		//reg.emplace<components::Deallocator>(cube);
+		reg.emplace<components::Deallocator>(sphere);
 	}
 	void update()
 	{
