@@ -15,7 +15,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\vulkan\application\application.hpp" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\vulkan\application\dispatch_loader_storage.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\vulkan\render_passes\lightfield\disparity_renderpass.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\vulkan\render_passes\lightfield\forward_renderpass.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\vulkan\render_passes\lightfield\gradients_renderpass.hpp" />

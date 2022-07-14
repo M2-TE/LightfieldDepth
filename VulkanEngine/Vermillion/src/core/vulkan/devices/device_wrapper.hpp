@@ -116,7 +116,6 @@ public:
 			transferQueue = logicalDevice.getQueue(iTransferQueue, 0);
 		}
 
-
 		VMI_LOG("[Initializing] Device-specific vulkan functions...");
 		VULKAN_HPP_DEFAULT_DISPATCHER.init(logicalDevice);
 	}

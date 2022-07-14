@@ -1,6 +1,5 @@
 #pragma once
 
-#include "dispatch_loader_storage.hpp"
 #include "input.hpp"
 #include "scene_objects/scene.hpp"
 #include "window.hpp"
@@ -17,12 +16,7 @@ public:
 		PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr = dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
 		VULKAN_HPP_DEFAULT_DISPATCHER.init(vkGetInstanceProcAddr);
 
-
-		// TODO
-		if (fullscreenMode) window.init(fullscreenResolution, fullscreenMode);
-		else window.init(windowedResolution, fullscreenMode);
-		//window.init(fullscreenMode ? fullscreenResolution : windowedResolution, fullscreenMode);
-
+		window.init(fullscreenMode ? fullscreenResolution : windowedResolution, fullscreenMode);
 		deviceManager.init(window.get_vulkan_instance(), window.get_vulkan_surface());
 		renderer.init(deviceManager.get_device_wrapper(), window);
 		scene.init();
