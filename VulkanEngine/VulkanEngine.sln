@@ -3,13 +3,13 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.1.32407.343
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Shaders", "Shaders\Shaders.vcxproj", "{73F690A0-099F-43F7-BDD5-819869DDAE07}"
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Vermillion-Windows", "Vermillion-Windows\Vermillion-Windows.vcxproj", "{0C5C39C9-82B9-4544-83D2-83394EF43434}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Vermillion-Linux", "Vermillion-Linux\Vermillion-Linux.vcxproj", "{6F067380-85D2-4035-BA27-A1B5C8D81D27}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Vermillion", "Vermillion\Vermillion.vcxitems", "{2519C4CF-25CE-45D0-BEA2-700B57ACF167}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Vermillion-Linux", "Vermillion-Linux\Vermillion-Linux.vcxproj", "{6F067380-85D2-4035-BA27-A1B5C8D81D27}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Shaders", "Shaders\Shaders.vcxproj", "{73F690A0-099F-43F7-BDD5-819869DDAE07}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

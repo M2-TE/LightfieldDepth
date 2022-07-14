@@ -16,7 +16,7 @@ float4 main(float4 screenPos : SV_Position) : SV_Target
     const float3 p = float3(0.229879f, 0.540242f, 0.229879f);
     const float3 d = float3(-0.425287f, 0.0f, 0.425287f);
 
-    // iterate over 2D patch of pixels
+    // iterate over 2D patch of pixels (3x3)
     for (int x = 0; x < 3; x++)
     {
         for (int y = 0; y < 3; y++)
