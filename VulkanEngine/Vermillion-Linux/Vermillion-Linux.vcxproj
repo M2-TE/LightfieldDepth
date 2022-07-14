@@ -42,11 +42,17 @@
     <OutDir>$(SolutionDir)bin\$(TargetPlatformIdentifier)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)bin-int\$(TargetPlatformIdentifier)\$(Configuration)\</IntDir>
     <TargetExt>.out</TargetExt>
+    <RemoteOutRelDir>$(RemoteProjectRelDir)/bin/$(TargetPlatformIdentifier)/$(Configuration)</RemoteOutRelDir>
+    <EnableIncrementalBuild>No</EnableIncrementalBuild>
+    <RemoteIntRelDir>$(RemoteProjectRelDir)/bin-int/$(TargetPlatformIdentifier)/$(Configuration)</RemoteIntRelDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>$(SolutionDir)bin\$(TargetPlatformIdentifier)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)bin-int\$(TargetPlatformIdentifier)\$(Configuration)\</IntDir>
     <TargetExt>.out</TargetExt>
+    <RemoteOutRelDir>$(RemoteProjectRelDir)/bin/$(TargetPlatformIdentifier)/$(Configuration)</RemoteOutRelDir>
+    <EnableIncrementalBuild>No</EnableIncrementalBuild>
+    <RemoteIntRelDir>$(RemoteProjectRelDir)/bin-int/$(TargetPlatformIdentifier)/$(Configuration)</RemoteIntRelDir>
   </PropertyGroup>
   <ItemGroup>
   </ItemGroup>
@@ -60,6 +66,7 @@
     <Link />
     <Link>
       <LibraryDependencies>vulkan;SDL2</LibraryDependencies>
+      <AdditionalDependencies>-ldl;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -70,6 +77,7 @@
     <Link />
     <Link>
       <LibraryDependencies>vulkan;SDL2</LibraryDependencies>
+      <AdditionalDependencies>-ldl;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
