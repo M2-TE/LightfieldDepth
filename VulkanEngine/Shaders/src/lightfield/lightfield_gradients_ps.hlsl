@@ -12,34 +12,29 @@ float4 main(float4 screenPos : SV_Position) : SV_Target
     float Lu = 0.0f;
     float Lv = 0.0f;
 
-    // calc derivatives using color inputs
-    const int k = 2; // 3x3, 0 -> 2
-    const int kH = 1; // k / 2
-
+    // derivative approximation filters
     const float3 p = float3(0.229879f, 0.540242f, 0.229879f);
     const float3 d = float3(-0.425287f, 0.0f, 0.425287f);
 
     // iterate over 2D patch of pixels
-    for (int x = 0; x <= k; x++)
+    for (int x = 0; x < 3; x++)
     {
-        for (int y = 0; y <= k; y++)
+        for (int y = 0; y < 3; y++)
         {
-            for (int u = 0; u <= k; u++)
+            for (int u = 0; u < 3; u++)
             {
-                for (int v = 0; v <= k; v++)
+                for (int v = 0; v < 3; v++)
                 {
+                    int camIndex = u * 3 + v;
+                    int3 texOffset = int3(x - 1, y - 1, camIndex);
 
-                    int camIndex = u * (k + 1) + v;
-                    int3 texOffset = int3(x - kH, y - kH, 0);
-
-                    float3 color = colBuffArr[uint3(texPos + texOffset + int3(0, 0, camIndex))].rgb;
+                    float3 color = colBuffArr[uint3(texPos + texOffset)].rgb;
                     float luma = BRIGHTNESS(color);
 
                     // approximate derivatives using 3-tap filter
                     Lx += d[x] * p[y] * p[u] * p[v] * luma;
-                    Lu += p[x] * p[y] * d[u] * p[v] * luma;
-
                     Ly += p[x] * d[y] * p[u] * p[v] * luma;
+                    Lu += p[x] * p[y] * d[u] * p[v] * luma;
                     Lv += p[x] * p[y] * p[u] * d[v] * luma;
                 }
             }
@@ -47,18 +42,4 @@ float4 main(float4 screenPos : SV_Position) : SV_Target
     }
 
     return float4(Lx, Ly, Lu, Lv);
-}
-
-float4 main2(float4 inputPos : SV_Position) : SV_Target
-{
-    uint2 pixelPos = uint2(inputPos.x, inputPos.y);
-    float3 colors[9];
-
-    [unroll]
-    for (uint i = 0; i < 9; i++)
-    {
-        colors[i] = colBuffArr[uint3(pixelPos, i)];
-    }
-    
-    return float4(colors[0], 1.0f);
 }
