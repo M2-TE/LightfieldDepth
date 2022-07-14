@@ -36,5 +36,26 @@ namespace components
 
 namespace systems
 {
+	struct Transform
+	{
+		static void allocate()
+		{
 
+		}
+
+		static void deallocate()
+		{
+
+		}
+
+		static void update_dynamic()
+		{
+			// TODO
+		}
+
+		static void update_static()
+		{
+			// TODO
+		}
+	};
 }

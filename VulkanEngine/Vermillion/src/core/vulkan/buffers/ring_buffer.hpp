@@ -1,6 +1,6 @@
 #pragma once
 
-#include "wrappers/device_wrapper.hpp"
+#include "devices/device_wrapper.hpp"
 
 class SyncFrameData
 {

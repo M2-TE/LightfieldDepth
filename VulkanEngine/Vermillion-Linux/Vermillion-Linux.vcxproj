@@ -52,7 +52,7 @@
   </ItemGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>$(SolutionDir)Vermillion\src\core\;$(SolutionDir)Vermillion\src\pch\;$(SolutionDir)Vermillion\vendor\imgui\;$(SolutionDir)Vermillion\vendor\vma-hpp\include\;$(SolutionDir)Vermillion\vendor\entt\single_include\entt\;/usr/include/SDL2/;%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Vermillion\src\core\;$(SolutionDir)Vermillion\src\pch\;$(SolutionDir)Vermillion\src\core\vulkan\;$(SolutionDir)Vermillion\vendor\imgui\;$(SolutionDir)Vermillion\vendor\vma-hpp\include\;$(SolutionDir)Vermillion\vendor\entt\single_include\entt\;/usr/include/SDL2/;%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <CppLanguageStandard>c++17</CppLanguageStandard>
       <PreprocessorDefinitions>_DEBUG</PreprocessorDefinitions>
     </ClCompile>
@@ -64,7 +64,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>$(SolutionDir)Vermillion\src\core\;$(SolutionDir)Vermillion\src\pch\;$(SolutionDir)Vermillion\vendor\imgui\;$(SolutionDir)Vermillion\vendor\vma-hpp\include\;$(SolutionDir)Vermillion\vendor\entt\single_include\entt\;/usr/include/SDL2/;%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Vermillion\src\core\;$(SolutionDir)Vermillion\src\pch\;$(SolutionDir)Vermillion\src\core\vulkan\;$(SolutionDir)Vermillion\vendor\imgui\;$(SolutionDir)Vermillion\vendor\vma-hpp\include\;$(SolutionDir)Vermillion\vendor\entt\single_include\entt\;/usr/include/SDL2/;%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <CppLanguageStandard>c++17</CppLanguageStandard>
     </ClCompile>
     <Link />

@@ -17,7 +17,9 @@
 
 // disable warnings for external libraries
 #pragma warning(push, 0)
-	// include the hpp wrapper of vulkan
+	// include the hpp wrapper version of vulkan
+	// use dynamic dispatcher
+	#define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
 	#include <vulkan/vulkan.hpp>
 
 	// Vulkan Memory Allocator with hpp bindings

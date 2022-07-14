@@ -20,6 +20,9 @@ public:
 		create_vulkan_instance();
 		create_vulkan_surface();
 
+		VMI_LOG("[Initializing] Instance-specific vulkan functions...");
+		VULKAN_HPP_DEFAULT_DISPATCHER.init(instance);
+
 		VMI_LOG("[Initializing] ImGui...");
 		ImGui::CreateContext();
 		ImGui_ImplSDL2_InitForVulkan(pWindow);

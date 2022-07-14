@@ -1,9 +1,10 @@
 #pragma once
 
+#include "dispatch_loader_storage.hpp"
 #include "input.hpp"
 #include "scene_objects/scene.hpp"
 #include "window.hpp"
-#include "device_manager.hpp"
+#include "devices/device_manager.hpp"
 #include "renderer.hpp"
 
 class Application
@@ -11,8 +12,16 @@ class Application
 public:
 	Application()
 	{
+		VMI_LOG("[Initializing] Independent vulkan functions...");
+		vk::DynamicLoader dl;
+		PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr = dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
+		VULKAN_HPP_DEFAULT_DISPATCHER.init(vkGetInstanceProcAddr);
+
+
+		// TODO
 		if (fullscreenMode) window.init(fullscreenResolution, fullscreenMode);
 		else window.init(windowedResolution, fullscreenMode);
+		//window.init(fullscreenMode ? fullscreenResolution : windowedResolution, fullscreenMode);
 
 		deviceManager.init(window.get_vulkan_instance(), window.get_vulkan_surface());
 		renderer.init(deviceManager.get_device_wrapper(), window);

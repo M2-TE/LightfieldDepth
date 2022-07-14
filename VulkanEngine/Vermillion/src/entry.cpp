@@ -1,5 +1,5 @@
 #include "pch.hpp"
-#include "core/application.hpp"
+#include "application/application.hpp"
 
 int main() {
 
