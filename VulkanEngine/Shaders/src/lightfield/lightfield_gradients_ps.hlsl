@@ -1,4 +1,5 @@
 #define BRIGHTNESS(col) dot(col, float3(0.333333f, 0.333333f, 0.333333f)); // using standard greyscale
+#define BRIGHTNESS_REAL(col) dot(col, float3(0.299f, 0.587f, 0.114f)); // using luminance construction
 
 Texture2DArray colBuffArr : register(t0);
 
@@ -16,6 +17,11 @@ float4 main(float4 screenPos : SV_Position) : SV_Target
     const float3 p = float3(0.229879f, 0.540242f, 0.229879f);
     const float3 d = float3(-0.425287f, 0.0f, 0.425287f);
 
+    // TODO: filter set for patch(x,y)
+    // TODO: second set of loops
+    // TODO: squared error?
+    // mip-map/pyramid
+    
     // iterate over 2D patch of pixels (3x3)
     for (int x = 0; x < 3; x++)
     {
