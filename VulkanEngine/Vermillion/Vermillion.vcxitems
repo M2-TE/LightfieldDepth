@@ -14,18 +14,6 @@
     <ProjectCapability Include="SourceItemsFromImports" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\shaders\geometry_pass_ps.hpp" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\shaders\geometry_pass_vs.hpp" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\shaders\lightfield_disparity_ps.hpp" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\shaders\lightfield_disparity_vs.hpp" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\shaders\lightfield_gradients_ps.hpp" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\shaders\lightfield_gradients_vs.hpp" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\shaders\lightfield_write_ps.hpp" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\shaders\lightfield_write_vs.hpp" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\shaders\lighting_pass_ps.hpp" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\shaders\lighting_pass_vs.hpp" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\shaders\swapchain_write_ps.hpp" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\shaders\swapchain_write_vs.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\utils\logging.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\utils\rule_of_five.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\utils\timer.hpp" />

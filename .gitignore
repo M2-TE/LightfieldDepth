@@ -398,9 +398,7 @@ FodyWeavers.xsd
 *.sln.iml
 
 # spir-v shader headers
-*.vs.hpp
-*.ps.hpp
-*.cs.hpp
+VulkanEngine/Vermillion/src/core/shaders/
 
 # vma memory dump outputs
 *\stats.jpg
