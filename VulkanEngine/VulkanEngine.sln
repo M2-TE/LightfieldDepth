@@ -4,6 +4,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 17.1.32407.343
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Vermillion-Windows", "Vermillion-Windows\Vermillion-Windows.vcxproj", "{0C5C39C9-82B9-4544-83D2-83394EF43434}"
+	ProjectSection(ProjectDependencies) = postProject
+		{81CE8DAF-EBB2-4761-8E45-B71ABCCA8C68} = {81CE8DAF-EBB2-4761-8E45-B71ABCCA8C68}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Vermillion-Linux", "Vermillion-Linux\Vermillion-Linux.vcxproj", "{6F067380-85D2-4035-BA27-A1B5C8D81D27}"
 EndProject
@@ -11,36 +14,78 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Vermillion", "Vermillion\Ve
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Shaders", "Shaders\Shaders.vcxproj", "{73F690A0-099F-43F7-BDD5-819869DDAE07}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SDL2", "Vermillion\vendor\sdl\VisualC\SDL\SDL.vcxproj", "{81CE8DAF-EBB2-4761-8E45-B71ABCCA8C68}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
 		Debug-Linux|x64 = Debug-Linux|x64
+		Debug-Linux|x86 = Debug-Linux|x86
 		Release|x64 = Release|x64
+		Release|x86 = Release|x86
 		Release-Linux|x64 = Release-Linux|x64
+		Release-Linux|x86 = Release-Linux|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{73F690A0-099F-43F7-BDD5-819869DDAE07}.Debug|x64.ActiveCfg = Debug|x64
-		{73F690A0-099F-43F7-BDD5-819869DDAE07}.Debug|x64.Build.0 = Debug|x64
-		{73F690A0-099F-43F7-BDD5-819869DDAE07}.Debug-Linux|x64.ActiveCfg = Debug|x64
-		{73F690A0-099F-43F7-BDD5-819869DDAE07}.Debug-Linux|x64.Build.0 = Debug|x64
-		{73F690A0-099F-43F7-BDD5-819869DDAE07}.Release|x64.ActiveCfg = Release|x64
-		{73F690A0-099F-43F7-BDD5-819869DDAE07}.Release|x64.Build.0 = Release|x64
-		{73F690A0-099F-43F7-BDD5-819869DDAE07}.Release-Linux|x64.ActiveCfg = Release|x64
-		{73F690A0-099F-43F7-BDD5-819869DDAE07}.Release-Linux|x64.Build.0 = Release|x64
 		{0C5C39C9-82B9-4544-83D2-83394EF43434}.Debug|x64.ActiveCfg = Debug|x64
 		{0C5C39C9-82B9-4544-83D2-83394EF43434}.Debug|x64.Build.0 = Debug|x64
+		{0C5C39C9-82B9-4544-83D2-83394EF43434}.Debug|x86.ActiveCfg = Debug|x64
+		{0C5C39C9-82B9-4544-83D2-83394EF43434}.Debug|x86.Build.0 = Debug|x64
 		{0C5C39C9-82B9-4544-83D2-83394EF43434}.Debug-Linux|x64.ActiveCfg = Debug|x64
+		{0C5C39C9-82B9-4544-83D2-83394EF43434}.Debug-Linux|x86.ActiveCfg = Debug|x64
+		{0C5C39C9-82B9-4544-83D2-83394EF43434}.Debug-Linux|x86.Build.0 = Debug|x64
 		{0C5C39C9-82B9-4544-83D2-83394EF43434}.Release|x64.ActiveCfg = Release|x64
 		{0C5C39C9-82B9-4544-83D2-83394EF43434}.Release|x64.Build.0 = Release|x64
+		{0C5C39C9-82B9-4544-83D2-83394EF43434}.Release|x86.ActiveCfg = Release|x64
+		{0C5C39C9-82B9-4544-83D2-83394EF43434}.Release|x86.Build.0 = Release|x64
 		{0C5C39C9-82B9-4544-83D2-83394EF43434}.Release-Linux|x64.ActiveCfg = Release|x64
+		{0C5C39C9-82B9-4544-83D2-83394EF43434}.Release-Linux|x86.ActiveCfg = Release|x64
+		{0C5C39C9-82B9-4544-83D2-83394EF43434}.Release-Linux|x86.Build.0 = Release|x64
 		{6F067380-85D2-4035-BA27-A1B5C8D81D27}.Debug|x64.ActiveCfg = Debug|x64
+		{6F067380-85D2-4035-BA27-A1B5C8D81D27}.Debug|x86.ActiveCfg = Debug|x64
 		{6F067380-85D2-4035-BA27-A1B5C8D81D27}.Debug-Linux|x64.ActiveCfg = Debug|x64
 		{6F067380-85D2-4035-BA27-A1B5C8D81D27}.Debug-Linux|x64.Build.0 = Debug|x64
 		{6F067380-85D2-4035-BA27-A1B5C8D81D27}.Debug-Linux|x64.Deploy.0 = Debug|x64
+		{6F067380-85D2-4035-BA27-A1B5C8D81D27}.Debug-Linux|x86.ActiveCfg = Debug|x64
 		{6F067380-85D2-4035-BA27-A1B5C8D81D27}.Release|x64.ActiveCfg = Release|x64
+		{6F067380-85D2-4035-BA27-A1B5C8D81D27}.Release|x86.ActiveCfg = Release|x64
 		{6F067380-85D2-4035-BA27-A1B5C8D81D27}.Release-Linux|x64.ActiveCfg = Release|x64
 		{6F067380-85D2-4035-BA27-A1B5C8D81D27}.Release-Linux|x64.Build.0 = Release|x64
 		{6F067380-85D2-4035-BA27-A1B5C8D81D27}.Release-Linux|x64.Deploy.0 = Release|x64
+		{6F067380-85D2-4035-BA27-A1B5C8D81D27}.Release-Linux|x86.ActiveCfg = Release|x64
+		{73F690A0-099F-43F7-BDD5-819869DDAE07}.Debug|x64.ActiveCfg = Debug|x64
+		{73F690A0-099F-43F7-BDD5-819869DDAE07}.Debug|x64.Build.0 = Debug|x64
+		{73F690A0-099F-43F7-BDD5-819869DDAE07}.Debug|x86.ActiveCfg = Debug|x64
+		{73F690A0-099F-43F7-BDD5-819869DDAE07}.Debug|x86.Build.0 = Debug|x64
+		{73F690A0-099F-43F7-BDD5-819869DDAE07}.Debug-Linux|x64.ActiveCfg = Debug|x64
+		{73F690A0-099F-43F7-BDD5-819869DDAE07}.Debug-Linux|x64.Build.0 = Debug|x64
+		{73F690A0-099F-43F7-BDD5-819869DDAE07}.Debug-Linux|x86.ActiveCfg = Debug|x64
+		{73F690A0-099F-43F7-BDD5-819869DDAE07}.Debug-Linux|x86.Build.0 = Debug|x64
+		{73F690A0-099F-43F7-BDD5-819869DDAE07}.Release|x64.ActiveCfg = Release|x64
+		{73F690A0-099F-43F7-BDD5-819869DDAE07}.Release|x64.Build.0 = Release|x64
+		{73F690A0-099F-43F7-BDD5-819869DDAE07}.Release|x86.ActiveCfg = Release|x64
+		{73F690A0-099F-43F7-BDD5-819869DDAE07}.Release|x86.Build.0 = Release|x64
+		{73F690A0-099F-43F7-BDD5-819869DDAE07}.Release-Linux|x64.ActiveCfg = Release|x64
+		{73F690A0-099F-43F7-BDD5-819869DDAE07}.Release-Linux|x64.Build.0 = Release|x64
+		{73F690A0-099F-43F7-BDD5-819869DDAE07}.Release-Linux|x86.ActiveCfg = Release|x64
+		{73F690A0-099F-43F7-BDD5-819869DDAE07}.Release-Linux|x86.Build.0 = Release|x64
+		{81CE8DAF-EBB2-4761-8E45-B71ABCCA8C68}.Debug|x64.ActiveCfg = Debug|x64
+		{81CE8DAF-EBB2-4761-8E45-B71ABCCA8C68}.Debug|x64.Build.0 = Debug|x64
+		{81CE8DAF-EBB2-4761-8E45-B71ABCCA8C68}.Debug|x86.ActiveCfg = Debug|Win32
+		{81CE8DAF-EBB2-4761-8E45-B71ABCCA8C68}.Debug|x86.Build.0 = Debug|Win32
+		{81CE8DAF-EBB2-4761-8E45-B71ABCCA8C68}.Debug-Linux|x64.ActiveCfg = Debug|x64
+		{81CE8DAF-EBB2-4761-8E45-B71ABCCA8C68}.Debug-Linux|x64.Build.0 = Debug|x64
+		{81CE8DAF-EBB2-4761-8E45-B71ABCCA8C68}.Debug-Linux|x86.ActiveCfg = Debug|Win32
+		{81CE8DAF-EBB2-4761-8E45-B71ABCCA8C68}.Debug-Linux|x86.Build.0 = Debug|Win32
+		{81CE8DAF-EBB2-4761-8E45-B71ABCCA8C68}.Release|x64.ActiveCfg = Release|x64
+		{81CE8DAF-EBB2-4761-8E45-B71ABCCA8C68}.Release|x64.Build.0 = Release|x64
+		{81CE8DAF-EBB2-4761-8E45-B71ABCCA8C68}.Release|x86.ActiveCfg = Release|Win32
+		{81CE8DAF-EBB2-4761-8E45-B71ABCCA8C68}.Release|x86.Build.0 = Release|Win32
+		{81CE8DAF-EBB2-4761-8E45-B71ABCCA8C68}.Release-Linux|x64.ActiveCfg = Release|x64
+		{81CE8DAF-EBB2-4761-8E45-B71ABCCA8C68}.Release-Linux|x64.Build.0 = Release|x64
+		{81CE8DAF-EBB2-4761-8E45-B71ABCCA8C68}.Release-Linux|x86.ActiveCfg = Release|Win32
+		{81CE8DAF-EBB2-4761-8E45-B71ABCCA8C68}.Release-Linux|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -51,6 +96,5 @@ Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		Vermillion\Vermillion.vcxitems*{0c5c39c9-82b9-4544-83d2-83394ef43434}*SharedItemsImports = 4
 		Vermillion\Vermillion.vcxitems*{2519c4cf-25ce-45d0-bea2-700b57acf167}*SharedItemsImports = 9
-		Vermillion\Vermillion.vcxitems*{6f067380-85d2-4035-ba27-a1b5c8d81d27}*SharedItemsImports = 4
 	EndGlobalSection
 EndGlobal
