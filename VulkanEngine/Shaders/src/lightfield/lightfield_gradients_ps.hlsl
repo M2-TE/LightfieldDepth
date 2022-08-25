@@ -1,8 +1,12 @@
 #define BRIGHTNESS(col) dot(col, float3(0.333333f, 0.333333f, 0.333333f)); // using standard greyscale
 #define BRIGHTNESS_REAL(col) dot(col, float3(0.299f, 0.587f, 0.114f)); // using luminance construction
 
-// TODO: squared error?
 // mip-map/pyramid
+// closer far plane for cam matrix
+// how to 1D differentiator -> 2D differentiator? DFT bildbearbeitung sources?
+// another keyword: separable kernels?
+// matlab fdatool for 1D filters
+// library genesis .ru
 
 Texture2DArray colBuffArr : register(t0);
 
@@ -54,6 +58,8 @@ float4 main(float4 screenPos : SV_Position) : SV_Target
             }
         }
     }
+    
+    // <> //
 
     return float4(Lx, Ly, Lu, Lv);
 }

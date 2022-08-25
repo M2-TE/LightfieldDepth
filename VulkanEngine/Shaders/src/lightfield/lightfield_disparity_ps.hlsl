@@ -14,9 +14,10 @@ float4 main() : SV_Target
     confidence *= 10000.0f; // scaling up confidence estimate so that it can actually be represented visually
     
     // filter out confidence values which are practically 0 (could switch to another filter size in this case?)
-    if (confidence < 0.00001f) confidence = 1.0f;
+    //if (confidence < 0.00001f) confidence = 1.0f;
     
     depth = confidence; // show confidence instead of depth;
     
     return float4(depth, depth, depth, 1.0f);
+    //return float4(1.0f - depth, 0.0f, 0.0f, 1.0f);
 }
