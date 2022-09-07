@@ -136,7 +136,9 @@ private:
 	static constexpr vk::Format targetFormat = vk::Format::eB8G8R8A8Srgb;
 	static constexpr vk::ColorSpaceKHR targetColorSpace = vk::ColorSpaceKHR::eSrgbNonlinear;
 	static constexpr vk::PresentModeKHR targetPresentMode = vk::PresentModeKHR::eFifo; // vsync
-	//static constexpr vk::PresentModeKHR targetPresentMode = vk::PresentModeKHR::eMailbox;
+	//static constexpr vk::PresentModeKHR targetPresentMode = vk::PresentModeKHR::eFifoRelaxed; // vsync?
+	//static constexpr vk::PresentModeKHR targetPresentMode = vk::PresentModeKHR::eImmediate; // no vsync, tearing very likely
+	//static constexpr vk::PresentModeKHR targetPresentMode = vk::PresentModeKHR::eMailbox; // better than immediate, if available
 
 public:
 	vk::SwapchainKHR swapchain;
