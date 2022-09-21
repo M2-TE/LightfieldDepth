@@ -9,6 +9,7 @@
 // library genesis .ru
 
 Texture2DArray colBuffArr : register(t0);
+Texture2DArray colBuffArr2 : register(t1);
 
 float2 get_disparity(int3 texPos, int tapSize, float p[9], float d[9])
 {

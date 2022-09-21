@@ -49,7 +49,7 @@ private:
 			.setMipLevels(1).setArrayLayers(nCameras)
 			.setSamples(vk::SampleCountFlagBits::e1)
 			.setTiling(vk::ImageTiling::eOptimal)
-			.setUsage(vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment)
+			.setUsage(vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled)
 			.setFormat(colorFormat);
 
 		vma::AllocationCreateInfo allocCreateInfo = vma::AllocationCreateInfo()
@@ -120,7 +120,7 @@ private:
 		setLayoutBindings[0]
 			.setBinding(0)
 			.setDescriptorCount(1)
-			.setDescriptorType(vk::DescriptorType::eInputAttachment)
+			.setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
 			.setStageFlags(vk::ShaderStageFlagBits::eFragment);
 
 		// create descriptor set layout from the bindings
@@ -137,18 +137,37 @@ private:
 			.setDescriptorSetCount(1).setPSetLayouts(&descSetLayout);
 		descSet = deviceWrapper.logicalDevice.allocateDescriptorSets(allocInfo)[0];
 
+		// create sampler for image
+		vk::SamplerCreateInfo samplerInfo = vk::SamplerCreateInfo()
+			.setMagFilter(vk::Filter::eNearest)
+			.setMinFilter(vk::Filter::eNearest)
+			.setAnisotropyEnable(VK_FALSE) // not needed for now
+			.setMaxAnisotropy(0.0f)
+			.setUnnormalizedCoordinates(VK_TRUE) // makes fullscreen sampling easier
+			.setBorderColor(vk::BorderColor::eIntOpaqueBlack)
+			.setAddressModeU(vk::SamplerAddressMode::eClampToEdge)
+			.setAddressModeV(vk::SamplerAddressMode::eClampToEdge)
+			.setAddressModeW(vk::SamplerAddressMode::eClampToEdge)
+			.setCompareEnable(VK_FALSE)
+			.setCompareOp(vk::CompareOp::eAlways)
+			.setMipmapMode(vk::SamplerMipmapMode::eNearest)
+			.setMipLodBias(0.0f)
+			.setMinLod(0.0f)
+			.setMaxLod(0.0f);
+		sampler = deviceWrapper.logicalDevice.createSampler(samplerInfo);
+
 		std::array<vk::DescriptorImageInfo, 1> descriptors;
 		descriptors[0]
 			.setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
 			.setImageView(lightfieldImageView)
-			.setSampler(nullptr);
+			.setSampler(sampler);
 
 		// desc set
 		vk::WriteDescriptorSet descBufferWrites = vk::WriteDescriptorSet()
 			.setDstSet(descSet)
 			.setDstBinding(0)
 			.setDstArrayElement(0)
-			.setDescriptorType(vk::DescriptorType::eInputAttachment)
+			.setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
 			.setDescriptorCount(descriptors.size())
 			//
 			.setPBufferInfo(nullptr)
@@ -167,7 +186,7 @@ public:
 	vk::ImageView lightfieldImageView, gradientsImageView, disparityImageView;
 	std::vector<vk::ImageView> lightfieldSingleImageViews; // one view for each cam to render into
 
-	// TODO: need separate desc sets for lightfield/gradients/disparity?
 	vk::DescriptorSetLayout descSetLayout;
 	vk::DescriptorSet descSet;
+	vk::Sampler sampler; // TODO: dealloc
 };

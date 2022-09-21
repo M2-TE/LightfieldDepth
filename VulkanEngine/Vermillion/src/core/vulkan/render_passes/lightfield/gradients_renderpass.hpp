@@ -23,8 +23,8 @@ public:
 		create_render_pass(info);
 		create_framebuffer(info);
 
-		create_desc_set_layout(info);
-		create_desc_set(info);
+		descSet = info.lightfield.descSet;
+		descSetLayout = info.lightfield.descSetLayout;
 
 		create_pipeline_layout(info);
 		create_pipeline(info);
@@ -44,9 +44,6 @@ public:
 
 		// Render Pass
 		deviceWrapper.logicalDevice.destroyRenderPass(renderPass);
-
-		// Descriptors
-		deviceWrapper.logicalDevice.destroyDescriptorSetLayout(descSetLayout);
 
 		// Stages
 		deviceWrapper.logicalDevice.destroyPipelineLayout(pipelineLayout);
@@ -78,18 +75,7 @@ private:
 	}
 	void create_render_pass(GradientsRenderpassCreateInfo& info)
 	{
-		std::array<vk::AttachmentDescription, 2> attachments = {
-			// Input
-			vk::AttachmentDescription()
-				.setFormat(colorFormat)
-				.setSamples(vk::SampleCountFlagBits::e1)
-				.setLoadOp(vk::AttachmentLoadOp::eLoad)
-				.setStoreOp(vk::AttachmentStoreOp::eDontCare)
-				.setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
-				.setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
-				.setInitialLayout(vk::ImageLayout::eColorAttachmentOptimal)
-				.setFinalLayout(vk::ImageLayout::eShaderReadOnlyOptimal),
-
+		std::array<vk::AttachmentDescription, 1> attachments = {
 			// Output
 			vk::AttachmentDescription()
 				.setFormat(vk::Format::eR32G32B32A32Sfloat)
@@ -103,12 +89,11 @@ private:
 		};
 
 		// Subpass Descriptions
-		vk::AttachmentReference input = vk::AttachmentReference(0, vk::ImageLayout::eShaderReadOnlyOptimal);
-		vk::AttachmentReference output = vk::AttachmentReference(1, vk::ImageLayout::eColorAttachmentOptimal);
+		vk::AttachmentReference output = vk::AttachmentReference(0, vk::ImageLayout::eColorAttachmentOptimal);
 		vk::SubpassDescription subpass = vk::SubpassDescription()
 			.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
 			.setPDepthStencilAttachment(nullptr)
-			.setInputAttachments(input).setColorAttachments(output);
+			.setColorAttachments(output);
 
 		// Subpass dependency
 		vk::SubpassDependency dependency = vk::SubpassDependency()
@@ -130,8 +115,7 @@ private:
 	}
 	void create_framebuffer(GradientsRenderpassCreateInfo& info)
 	{
-		std::array<vk::ImageView, 2> attachments = { 
-			info.lightfield.lightfieldImageView, 
+		std::array<vk::ImageView, 1> attachments = {
 			info.lightfield.gradientsImageView 
 		};
 
@@ -143,47 +127,6 @@ private:
 			.setLayers(1);
 
 		framebuffer = info.deviceWrapper.logicalDevice.createFramebuffer(framebufferInfo);
-	}
-
-	void create_desc_set_layout(GradientsRenderpassCreateInfo& info)
-	{
-		vk::DescriptorSetLayoutBinding setLayoutBinding = vk::DescriptorSetLayoutBinding()
-			.setBinding(0)
-			.setDescriptorCount(1)
-			.setDescriptorType(vk::DescriptorType::eInputAttachment)
-			.setStageFlags(vk::ShaderStageFlagBits::eFragment);
-
-		// create descriptor set layout from the bindings
-		vk::DescriptorSetLayoutCreateInfo createInfo = vk::DescriptorSetLayoutCreateInfo()
-			.setBindings(setLayoutBinding);
-
-		descSetLayout = info.deviceWrapper.logicalDevice.createDescriptorSetLayout(createInfo);
-	}
-	void create_desc_set(GradientsRenderpassCreateInfo& info)
-	{
-		// allocate the descriptor sets using descriptor pool
-		vk::DescriptorSetAllocateInfo allocInfo = vk::DescriptorSetAllocateInfo()
-			.setDescriptorPool(info.descPool)
-			.setDescriptorSetCount(1).setPSetLayouts(&descSetLayout);
-		descSet = info.deviceWrapper.logicalDevice.allocateDescriptorSets(allocInfo)[0];
-
-		vk::DescriptorImageInfo descriptor = vk::DescriptorImageInfo()
-			.setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
-			.setImageView(info.lightfield.lightfieldImageView)
-			.setSampler(nullptr);
-
-		// input image
-		vk::WriteDescriptorSet descBufferWrites = vk::WriteDescriptorSet()
-			.setDstSet(descSet)
-			.setDstBinding(0)
-			.setDstArrayElement(0)
-			.setDescriptorType(vk::DescriptorType::eInputAttachment)
-			//
-			.setPBufferInfo(nullptr)
-			.setImageInfo(descriptor)
-			.setPTexelBufferView(nullptr);
-
-		info.deviceWrapper.logicalDevice.updateDescriptorSets(descBufferWrites, {});
 	}
 
 	void create_pipeline_layout(GradientsRenderpassCreateInfo& info)
@@ -357,15 +300,15 @@ private:
 	vk::PipelineLayout pipelineLayout;
 	vk::PipelineCache pipelineCache; // TODO
 
-	// descriptor
-	vk::DescriptorSetLayout descSetLayout;
-	vk::DescriptorSet descSet;
-
 	// shaders for the subpasses
 	vk::ShaderModule vs, ps;
 
 	// render resources
 	vk::Framebuffer framebuffer;
+
+	// desc layout
+	vk::DescriptorSetLayout descSetLayout;
+	vk::DescriptorSet descSet;
 
 	// misc
 	vk::Rect2D fullscreenRect;
