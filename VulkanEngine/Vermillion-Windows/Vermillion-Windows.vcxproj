@@ -59,7 +59,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)Vermillion\src\core\;$(SolutionDir)Vermillion\src\pch\;$(SolutionDir)Vermillion\src\core\vulkan\;$(SolutionDir)Vermillion\vendor\glm\;$(SolutionDir)Vermillion\vendor\imgui\;$(SolutionDir)Vermillion\vendor\sdl\include\;$(SolutionDir)Vermillion\vendor\vma-hpp\include\;$(SolutionDir)Vermillion\vendor\entt\single_include\entt\;$(VULKAN_SDK)\Include\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Vermillion\src\core\;$(SolutionDir)Vermillion\src\pch\;$(SolutionDir)Vermillion\src\core\vulkan\;$(SolutionDir)Vermillion\vendor\stb\;$(SolutionDir)Vermillion\vendor\glm\;$(SolutionDir)Vermillion\vendor\imgui\;$(SolutionDir)Vermillion\vendor\sdl\include\;$(SolutionDir)Vermillion\vendor\vma-hpp\include\;$(SolutionDir)Vermillion\vendor\entt\single_include\entt\;$(VULKAN_SDK)\Include\</AdditionalIncludeDirectories>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.hpp</PrecompiledHeaderFile>
     </ClCompile>
@@ -79,7 +79,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)Vermillion\src\core\;$(SolutionDir)Vermillion\src\pch\;$(SolutionDir)Vermillion\src\core\vulkan\;$(SolutionDir)Vermillion\vendor\glm\;$(SolutionDir)Vermillion\vendor\imgui\;$(SolutionDir)Vermillion\vendor\sdl\include\;$(SolutionDir)Vermillion\vendor\vma-hpp\include\;$(SolutionDir)Vermillion\vendor\entt\single_include\entt\;$(VULKAN_SDK)\Include\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Vermillion\src\core\;$(SolutionDir)Vermillion\src\pch\;$(SolutionDir)Vermillion\src\core\vulkan\;$(SolutionDir)Vermillion\vendor\stb\;$(SolutionDir)Vermillion\vendor\glm\;$(SolutionDir)Vermillion\vendor\imgui\;$(SolutionDir)Vermillion\vendor\sdl\include\;$(SolutionDir)Vermillion\vendor\vma-hpp\include\;$(SolutionDir)Vermillion\vendor\entt\single_include\entt\;$(VULKAN_SDK)\Include\</AdditionalIncludeDirectories>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.hpp</PrecompiledHeaderFile>
     </ClCompile>

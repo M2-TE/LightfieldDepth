@@ -13,3 +13,6 @@
 [submodule "VulkanEngine/Vermillion/vendor/sdl"]
 	path = VulkanEngine/Vermillion/vendor/sdl
 	url = https://github.com/libsdl-org/SDL.git
+[submodule "VulkanEngine/Vermillion/vendor/stb"]
+	path = VulkanEngine/Vermillion/vendor/stb
+	url = https://github.com/nothings/stb.git

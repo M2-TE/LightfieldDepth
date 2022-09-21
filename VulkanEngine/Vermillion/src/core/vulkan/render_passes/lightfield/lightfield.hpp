@@ -1,5 +1,7 @@
 #pragma once
 
+#include "stb_image.h"
+
 struct LightfieldCreateInfo
 {
 	DeviceWrapper& deviceWrapper;
@@ -19,6 +21,7 @@ public:
 	{
 		create_images(info.allocator, info.swapchainWrapper);
 		create_image_views(info.deviceWrapper);
+		load_image_data(info.deviceWrapper);
 		create_desc_set_layout(info.deviceWrapper);
 		create_desc_set(info.deviceWrapper, info.descPool);
 	}
@@ -40,6 +43,13 @@ public:
 	}
 
 private:
+	void load_image_data(DeviceWrapper& deviceWrapper)
+	{
+		int x, y, n;
+		auto* img = stbi_load("testimage", &x, &y, &n, STBI_rgb_alpha);
+		if (!img) VMI_ERR("Error on img load");
+		int fileSize = x * y * n; 
+	}
 	void create_images(vma::Allocator& allocator, SwapchainWrapper& swapchainWrapper)
 	{
 		vk::ImageCreateInfo imageCreateInfo = vk::ImageCreateInfo()
