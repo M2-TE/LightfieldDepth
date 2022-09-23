@@ -21,7 +21,7 @@ public:
 	{
 		create_images(info.allocator, info.swapchainWrapper);
 		create_image_views(info.deviceWrapper);
-		load_image_data(info.deviceWrapper);
+		//load_image_data(info.deviceWrapper);
 		create_desc_set_layout(info.deviceWrapper);
 		create_desc_set(info.deviceWrapper, info.descPool);
 	}
@@ -43,12 +43,76 @@ public:
 	}
 
 private:
-	void load_image_data(DeviceWrapper& deviceWrapper)
+	void load_image_data(DeviceWrapper& deviceWrapper, vma::Allocator& allocator, vk::CommandPool& commandPool)
 	{
 		int x, y, n;
 		auto* img = stbi_load("testimage", &x, &y, &n, STBI_rgb_alpha);
 		if (!img) VMI_ERR("Error on img load");
-		int fileSize = x * y * n; 
+		vk::DeviceSize fileSize = x * y * n;
+
+		// staging buffer
+		vk::BufferCreateInfo bufferInfo = vk::BufferCreateInfo()
+			.setSize(fileSize)
+			.setUsage(vk::BufferUsageFlagBits::eTransferSrc);
+		vma::AllocationCreateInfo allocCreateInfo = vma::AllocationCreateInfo()
+			.setUsage(vma::MemoryUsage::eAuto)
+			.setFlags(vma::AllocationCreateFlagBits::eHostAccessSequentialWrite | vma::AllocationCreateFlagBits::eMapped);
+		vma::AllocationInfo allocInfo;
+		auto stagingBuffer = allocator.createBuffer(bufferInfo, allocCreateInfo, allocInfo);
+
+		// already mapped, so just copy over
+		memcpy(allocInfo.pMappedData, img, fileSize);
+
+		// copy from staging buffer to image
+		// memory transfer
+		{
+			vk::CommandBufferAllocateInfo allocInfo = vk::CommandBufferAllocateInfo()
+				.setLevel(vk::CommandBufferLevel::ePrimary)
+				.setCommandPool(commandPool)
+				.setCommandBufferCount(1);
+
+			vk::CommandBuffer commandBuffer;
+			auto res = deviceWrapper.logicalDevice.allocateCommandBuffers(&allocInfo, &commandBuffer);
+
+			// begin recording to temporary command buffer
+			vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo()
+				.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
+			commandBuffer.begin(beginInfo);
+
+			// TODO: describe subresource here, need to select each image in lightfield array individually
+			vk::BufferImageCopy region = vk::BufferImageCopy()
+				.setBufferImageHeight(y)
+				.setBufferRowLength(x)
+				.setBufferOffset(0)
+				.setImageSubresource(vk::ImageSubresourceLayers()
+					.setAspectMask(vk::ImageAspectFlagBits::eColor)
+					.setBaseArrayLayer(0 /*TODODODO*/)
+					.setLayerCount(1)
+					.setMipLevel(0))
+				.setImageExtent(vk::Extent3D(x, y, 9))
+				.setImageOffset(0)
+				;
+
+			vk::BufferCopy copyRegion = vk::BufferCopy()
+				.setSrcOffset(0)
+				.setDstOffset(0)
+				.setSize(fileSize);
+			commandBuffer.copyBufferToImage(stagingBuffer.first, lightfieldImage, vk::ImageLayout::eReadOnlyOptimal, region);
+			commandBuffer.end();
+
+			vk::SubmitInfo submitInfo = vk::SubmitInfo()
+				.setCommandBufferCount(1)
+				.setPCommandBuffers(&commandBuffer);
+			deviceWrapper.queue.submit(submitInfo);
+			deviceWrapper.queue.waitIdle(); // TODO: change this to wait on a fence instead (upon queue submit) so multiple memory transfers would be possible
+
+			// free command buffer directly after use
+			deviceWrapper.logicalDevice.freeCommandBuffers(commandPool, commandBuffer);
+		}
+
+		// clean up
+		allocator.destroyBuffer(stagingBuffer.first, stagingBuffer.second);
+		stbi_image_free(img);
 	}
 	void create_images(vma::Allocator& allocator, SwapchainWrapper& swapchainWrapper)
 	{
