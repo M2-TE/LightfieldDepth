@@ -8,8 +8,9 @@
 // matlab fdatool for 1D filters
 // library genesis .ru
 
+struct PCS { uint index; };
+[[vk::push_constant]] PCS pcs;
 Texture2DArray colBuffArr : register(t0);
-Texture2DArray colBuffArr2 : register(t1);
 
 float2 get_disparity(int3 texPos, int tapSize, float p[9], float d[9])
 {
@@ -82,9 +83,12 @@ float4 main(float4 screenPos : SV_Position) : SV_Target
     s /= totalConfidence;
     
     // derive depth from disparity (barebones)
-    float modA = 0.0f, modB = 10000000.0f;
-    float depth = 1.0f / (modA + modB * s_9.y);
+    float modA = 0.0f, modB = 10.0f;
+    float depth = 1.0f / (modA + modB * s_9.x);
 
-    //return float4(depth, depth, depth, 1.0f);
-    return colBuffArr[uint3(screenPos.xy, 1)];
+    if (pcs.index == 1)
+        return float4(0.0f, 0.0f, 0.0f, 0.0f);
+    else
+        return float4(depth, depth, depth, 1.0f);
+    //return colBuffArr[uint3(screenPos.xy, 1)];
 }

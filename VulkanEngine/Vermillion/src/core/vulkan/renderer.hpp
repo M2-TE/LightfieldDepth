@@ -77,7 +77,7 @@ public:
 		deallocate_entities(deviceWrapper, reg);
 		allocate_entities(deviceWrapper, reg);
 	}
-	void render(DeviceWrapper& deviceWrapper, entt::registry& reg)
+	void render(DeviceWrapper& deviceWrapper, entt::registry& reg, uint32_t iRenderMode)
 	{
 		// get next frame of sync objects
 		auto& syncFrame = syncFrames.get_next();
@@ -105,7 +105,7 @@ public:
 
 			// reset command pool and then record into it (using command buffer)
 			deviceWrapper.logicalDevice.resetCommandPool(syncFrame.commandPool);
-			record_command_buffer(reg, syncFrame.commandBuffer, iFrame);
+			record_command_buffer(reg, syncFrame.commandBuffer, iFrame, iRenderMode);
 		}
 
 		// Render (submit)
@@ -226,7 +226,7 @@ private:
 	{
 		systems::Geometry::deallocate(reg, allocator);
 	}
-	void record_command_buffer(entt::registry& reg, vk::CommandBuffer& commandBuffer, uint32_t iFrame)
+	void record_command_buffer(entt::registry& reg, vk::CommandBuffer& commandBuffer, uint32_t iFrame, uint32_t iRenderMode)
 	{
 		// setting up command buffer
 		vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo()
@@ -245,7 +245,7 @@ private:
 		//	forwardRenderpass.end(commandBuffer);
 		//}
 
-		gradientsRenderpass.execute(commandBuffer);
+		gradientsRenderpass.execute(commandBuffer, iRenderMode);
 		disparityRenderpass.execute(commandBuffer);
 
 		// direct write to swapchain image

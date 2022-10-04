@@ -58,7 +58,7 @@ private:
 	}
 	void render()
 	{
-		renderer.render(deviceManager.get_device_wrapper(), scene.reg);
+		renderer.render(deviceManager.get_device_wrapper(), scene.reg, iRenderMode);
 	}
 	void stall()
 	{
@@ -122,9 +122,12 @@ private:
 		if (input.keysPressed.count(SDLK_F10)) {
 			renderer.dump_mem_vma();
 		}
+		if (input.keysPressed.count(SDLK_F1)) iRenderMode = 0;
+		else if (input.keysPressed.count(SDLK_F2)) iRenderMode = 1;
+		else if (input.keysPressed.count(SDLK_F3)) iRenderMode = 2;
+		else if (input.keysPressed.count(SDLK_F4)) iRenderMode = 3;
 	}
 	
-	// TODO: fix bug with (win + shift + <-/->) crashing the app
 	void toggle_fullscreen()
 	{
 		if (fullscreenMode) {
@@ -152,6 +155,7 @@ private:
 	Renderer renderer;
 	Input input;
 	Scene scene;
+	uint32_t iRenderMode = 0;
 
 	bool bPaused = false;
 	uint32_t fullscreenMode = 0;
