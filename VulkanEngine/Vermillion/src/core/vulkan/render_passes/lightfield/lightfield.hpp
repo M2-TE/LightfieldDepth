@@ -8,6 +8,7 @@ struct LightfieldCreateInfo
 	SwapchainWrapper& swapchainWrapper;
 	vma::Allocator& allocator;
 	vk::DescriptorPool& descPool;
+	vk::CommandPool& commandPool;
 };
 class Lightfield
 {
@@ -21,7 +22,15 @@ public:
 	{
 		create_images(info.allocator, info.swapchainWrapper);
 		create_image_views(info.deviceWrapper);
-		//load_image_data(info.deviceWrapper);
+		load_image_data("cotton/input_Cam000.png", 0, info.deviceWrapper, info.allocator, info.commandPool);
+		load_image_data("cotton/input_Cam001.png", 1, info.deviceWrapper, info.allocator, info.commandPool);
+		load_image_data("cotton/input_Cam002.png", 2, info.deviceWrapper, info.allocator, info.commandPool);
+		load_image_data("cotton/input_Cam003.png", 3, info.deviceWrapper, info.allocator, info.commandPool);
+		load_image_data("cotton/input_Cam004.png", 4, info.deviceWrapper, info.allocator, info.commandPool);
+		load_image_data("cotton/input_Cam005.png", 5, info.deviceWrapper, info.allocator, info.commandPool);
+		load_image_data("cotton/input_Cam006.png", 6, info.deviceWrapper, info.allocator, info.commandPool);
+		load_image_data("cotton/input_Cam007.png", 7, info.deviceWrapper, info.allocator, info.commandPool);
+		load_image_data("cotton/input_Cam008.png", 8, info.deviceWrapper, info.allocator, info.commandPool);
 		create_desc_set_layout(info.deviceWrapper);
 		create_desc_set(info.deviceWrapper, info.descPool);
 	}
@@ -34,6 +43,7 @@ public:
 		deviceWrapper.logicalDevice.destroyImageView(lightfieldImageView);
 		deviceWrapper.logicalDevice.destroyImageView(gradientsImageView);
 		deviceWrapper.logicalDevice.destroyImageView(disparityImageView);
+		deviceWrapper.logicalDevice.destroySampler(sampler);
 
 		for (auto i = 0u; i < nCameras; i++) {
 			deviceWrapper.logicalDevice.destroyImageView(lightfieldSingleImageViews[i]);
@@ -43,77 +53,6 @@ public:
 	}
 
 private:
-	void load_image_data(DeviceWrapper& deviceWrapper, vma::Allocator& allocator, vk::CommandPool& commandPool)
-	{
-		int x, y, n;
-		auto* img = stbi_load("testimage", &x, &y, &n, STBI_rgb_alpha);
-		if (!img) VMI_ERR("Error on img load");
-		vk::DeviceSize fileSize = x * y * n;
-
-		// staging buffer
-		vk::BufferCreateInfo bufferInfo = vk::BufferCreateInfo()
-			.setSize(fileSize)
-			.setUsage(vk::BufferUsageFlagBits::eTransferSrc);
-		vma::AllocationCreateInfo allocCreateInfo = vma::AllocationCreateInfo()
-			.setUsage(vma::MemoryUsage::eAuto)
-			.setFlags(vma::AllocationCreateFlagBits::eHostAccessSequentialWrite | vma::AllocationCreateFlagBits::eMapped);
-		vma::AllocationInfo allocInfo;
-		auto stagingBuffer = allocator.createBuffer(bufferInfo, allocCreateInfo, allocInfo);
-
-		// already mapped, so just copy over
-		memcpy(allocInfo.pMappedData, img, fileSize);
-
-		// copy from staging buffer to image
-		// memory transfer
-		{
-			vk::CommandBufferAllocateInfo allocInfo = vk::CommandBufferAllocateInfo()
-				.setLevel(vk::CommandBufferLevel::ePrimary)
-				.setCommandPool(commandPool)
-				.setCommandBufferCount(1);
-
-			vk::CommandBuffer commandBuffer;
-			auto res = deviceWrapper.logicalDevice.allocateCommandBuffers(&allocInfo, &commandBuffer);
-
-			// begin recording to temporary command buffer
-			vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo()
-				.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
-			commandBuffer.begin(beginInfo);
-
-			// TODO: describe subresource here, need to select each image in lightfield array individually
-			vk::BufferImageCopy region = vk::BufferImageCopy()
-				.setBufferImageHeight(y)
-				.setBufferRowLength(x)
-				.setBufferOffset(0)
-				.setImageSubresource(vk::ImageSubresourceLayers()
-					.setAspectMask(vk::ImageAspectFlagBits::eColor)
-					.setBaseArrayLayer(0 /*TODODODO*/)
-					.setLayerCount(1)
-					.setMipLevel(0))
-				.setImageExtent(vk::Extent3D(x, y, 9))
-				.setImageOffset(0)
-				;
-
-			vk::BufferCopy copyRegion = vk::BufferCopy()
-				.setSrcOffset(0)
-				.setDstOffset(0)
-				.setSize(fileSize);
-			commandBuffer.copyBufferToImage(stagingBuffer.first, lightfieldImage, vk::ImageLayout::eReadOnlyOptimal, region);
-			commandBuffer.end();
-
-			vk::SubmitInfo submitInfo = vk::SubmitInfo()
-				.setCommandBufferCount(1)
-				.setPCommandBuffers(&commandBuffer);
-			deviceWrapper.queue.submit(submitInfo);
-			deviceWrapper.queue.waitIdle(); // TODO: change this to wait on a fence instead (upon queue submit) so multiple memory transfers would be possible
-
-			// free command buffer directly after use
-			deviceWrapper.logicalDevice.freeCommandBuffers(commandPool, commandBuffer);
-		}
-
-		// clean up
-		allocator.destroyBuffer(stagingBuffer.first, stagingBuffer.second);
-		stbi_image_free(img);
-	}
 	void create_images(vma::Allocator& allocator, SwapchainWrapper& swapchainWrapper)
 	{
 		vk::ImageCreateInfo imageCreateInfo = vk::ImageCreateInfo()
@@ -123,7 +62,7 @@ private:
 			.setMipLevels(1).setArrayLayers(nCameras)
 			.setSamples(vk::SampleCountFlagBits::e1)
 			.setTiling(vk::ImageTiling::eOptimal)
-			.setUsage(vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled)
+			.setUsage(vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst)
 			.setFormat(colorFormat);
 
 		vma::AllocationCreateInfo allocCreateInfo = vma::AllocationCreateInfo()
@@ -185,6 +124,92 @@ private:
 		imageViewInfo.setFormat(colorFormat);
 		imageViewInfo.setImage(disparityImage);
 		disparityImageView = deviceWrapper.logicalDevice.createImageView(imageViewInfo);
+	}
+	void layout_transition(vk::CommandPool commandPool, vk::ImageLayout from, vk::ImageLayout to)
+	{
+		// TODO
+	}
+	void load_image_data(const char* filename, uint32_t iCam, DeviceWrapper& deviceWrapper, vma::Allocator& allocator, vk::CommandPool& commandPool)
+	{
+		int x, y, n;
+		auto* img = stbi_load(filename, &x, &y, &n, STBI_rgb_alpha);
+		if (!img) VMI_ERR("Error on img load");
+		vk::DeviceSize fileSize = x * y * STBI_rgb_alpha;
+
+		// staging buffer
+		vk::BufferCreateInfo bufferInfo = vk::BufferCreateInfo()
+			.setSize(fileSize)
+			.setUsage(vk::BufferUsageFlagBits::eTransferSrc);
+		vma::AllocationCreateInfo allocCreateInfo = vma::AllocationCreateInfo()
+			.setUsage(vma::MemoryUsage::eAuto)
+			.setFlags(vma::AllocationCreateFlagBits::eHostAccessSequentialWrite | vma::AllocationCreateFlagBits::eMapped);
+		vma::AllocationInfo allocInfo;
+		auto stagingBuffer = allocator.createBuffer(bufferInfo, allocCreateInfo, allocInfo);
+
+		// already mapped, so just copy over
+		memcpy(allocInfo.pMappedData, img, fileSize);
+
+		// copy from staging buffer to image
+		// memory transfer
+		{
+			vk::CommandBufferAllocateInfo allocInfo = vk::CommandBufferAllocateInfo()
+				.setLevel(vk::CommandBufferLevel::ePrimary)
+				.setCommandPool(commandPool)
+				.setCommandBufferCount(1);
+
+			vk::CommandBuffer commandBuffer;
+			auto res = deviceWrapper.logicalDevice.allocateCommandBuffers(&allocInfo, &commandBuffer);
+
+			// begin recording to temporary command buffer
+			vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo()
+				.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
+			commandBuffer.begin(beginInfo);
+
+			// TODO: describe subresource here, need to select each image in lightfield array individually
+			vk::BufferImageCopy region = vk::BufferImageCopy()
+				// buffer
+				.setBufferRowLength(x)
+				.setBufferImageHeight(y)
+				.setBufferOffset(0)
+				// img
+				.setImageExtent(vk::Extent3D(x, y, 1))
+				.setImageOffset(0)
+				.setImageSubresource(vk::ImageSubresourceLayers()
+					.setAspectMask(vk::ImageAspectFlagBits::eColor)
+					.setBaseArrayLayer(iCam)
+					.setLayerCount(1)
+					.setMipLevel(0));
+
+			vk::ImageMemoryBarrier barrier = vk::ImageMemoryBarrier()
+				.setOldLayout(vk::ImageLayout::eUndefined)
+				.setNewLayout(vk::ImageLayout::eTransferDstOptimal)
+				.setImage(lightfieldImage)
+				.setSubresourceRange(vk::ImageSubresourceRange()
+					.setAspectMask(vk::ImageAspectFlagBits::eColor)
+					.setBaseArrayLayer(iCam)
+					.setLayerCount(1)
+					.setBaseMipLevel(0)
+					.setLevelCount(1));
+			commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eTransfer, {}, {}, {}, barrier);
+			commandBuffer.copyBufferToImage(stagingBuffer.first, lightfieldImage, vk::ImageLayout::eTransferDstOptimal, region);
+			barrier.oldLayout = vk::ImageLayout::eTransferDstOptimal;
+			barrier.newLayout = vk::ImageLayout::eReadOnlyOptimal;
+			commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eTransfer, {}, {}, {}, barrier);
+			commandBuffer.end();
+
+			vk::SubmitInfo submitInfo = vk::SubmitInfo()
+				.setCommandBufferCount(1)
+				.setPCommandBuffers(&commandBuffer);
+			deviceWrapper.queue.submit(submitInfo);
+			deviceWrapper.queue.waitIdle(); // TODO: change this to wait on a fence instead (upon queue submit) so multiple memory transfers would be possible
+
+			// free command buffer directly after use
+			deviceWrapper.logicalDevice.freeCommandBuffers(commandPool, commandBuffer);
+		}
+
+		// clean up
+		allocator.destroyBuffer(stagingBuffer.first, stagingBuffer.second);
+		stbi_image_free(img);
 	}
 
 	void create_desc_set_layout(DeviceWrapper& deviceWrapper)
@@ -262,5 +287,5 @@ public:
 
 	vk::DescriptorSetLayout descSetLayout;
 	vk::DescriptorSet descSet;
-	vk::Sampler sampler; // TODO: dealloc
+	vk::Sampler sampler;
 };

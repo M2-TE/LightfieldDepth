@@ -85,5 +85,6 @@ float4 main(float4 screenPos : SV_Position) : SV_Target
     float modA = 0.0f, modB = 10000000.0f;
     float depth = 1.0f / (modA + modB * s_9.y);
 
-    return float4(depth, depth, depth, 1.0f);
+    //return float4(depth, depth, depth, 1.0f);
+    return colBuffArr[uint3(screenPos.xy, 1)];
 }

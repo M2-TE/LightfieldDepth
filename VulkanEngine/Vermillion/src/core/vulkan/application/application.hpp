@@ -158,5 +158,5 @@ private:
 	//const uint32_t fullscreenModeTarget = SDL_WINDOW_FULLSCREEN;
 	const uint32_t fullscreenModeTarget = SDL_WINDOW_FULLSCREEN_DESKTOP;
 	std::pair<Sint32, Sint32> fullscreenResolution = { 1920, 1080 };
-	std::pair<Sint32, Sint32> windowedResolution = { 1280, 720 };
+	std::pair<Sint32, Sint32> windowedResolution = { 512, 512 };
 };
