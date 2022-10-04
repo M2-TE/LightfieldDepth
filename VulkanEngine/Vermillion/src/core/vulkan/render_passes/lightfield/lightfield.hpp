@@ -242,7 +242,7 @@ private:
 			.setMinFilter(vk::Filter::eNearest)
 			.setAnisotropyEnable(VK_FALSE) // not needed for now
 			.setMaxAnisotropy(0.0f)
-			.setUnnormalizedCoordinates(VK_TRUE) // makes fullscreen sampling easier
+			.setUnnormalizedCoordinates(VK_FALSE)
 			.setBorderColor(vk::BorderColor::eIntOpaqueBlack)
 			.setAddressModeU(vk::SamplerAddressMode::eClampToEdge)
 			.setAddressModeV(vk::SamplerAddressMode::eClampToEdge)
