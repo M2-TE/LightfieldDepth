@@ -1,21 +1,21 @@
 #define BRIGHTNESS(col) dot(col, float3(0.333333f, 0.333333f, 0.333333f)); // using standard greyscale
 #define BRIGHTNESS_REAL(col) dot(col, float3(0.299f, 0.587f, 0.114f)); // using luminance construction
 
-// mip-map/pyramid
-// closer far plane for cam matrix
-// how to 1D differentiator -> 2D differentiator? DFT bildbearbeitung sources?
-// another keyword: separable kernels?
-// matlab fdatool for 1D filters
-// library genesis .ru
+// cube rendern mit rausch/textur
+// -> schatten anpassen
+// heatmaps instead of black/white (nice to have)
+// lightfield w/o rotation
+// fill algorithm for 0.0f spots
+// rendermode for gradients - DONE
 
 struct PCS { uint index; };
 [[vk::push_constant]] PCS pcs;
 Texture2DArray colBuffArr : register(t0);
 
-float2 get_disparity(int3 texPos, int tapSize, float p[9], float d[9])
+float4 get_gradients(int3 texPos, int tapSize, float p[9], float d[9])
 {
     // cam-specific filters
-    float p_tap3[] = {  0.229879f, 0.540242f, 0.229879f };
+    float p_tap3[] = { 0.229879f, 0.540242f, 0.229879f };
     float d_tap3[] = { -0.425287f, 0.000000f, 0.425287f };
     
     // lightfield derivatives
@@ -51,9 +51,13 @@ float2 get_disparity(int3 texPos, int tapSize, float p[9], float d[9])
         }
     }
     
+    return float4(Lx, Ly, Lu, Lv);
+}
+float2 get_disparity(float4 gradients)
+{
     // get disparity and confidence
-    float a = Lx * Lu + Ly * Lv;
-    float confidence = Lx * Lx + Ly * Ly;
+    float a = gradients.x * gradients.z + gradients.y * gradients.w;
+    float confidence = gradients.x * gradients.x + gradients.y * gradients.y;
     float disparity = a / confidence;
     return float2(disparity, confidence);
 }
@@ -72,23 +76,51 @@ float4 main(float4 screenPos : SV_Position) : SV_Target
     float p_tap9[9] = {  0.000721f,  0.015486f,  0.090341f,    0.234494f, 0.317916f,    0.234494f, 0.090341f,    0.015486f, 0.000721f };
     float d_tap9[9] = { -0.003059f, -0.035187f, -0.118739f,   -0.143928f, 0.000000f,    0.143928f, 0.118739f,    0.035187f, 0.003059f };
 
-    // get disparity for current pixel using given filters (x is disparity s, y is confidence value)
-    float2 s_3 = get_disparity(texPos, 3, p_tap3, d_tap3);
-    float2 s_5 = get_disparity(texPos, 5, p_tap5, d_tap5);
-    float2 s_7 = get_disparity(texPos, 7, p_tap7, d_tap7);
-    float2 s_9 = get_disparity(texPos, 9, p_tap9, d_tap9);
+    //
+    float4 gradients = get_gradients(texPos, 3, p_tap3, d_tap3);
+    // get disparity for current pixel using given filters (x is disparity, y is confidence value)
+    float2 disparity = get_disparity(gradients);
     
-    float s = s_3.x * s_3.y + s_5.x * s_5.y + s_7.x * s_7.y + s_9.x * s_9.y;
-    float totalConfidence = s_3.y + s_5.y + s_7.y + s_9.y;
-    s /= totalConfidence;
+    //float2 s_3 = get_disparity(texPos, 5, p_tap5, d_tap5);
+    //float2 s_5 = get_disparity(texPos, 5, p_tap5, d_tap5);
+    //float2 s_7 = get_disparity(texPos, 7, p_tap7, d_tap7);
+    //float2 s_9 = get_disparity(texPos, 9, p_tap9, d_tap9);
     
-    // derive depth from disparity (barebones)
-    float modA = 0.0f, modB = 10.0f;
-    float depth = 1.0f / (modA + modB * s_9.x);
-
-    if (pcs.index == 1)
-        return float4(0.0f, 0.0f, 0.0f, 0.0f);
-    else
-        return float4(depth, depth, depth, 1.0f);
-    //return colBuffArr[uint3(screenPos.xy, 1)];
+    
+    //return s_3;
+    
+    float4 col = float4(0.0f, 0.0f, 0.0f, 1.0f);
+    if (pcs.index == 0) // middle view
+    {
+        col = colBuffArr[uint3(screenPos.xy, 4)];
+    }
+    else if (pcs.index == 1) // gradients view (Lx & Lu)
+    {
+        col = float4(gradients.x, gradients.z, 0.0f, 1.0f);
+    }
+    else if (pcs.index == 2) // gradients view (Ly, Lv)
+    {
+        col = float4(gradients.y, gradients.w, 0.0f, 1.0f);
+    }
+    else if (pcs.index == 3) // disparity view
+    {
+        float s = disparity.x;
+        col = float4(s, s, s, 1.0f);
+    }
+    else if (pcs.index == 4) // depth view
+    {
+        // derive depth from disparity (barebones)
+        float s = disparity.x;
+        float modA = 0.0f, modB = 100.0f;
+        float depth = 1.0f / (modA + modB * s);
+        col = float4(depth, depth, depth, 1.0f);
+    }
+    
+    // marks undefined areas as red
+    float cutoff = 0.0000001f;
+    if (col.x < cutoff && col.y < cutoff && col.z < cutoff)
+    {
+        //return float4(0.5f, 0.0f, 0.0f, 1.0f);
+    }
+    return col;
 }

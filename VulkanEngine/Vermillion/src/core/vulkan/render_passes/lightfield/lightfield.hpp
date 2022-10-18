@@ -22,15 +22,15 @@ public:
 	{
 		create_images(info.allocator, info.swapchainWrapper);
 		create_image_views(info.deviceWrapper);
-		load_image_data("cotton/input_Cam000.png", 0, info.deviceWrapper, info.allocator, info.commandPool);
-		load_image_data("cotton/input_Cam001.png", 1, info.deviceWrapper, info.allocator, info.commandPool);
-		load_image_data("cotton/input_Cam002.png", 2, info.deviceWrapper, info.allocator, info.commandPool);
-		load_image_data("cotton/input_Cam003.png", 3, info.deviceWrapper, info.allocator, info.commandPool);
-		load_image_data("cotton/input_Cam004.png", 4, info.deviceWrapper, info.allocator, info.commandPool);
-		load_image_data("cotton/input_Cam005.png", 5, info.deviceWrapper, info.allocator, info.commandPool);
-		load_image_data("cotton/input_Cam006.png", 6, info.deviceWrapper, info.allocator, info.commandPool);
-		load_image_data("cotton/input_Cam007.png", 7, info.deviceWrapper, info.allocator, info.commandPool);
-		load_image_data("cotton/input_Cam008.png", 8, info.deviceWrapper, info.allocator, info.commandPool);
+		load_image_data("cotton/input_Cam039.png", 0, info.deviceWrapper, info.allocator, info.commandPool);
+		load_image_data("cotton/input_Cam040.png", 3, info.deviceWrapper, info.allocator, info.commandPool);
+		load_image_data("cotton/input_Cam041.png", 6, info.deviceWrapper, info.allocator, info.commandPool);
+		load_image_data("cotton/input_Cam048.png", 1, info.deviceWrapper, info.allocator, info.commandPool);
+		load_image_data("cotton/input_Cam049.png", 4, info.deviceWrapper, info.allocator, info.commandPool);
+		load_image_data("cotton/input_Cam050.png", 7, info.deviceWrapper, info.allocator, info.commandPool);
+		load_image_data("cotton/input_Cam057.png", 2, info.deviceWrapper, info.allocator, info.commandPool);
+		load_image_data("cotton/input_Cam058.png", 5, info.deviceWrapper, info.allocator, info.commandPool);
+		load_image_data("cotton/input_Cam059.png", 8, info.deviceWrapper, info.allocator, info.commandPool);
 		create_desc_set_layout(info.deviceWrapper);
 		create_desc_set(info.deviceWrapper, info.descPool);
 	}
@@ -50,6 +50,21 @@ public:
 		}
 
 		deviceWrapper.logicalDevice.destroyDescriptorSetLayout(descSetLayout);
+	}
+	void layout_transition(vk::CommandBuffer& commandBuffer, vk::ImageLayout from, vk::ImageLayout to)
+	{
+		// change all 9 images
+		for (int i = 0; i < 9; i++) {
+			vk::ImageMemoryBarrier barrier = vk::ImageMemoryBarrier()
+				.setOldLayout(from)
+				.setNewLayout(to)
+				.setImage(lightfieldImage)
+				.setSubresourceRange(vk::ImageSubresourceRange()
+					.setAspectMask(vk::ImageAspectFlagBits::eColor)
+					.setBaseArrayLayer(i).setLayerCount(1)
+					.setBaseMipLevel(0).setLevelCount(1));
+			commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eTransfer, {}, {}, {}, barrier);
+		}
 	}
 
 private:
@@ -125,10 +140,6 @@ private:
 		imageViewInfo.setImage(disparityImage);
 		disparityImageView = deviceWrapper.logicalDevice.createImageView(imageViewInfo);
 	}
-	void layout_transition(vk::CommandPool commandPool, vk::ImageLayout from, vk::ImageLayout to)
-	{
-		// TODO
-	}
 	void load_image_data(const char* filename, uint32_t iCam, DeviceWrapper& deviceWrapper, vma::Allocator& allocator, vk::CommandPool& commandPool)
 	{
 		int x, y, n;
@@ -194,6 +205,7 @@ private:
 			commandBuffer.copyBufferToImage(stagingBuffer.first, lightfieldImage, vk::ImageLayout::eTransferDstOptimal, region);
 			barrier.oldLayout = vk::ImageLayout::eTransferDstOptimal;
 			barrier.newLayout = vk::ImageLayout::eReadOnlyOptimal;
+			//barrier.newLayout = vk::ImageLayout::eColorAttachmentOptimal;
 			commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eTransfer, {}, {}, {}, barrier);
 			commandBuffer.end();
 

@@ -86,9 +86,9 @@ private:
 		float d = 0.01f;
 		float z = 0.0f;
 		std::array<float2, nCams> offsets = {
-			float2( d,  d),
-			float2( d,  z),
-			float2( d, -d),
+			float2(d,  d),
+			float2(d,  z),
+			float2(d, -d),
 
 			float2( z,  d),
 			float2( z,  z),

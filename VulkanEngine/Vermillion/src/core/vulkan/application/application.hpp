@@ -126,6 +126,7 @@ private:
 		else if (input.keysPressed.count(SDLK_F2)) iRenderMode = 1;
 		else if (input.keysPressed.count(SDLK_F3)) iRenderMode = 2;
 		else if (input.keysPressed.count(SDLK_F4)) iRenderMode = 3;
+		else if (input.keysPressed.count(SDLK_F5)) iRenderMode = 4;
 	}
 	
 	void toggle_fullscreen()

@@ -234,16 +234,26 @@ private:
 			.setPInheritanceInfo(nullptr);
 		commandBuffer.begin(beginInfo);
 
-		// update camera buffer (and other buffers later)
-		//camera.update();
+		if (true)
+		{
+			// update camera buffer (and other buffers later)
+			camera.update();
 
-		// writing to lightfield (9 cams)
-		//for (auto i = 0u; i < 9; i++) {
-		//	forwardRenderpass.begin(commandBuffer, i);
-		//	forwardRenderpass.bind_desc_sets(commandBuffer, camera.get_desc_set(), i);
-		//	systems::Geometry::bind(reg, commandBuffer);
-		//	forwardRenderpass.end(commandBuffer);
-		//}
+			// transition lightfield images
+			lightfield.layout_transition(commandBuffer, vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal);
+
+			// writing to lightfield (9 cams)
+			for (auto i = 0u; i < 9; i++) {
+				forwardRenderpass.begin(commandBuffer, i);
+				forwardRenderpass.bind_desc_sets(commandBuffer, camera.get_desc_set(), i);
+				systems::Geometry::bind(reg, commandBuffer);
+				forwardRenderpass.end(commandBuffer);
+			}
+
+			// transition lightfield images
+			lightfield.layout_transition(commandBuffer, vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
+		}
+
 
 		gradientsRenderpass.execute(commandBuffer, iRenderMode);
 		disparityRenderpass.execute(commandBuffer);
