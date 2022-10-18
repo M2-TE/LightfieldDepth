@@ -5,7 +5,13 @@ enum class Primitive { eCube, eSphere };
 struct Vertex
 {
 public:
-	Vertex(float4 pos, float4 col, float4 norm) : pos(pos), col(col), norm(norm) {}
+	Vertex(float4 pos, float4 col, float4 norm, float2 uv = float2(1.0f, 0.0f)) : 
+		pos(pos), 
+		col(col.x, col.y, col.z, uv.x), 
+		norm(norm.x, norm.y, norm.z, uv.y) 
+	{
+		// hiding uv in w of col and norm
+	}
 
 public:
 	static vk::VertexInputBindingDescription get_binding_desc()
@@ -66,52 +72,54 @@ namespace components
 			const float4 green = float4(0.0f, 1.0f, 0.0f, 1.0f);
 			const float4 blue = float4(0.0f, 0.0f, 1.0f, 1.0f);
 
+			const float tiling = 10.0f;
+
 			// todo: calc the vertices using rotations of a single surface?
 			vertices = {
 				// right
-				Vertex(float4(p, n, n, 1.0f), white, float4(p, z, z, z)),
-				Vertex(float4(p, n, p, 1.0f), white, float4(p, z, z, z)),
-				Vertex(float4(p, p, n, 1.0f), red  , float4(p, z, z, z)),
-				Vertex(float4(p, p, p, 1.0f), red  , float4(p, z, z, z)),
+				Vertex(float4(p, n, n, 1.0f), white, float4(p, z, z, z), float2(0.0f, 0.0f)),
+				Vertex(float4(p, n, p, 1.0f), white, float4(p, z, z, z), float2(tiling, 0.0f)),
+				Vertex(float4(p, p, n, 1.0f), red  , float4(p, z, z, z), float2(0.0f, tiling)),
+				Vertex(float4(p, p, p, 1.0f), red  , float4(p, z, z, z), float2(tiling, tiling)),
 
 				// left
-				Vertex(float4(n, n, n, 1.0f), white, float4(n, z, z, z)),
-				Vertex(float4(n, p, n, 1.0f), white, float4(n, z, z, z)),
-				Vertex(float4(n, n, p, 1.0f), red  , float4(n, z, z, z)),
-				Vertex(float4(n, p, p, 1.0f), red  , float4(n, z, z, z)),
+				Vertex(float4(n, n, n, 1.0f), white, float4(n, z, z, z), float2(0.0f, 0.0f)),
+				Vertex(float4(n, p, n, 1.0f), white, float4(n, z, z, z), float2(tiling, 0.0f)),
+				Vertex(float4(n, n, p, 1.0f), red  , float4(n, z, z, z), float2(0.0f, tiling)),
+				Vertex(float4(n, p, p, 1.0f), red  , float4(n, z, z, z), float2(tiling, tiling)),
 
 				// bottom
-				Vertex(float4(n, p, n, 1.0f), white, float4(z, p, z, z)),
-				Vertex(float4(p, p, n, 1.0f), white, float4(z, p, z, z)),
-				Vertex(float4(n, p, p, 1.0f), red  , float4(z, p, z, z)),
-				Vertex(float4(p, p, p, 1.0f), red  , float4(z, p, z, z)),
+				Vertex(float4(n, p, n, 1.0f), white, float4(z, p, z, z), float2(0.0f, 0.0f)),
+				Vertex(float4(p, p, n, 1.0f), white, float4(z, p, z, z), float2(tiling, 0.0f)),
+				Vertex(float4(n, p, p, 1.0f), red  , float4(z, p, z, z), float2(0.0f, tiling)),
+				Vertex(float4(p, p, p, 1.0f), red  , float4(z, p, z, z), float2(tiling, tiling)),
 
 				// top
-				Vertex(float4(n, n, n, 1.0f), white, float4(z, n, z, z)),
-				Vertex(float4(n, n, p, 1.0f), white, float4(z, n, z, z)),
-				Vertex(float4(p, n, n, 1.0f), red  , float4(z, n, z, z)),
-				Vertex(float4(p, n, p, 1.0f), red  , float4(z, n, z, z)),
+				Vertex(float4(n, n, n, 1.0f), white, float4(z, n, z, z), float2(0.0f, 0.0f)),
+				Vertex(float4(n, n, p, 1.0f), white, float4(z, n, z, z), float2(tiling, 0.0f)),
+				Vertex(float4(p, n, n, 1.0f), red  , float4(z, n, z, z), float2(0.0f, tiling)),
+				Vertex(float4(p, n, p, 1.0f), red  , float4(z, n, z, z), float2(tiling, tiling)),
 
 				// forward
-				Vertex(float4(n, n, p, 1.0f), white, float4(z, z, p, z)),
-				Vertex(float4(n, p, p, 1.0f), white, float4(z, z, p, z)),
-				Vertex(float4(p, n, p, 1.0f), red  , float4(z, z, p, z)),
-				Vertex(float4(p, p, p, 1.0f), red  , float4(z, z, p, z)),
+				Vertex(float4(n, n, p, 1.0f), white, float4(z, z, p, z), float2(0.0f, 0.0f)),
+				Vertex(float4(n, p, p, 1.0f), white, float4(z, z, p, z), float2(tiling, 0.0f)),
+				Vertex(float4(p, n, p, 1.0f), red  , float4(z, z, p, z), float2(0.0f, tiling)),
+				Vertex(float4(p, p, p, 1.0f), red  , float4(z, z, p, z), float2(tiling, tiling)),
 
 				// backward
-				Vertex(float4(n, n, n, 1.0f), white, float4(z, z, n, z)),
-				Vertex(float4(p, n, n, 1.0f), white, float4(z, z, n, z)),
-				Vertex(float4(n, p, n, 1.0f), red  , float4(z, z, n, z)),
-				Vertex(float4(p, p, n, 1.0f), red  , float4(z, z, n, z)),
+				Vertex(float4(n, n, n, 1.0f), white, float4(z, z, n, z), float2(0.0f, 0.0f)),
+				Vertex(float4(p, n, n, 1.0f), white, float4(z, z, n, z), float2(tiling, 0.0f)),
+				Vertex(float4(n, p, n, 1.0f), red  , float4(z, z, n, z), float2(0.0f, tiling)),
+				Vertex(float4(p, p, n, 1.0f), red  , float4(z, z, n, z), float2(tiling, tiling)),
 			};
 
 			indices = {
-			0,  1,  2,  2,  1,  3,
-			4,  5,  6,  6,  5,  7,
-			8,  9,  10, 10, 9,  11,
-			12, 13, 14, 14, 13, 15,
-			16, 17, 18, 18, 17, 19,
-			20, 21, 22, 22, 21, 23,
+				0,  1,  2,  2,  1,  3,
+				4,  5,  6,  6,  5,  7,
+				8,  9,  10, 10, 9,  11,
+				12, 13, 14, 14, 13, 15,
+				16, 17, 18, 18, 17, 19,
+				20, 21, 22, 22, 21, 23,
 			};
 		}
 		void set_sphere()

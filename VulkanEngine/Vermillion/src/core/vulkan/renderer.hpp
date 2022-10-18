@@ -234,6 +234,7 @@ private:
 			.setPInheritanceInfo(nullptr);
 		commandBuffer.begin(beginInfo);
 
+		// manually switching between rendering geometry vs reading image data
 		if (true)
 		{
 			// update camera buffer (and other buffers later)
@@ -253,7 +254,6 @@ private:
 			// transition lightfield images
 			lightfield.layout_transition(commandBuffer, vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
 		}
-
 
 		gradientsRenderpass.execute(commandBuffer, iRenderMode);
 		disparityRenderpass.execute(commandBuffer);

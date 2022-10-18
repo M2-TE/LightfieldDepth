@@ -1,7 +1,7 @@
 #define BRIGHTNESS(col) dot(col, float3(0.333333f, 0.333333f, 0.333333f)); // using standard greyscale
 #define BRIGHTNESS_REAL(col) dot(col, float3(0.299f, 0.587f, 0.114f)); // using luminance construction
 
-// cube rendern mit rausch/textur
+// cube rendern mit rausch/textur - DONE
 // -> schatten anpassen
 // heatmaps instead of black/white (nice to have)
 // lightfield w/o rotation

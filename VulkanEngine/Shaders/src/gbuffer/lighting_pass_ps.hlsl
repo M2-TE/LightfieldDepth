@@ -7,6 +7,12 @@ float4 main() : SV_Target
     float4 pos = gPos.SubpassLoad();
     float4 col = gCol.SubpassLoad();
     float4 normal = gNorm.SubpassLoad();
+    float2 uv = float2(col.w, normal.w);
+    
+    // TODO: noise color based on uv
+    col = float4(uv.x, uv.y, 0.0f, 1.0f);
+    //
+    
     
     float3 lightPos = float3(5.0f, -5.0f, -5.0f); // hard coded point light
     float3 dir = lightPos - pos.xyz;
