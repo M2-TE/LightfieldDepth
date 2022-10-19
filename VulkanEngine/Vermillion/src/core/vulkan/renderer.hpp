@@ -20,14 +20,14 @@ public:
 	ROF_COPY_MOVE_DELETE(Renderer)
 
 public:
-	void init(DeviceWrapper& deviceWrapper, Window& window)
+	void init(DeviceWrapper& deviceWrapper, Window& window, const char* lightfieldDir)
 	{
 		VMI_LOG("[Initializing] Renderer...");
 		create_vma_allocator(deviceWrapper, window);
 		create_descriptor_pools(deviceWrapper);
 		create_command_pools(deviceWrapper);
 
-		create_KHR(deviceWrapper, window);
+		create_KHR(deviceWrapper, window, lightfieldDir);
 		syncFrames.set_size(swapchainWrapper.nImages).init(deviceWrapper);
 
 		imguiWrapper.init(deviceWrapper, window, swapchainWriteRenderpass.get_render_pass(), syncFrames);
@@ -51,7 +51,7 @@ public:
 	}
 
 	// runtime
-	void recreate_KHR(DeviceWrapper& deviceWrapper, Window& window, bool bForceRebuild) // TODO use better approach of recreating swapchain using old swapchain pointer
+	void recreate_KHR(DeviceWrapper& deviceWrapper, Window& window, bool bForceRebuild, const char* lightfieldDir) // TODO use better approach of recreating swapchain using old swapchain pointer
 	{
 		// check if resize is necessary
 		Sint32 w, h;
@@ -61,7 +61,7 @@ public:
 			VMI_LOG("Rebuilding KHR");
 			deviceWrapper.logicalDevice.waitIdle();
 			destroy_KHR(deviceWrapper);
-			create_KHR(deviceWrapper, window);
+			create_KHR(deviceWrapper, window, lightfieldDir);
 		}
 	}
 	void dump_mem_vma()
@@ -183,13 +183,13 @@ private:
 			.setFlags(vk::CommandPoolCreateFlagBits::eTransient);
 		transientCommandPool = deviceWrapper.logicalDevice.createCommandPool(commandPoolInfo);
 	}
-	void create_KHR(DeviceWrapper& deviceWrapper, Window& window)
+	void create_KHR(DeviceWrapper& deviceWrapper, Window& window, const char* lightfieldDir)
 	{
 		swapchainWrapper.init(deviceWrapper, window);
 		camera.init(deviceWrapper, allocator, descPool, swapchainWrapper);
 
 		// 9 camera views, along with disparity and gradient maps
-		LightfieldCreateInfo lightfieldInfo = { deviceWrapper, swapchainWrapper, allocator, descPool, transientCommandPool };
+		LightfieldCreateInfo lightfieldInfo = { deviceWrapper, swapchainWrapper, allocator, descPool, transientCommandPool, lightfieldDir };
 		lightfield.init(lightfieldInfo);
 
 		// create lightfield and the renderpass that writes to it
@@ -235,7 +235,7 @@ private:
 		commandBuffer.begin(beginInfo);
 
 		// manually switching between rendering geometry vs reading image data
-		if (true)
+		if (false)
 		{
 			// update camera buffer (and other buffers later)
 			camera.update();

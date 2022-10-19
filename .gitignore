@@ -403,5 +403,4 @@ VulkanEngine/Vermillion/src/core/shaders/
 # vma memory dump outputs
 *\stats.jpg
 *\vma_stats.json
-VulkanEngine/Vermillion-Windows/cotton/gt_disp_highres.pfm
-VulkanEngine/Vermillion-Windows/cotton/gt_depth_highres.pfm
+VulkanEngine/Vermillion-Windows/lightfields/*

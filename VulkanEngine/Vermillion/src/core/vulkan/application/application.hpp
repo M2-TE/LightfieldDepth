@@ -18,7 +18,7 @@ public:
 
 		window.init(fullscreenMode ? fullscreenResolution : windowedResolution, fullscreenMode);
 		deviceManager.init(window.get_vulkan_instance(), window.get_vulkan_surface());
-		renderer.init(deviceManager.get_device_wrapper(), window);
+		renderer.init(deviceManager.get_device_wrapper(), window, std::string("lightfields/").append(mainFolder).append(subFolder).c_str());
 		scene.init();
 		VMI_LOG("[Initialization Complete]" << std::endl);
 	}
@@ -74,7 +74,29 @@ private:
 	}
 	void imgui_end()
 	{
-		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+		switch (iRenderMode) {
+			case 0: ImGui::Text("Current render mode: Color - RGB"); break;
+			case 1: ImGui::Text("Current render mode: Gradients Horizontal - RG"); break;
+			case 2: ImGui::Text("Current render mode: Gradients Vertical - RG"); break;
+			case 3: ImGui::Text("Current render mode: Disparity - Heatmap RGB"); break;
+			case 4: ImGui::Text("Current render mode: Depth - Heatmap RGB"); break;
+		}
+		ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+
+		// TODO: load all folder names in "lightfields" dynamically
+		const char* mainFolderPaths[] = { "additional", "stratified", "test", "training" };
+		bool bMain = ImGui::ListBox("Main Folder", &iMainFolder, mainFolderPaths, std::size(mainFolderPaths), 2);
+
+		// TODO: load all folder names within current mainFolder and offer them as options
+		const char* subFolderPaths[] = { "cotton", "boxes"};
+		bool bSub = ImGui::ListBox("Sub Folder", &iSubFolder, subFolderPaths, std::size(subFolderPaths), 2);
+
+		if (bMain || bSub) {
+			mainFolder.assign(mainFolderPaths[iMainFolder]).append("/");
+			subFolder.assign(subFolderPaths[iSubFolder]).append("/");
+			resize(true);
+		}
+
 		ImGui::EndFrame();
 	}
 	bool poll_inputs()
@@ -147,7 +169,7 @@ private:
 		Sint32 w, h;
 		SDL_GetWindowSize(window.get_window(), &w, &h);
 		VMI_LOG("Attempting swapchain rebuild: (" << bForceRebuild << ") " << w << "x" << h);
-		renderer.recreate_KHR(deviceManager.get_device_wrapper(), window, bForceRebuild);
+		renderer.recreate_KHR(deviceManager.get_device_wrapper(), window, bForceRebuild, std::string("lightfields/").append(mainFolder).append(subFolder).c_str());
 	}
 
 private:
@@ -157,6 +179,11 @@ private:
 	Input input;
 	Scene scene;
 	uint32_t iRenderMode = 0;
+
+	// lightfield data directory
+	int iMainFolder = 0, iSubFolder = 0;
+	std::string mainFolder = "training/";
+	std::string subFolder = "cotton/";
 
 	bool bPaused = false;
 	uint32_t fullscreenMode = 0;

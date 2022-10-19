@@ -9,6 +9,7 @@ struct LightfieldCreateInfo
 	vma::Allocator& allocator;
 	vk::DescriptorPool& descPool;
 	vk::CommandPool& commandPool;
+	std::string srcFolder;
 };
 class Lightfield
 {
@@ -22,15 +23,16 @@ public:
 	{
 		create_images(info.allocator, info.swapchainWrapper);
 		create_image_views(info.deviceWrapper);
-		load_image_data("cotton/input_Cam039.png", 0, info.deviceWrapper, info.allocator, info.commandPool);
-		load_image_data("cotton/input_Cam040.png", 3, info.deviceWrapper, info.allocator, info.commandPool);
-		load_image_data("cotton/input_Cam041.png", 6, info.deviceWrapper, info.allocator, info.commandPool);
-		load_image_data("cotton/input_Cam048.png", 1, info.deviceWrapper, info.allocator, info.commandPool);
-		load_image_data("cotton/input_Cam049.png", 4, info.deviceWrapper, info.allocator, info.commandPool);
-		load_image_data("cotton/input_Cam050.png", 7, info.deviceWrapper, info.allocator, info.commandPool);
-		load_image_data("cotton/input_Cam057.png", 2, info.deviceWrapper, info.allocator, info.commandPool);
-		load_image_data("cotton/input_Cam058.png", 5, info.deviceWrapper, info.allocator, info.commandPool);
-		load_image_data("cotton/input_Cam059.png", 8, info.deviceWrapper, info.allocator, info.commandPool);
+		std::string folder;
+		load_image_data(folder.assign(info.srcFolder).append("input_Cam039.png").c_str(), 0, info.deviceWrapper, info.allocator, info.commandPool);
+		load_image_data(folder.assign(info.srcFolder).append("input_Cam048.png").c_str(), 1, info.deviceWrapper, info.allocator, info.commandPool);
+		load_image_data(folder.assign(info.srcFolder).append("input_Cam057.png").c_str(), 2, info.deviceWrapper, info.allocator, info.commandPool);
+		load_image_data(folder.assign(info.srcFolder).append("input_Cam040.png").c_str(), 3, info.deviceWrapper, info.allocator, info.commandPool);
+		load_image_data(folder.assign(info.srcFolder).append("input_Cam049.png").c_str(), 4, info.deviceWrapper, info.allocator, info.commandPool);
+		load_image_data(folder.assign(info.srcFolder).append("input_Cam058.png").c_str(), 5, info.deviceWrapper, info.allocator, info.commandPool);
+		load_image_data(folder.assign(info.srcFolder).append("input_Cam041.png").c_str(), 6, info.deviceWrapper, info.allocator, info.commandPool);
+		load_image_data(folder.assign(info.srcFolder).append("input_Cam050.png").c_str(), 7, info.deviceWrapper, info.allocator, info.commandPool);
+		load_image_data(folder.assign(info.srcFolder).append("input_Cam059.png").c_str(), 8, info.deviceWrapper, info.allocator, info.commandPool);
 		create_desc_set_layout(info.deviceWrapper);
 		create_desc_set(info.deviceWrapper, info.descPool);
 	}
@@ -144,7 +146,20 @@ private:
 	{
 		int x, y, n;
 		auto* img = stbi_load(filename, &x, &y, &n, STBI_rgb_alpha);
-		if (!img) VMI_ERR("Error on img load");
+		if (!img) {
+			VMI_ERR("Error on img load: Camera " << iCam << " with path: " << filename);
+			switch (iCam) {
+				case 0: img = stbi_load("lightfields/training/cotton/input_Cam039.png", &x, &y, &n, STBI_rgb_alpha); break;
+				case 1: img = stbi_load("lightfields/training/cotton/input_Cam048.png", &x, &y, &n, STBI_rgb_alpha); break;
+				case 2: img = stbi_load("lightfields/training/cotton/input_Cam057.png", &x, &y, &n, STBI_rgb_alpha); break;
+				case 3: img = stbi_load("lightfields/training/cotton/input_Cam040.png", &x, &y, &n, STBI_rgb_alpha); break;
+				case 4: img = stbi_load("lightfields/training/cotton/input_Cam049.png", &x, &y, &n, STBI_rgb_alpha); break;
+				case 5: img = stbi_load("lightfields/training/cotton/input_Cam058.png", &x, &y, &n, STBI_rgb_alpha); break;
+				case 6: img = stbi_load("lightfields/training/cotton/input_Cam041.png", &x, &y, &n, STBI_rgb_alpha); break;
+				case 7: img = stbi_load("lightfields/training/cotton/input_Cam050.png", &x, &y, &n, STBI_rgb_alpha); break;
+				case 8: img = stbi_load("lightfields/training/cotton/input_Cam059.png", &x, &y, &n, STBI_rgb_alpha); break;
+			}
+		}
 		vk::DeviceSize fileSize = x * y * STBI_rgb_alpha;
 
 		// staging buffer

@@ -10,7 +10,6 @@ float4 main(Input input) : SV_Target
     float3 color = input.color.rgb;
     float2 uv = float2(input.color.w, input.normal.w);
     
-    
     // noise color based on uv
     float2 integers;
     float2 fractionals = modf(uv, integers);

@@ -2,11 +2,12 @@
 #define BRIGHTNESS_REAL(col) dot(col, float3(0.299f, 0.587f, 0.114f)); // using luminance construction
 
 // cube rendern mit rausch/textur - DONE
-// -> schatten anpassen
-// heatmaps instead of black/white (nice to have)
-// lightfield w/o rotation
+// -> schatten anpassen (-DONE..?)
+// heatmaps instead of black/white - DONE
 // fill algorithm for 0.0f spots
+// lightfield w/o rotation - DONE
 // rendermode for gradients - DONE
+// EXTRA: show current render mode + extra info in UI - DONE
 
 struct PCS { uint index; };
 [[vk::push_constant]] PCS pcs;
@@ -78,6 +79,7 @@ float4 main(float4 screenPos : SV_Position) : SV_Target
 
     //
     float4 gradients = get_gradients(texPos, 3, p_tap3, d_tap3);
+    //float4 gradients = get_gradients(texPos, 9, p_tap9, d_tap9);
     // get disparity for current pixel using given filters (x is disparity, y is confidence value)
     float2 disparity = get_disparity(gradients);
     
@@ -105,15 +107,23 @@ float4 main(float4 screenPos : SV_Position) : SV_Target
     else if (pcs.index == 3) // disparity view
     {
         float s = disparity.x;
-        col = float4(s, s, s, 1.0f);
+        //col = float4(s, s, s, 1.0f);
+        
+        // heatmap view (https://www.shadertoy.com/view/WslGRN)
+        float heatLvl = s * 3.14159265 / 2;
+        col = float4(sin(heatLvl), sin(heatLvl * 2), cos(heatLvl), 1.0f);
     }
     else if (pcs.index == 4) // depth view
     {
         // derive depth from disparity (barebones)
         float s = disparity.x;
-        float modA = 0.0f, modB = 100.0f;
+        float modA = 0.0f, modB = 1.0f;
         float depth = 1.0f / (modA + modB * s);
-        col = float4(depth, depth, depth, 1.0f);
+        //col = float4(depth, depth, depth, 1.0f);
+        
+        // heatmap view (https://www.shadertoy.com/view/WslGRN)
+        float heatLvl = depth * 3.14159265 / 2;
+        col = float4(sin(heatLvl), sin(heatLvl * 2), cos(heatLvl), 1.0f);
     }
     
     // marks undefined areas as red
