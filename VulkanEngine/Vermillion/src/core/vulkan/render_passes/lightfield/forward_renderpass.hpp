@@ -211,7 +211,7 @@ private:
 			// Vertex Input descriptor
 			vertexInputInfo = vk::PipelineVertexInputStateCreateInfo()
 				.setVertexBindingDescriptionCount(1).setVertexBindingDescriptions(bindingDesc)
-				.setVertexAttributeDescriptionCount(attrDesc.size()).setVertexAttributeDescriptions(attrDesc);
+				.setVertexAttributeDescriptionCount((uint32_t)attrDesc.size()).setVertexAttributeDescriptions(attrDesc);
 
 			// Input Assembly
 			inputAssemplyInfo = vk::PipelineInputAssemblyStateCreateInfo()
@@ -310,7 +310,7 @@ private:
 
 		// Finally, create actual render pipeline
 		vk::GraphicsPipelineCreateInfo graphicsPipelineInfo = vk::GraphicsPipelineCreateInfo()
-			.setStageCount(shaderStages.size())
+			.setStageCount((uint32_t)shaderStages.size())
 			.setPStages(shaderStages.data())
 			// fixed-function stages
 			.setPVertexInputState(&vertexInputInfo)

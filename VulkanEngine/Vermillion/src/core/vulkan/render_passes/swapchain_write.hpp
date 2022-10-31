@@ -324,7 +324,7 @@ private:
 
 		// Finally, create actual render pipeline
 		vk::GraphicsPipelineCreateInfo graphicsPipelineInfo = vk::GraphicsPipelineCreateInfo()
-			.setStageCount(shaderStages.size())
+			.setStageCount((uint32_t)shaderStages.size())
 			.setPStages(shaderStages.data())
 			// fixed-function stages
 			.setPVertexInputState(&vertexInputInfo)

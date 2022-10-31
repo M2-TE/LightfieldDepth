@@ -50,7 +50,7 @@ public:
 		deviceWrapper.logicalDevice.destroyPipeline(graphicsPipeline);
 	}
 
-	void execute(vk::CommandBuffer& commandBuffer, uint32_t iRenderMode)
+	void execute(vk::CommandBuffer& commandBuffer, PC pushConstant)
 	{
 		vk::RenderPassBeginInfo renderPassBeginInfo = vk::RenderPassBeginInfo()
 			.setRenderPass(renderPass)
@@ -61,7 +61,9 @@ public:
 		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline);
 
 		// draw fullscreen triangle
-		commandBuffer.pushConstants<uint32_t>(pipelineLayout, vk::ShaderStageFlagBits::eFragment, 0, iRenderMode);
+		commandBuffer.pushConstants<PC>(pipelineLayout, vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
+
+		//commandBuffer.pushConstants<uint32_t>(pipelineLayout, vk::ShaderStageFlagBits::eFragment, 0, iRenderMode);
 		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, descSet, {});
 		commandBuffer.draw(3, 1, 0, 0);
 
@@ -132,7 +134,7 @@ private:
 
 	void create_pipeline_layout(GradientsRenderpassCreateInfo& info)
 	{
-		vk::PushConstantRange pcr(vk::ShaderStageFlagBits::eFragment, 0, 4);
+		vk::PushConstantRange pcr(vk::ShaderStageFlagBits::eFragment, 0, sizeof(PC));
 		vk::PipelineLayoutCreateInfo pipelineLayoutInfo = vk::PipelineLayoutCreateInfo()
 			.setSetLayouts(descSetLayout)
 			.setPushConstantRanges(pcr);
@@ -263,7 +265,7 @@ private:
 
 		// Finally, create actual render pipeline
 		vk::GraphicsPipelineCreateInfo graphicsPipelineInfo = vk::GraphicsPipelineCreateInfo()
-			.setStageCount(shaderStages.size())
+			.setStageCount((uint32_t)shaderStages.size())
 			.setPStages(shaderStages.data())
 			// fixed-function stages
 			.setPVertexInputState(&vertexInputInfo)

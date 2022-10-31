@@ -127,7 +127,7 @@ namespace components
 			static constexpr float4 white = float4(1.0f, 1.0f, 1.0f, 1.0f);
 			static constexpr float M = 50.0f;
 			static constexpr float N = 50.0f;
-			static constexpr float pi = M_PI;
+			static constexpr float pi = (float)M_PI;
 
 			// TODO: reserve space for vertices/indices?
 			for (float m = 0; m <= M; m++) {
@@ -190,7 +190,7 @@ namespace systems
 						vk::BufferUsageFlagBits::eIndexBuffer);
 				vma::AllocationCreateInfo allocCreateInfo = vma::AllocationCreateInfo()
 					.setUsage(vma::MemoryUsage::eAutoPreferDevice);
-				allocator.createBuffer(&bufferInfo, &allocCreateInfo, &geometry.buffer, &geometry.alloc, nullptr);
+				vk::Result result = allocator.createBuffer(&bufferInfo, &allocCreateInfo, &geometry.buffer, &geometry.alloc, nullptr);
 
 				// staging buffer
 				bufferInfo = vk::BufferCreateInfo()

@@ -251,7 +251,7 @@ private:
 
 		// create descriptor set layout from the bindings
 		vk::DescriptorSetLayoutCreateInfo createInfo = vk::DescriptorSetLayoutCreateInfo()
-			.setBindingCount(setLayoutBindings.size())
+			.setBindingCount((uint32_t)setLayoutBindings.size())
 			.setPBindings(setLayoutBindings.data());
 		descSetLayout = deviceWrapper.logicalDevice.createDescriptorSetLayout(createInfo);
 	}
@@ -294,7 +294,7 @@ private:
 			.setDstBinding(0)
 			.setDstArrayElement(0)
 			.setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
-			.setDescriptorCount(descriptors.size())
+			.setDescriptorCount((uint32_t)descriptors.size())
 			//
 			.setPBufferInfo(nullptr)
 			.setPImageInfo(descriptors.data())

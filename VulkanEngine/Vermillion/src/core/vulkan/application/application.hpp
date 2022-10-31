@@ -58,7 +58,7 @@ private:
 	}
 	void render()
 	{
-		renderer.render(deviceManager.get_device_wrapper(), scene.reg, iRenderMode);
+		renderer.render(deviceManager.get_device_wrapper(), scene.reg, pushConstant);
 	}
 	void stall()
 	{
@@ -74,7 +74,8 @@ private:
 	}
 	void imgui_end()
 	{
-		switch (iRenderMode) {
+		ImGui::Begin("Render Info");
+		switch (pushConstant.iRenderMode) {
 			case 0: ImGui::Text("Current render mode: Color - RGB"); break;
 			case 1: ImGui::Text("Current render mode: Gradients Horizontal - RG"); break;
 			case 2: ImGui::Text("Current render mode: Gradients Vertical - RG"); break;
@@ -82,20 +83,25 @@ private:
 			case 4: ImGui::Text("Current render mode: Depth - Heatmap RGB"); break;
 		}
 		ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+		ImGui::End();
 
+		ImGui::Begin("Source Selection");
 		// TODO: load all folder names in "lightfields" dynamically
 		const char* mainFolderPaths[] = { "additional", "stratified", "test", "training" };
-		bool bMain = ImGui::ListBox("Main Folder", &iMainFolder, mainFolderPaths, std::size(mainFolderPaths), 2);
+		ImGui::Text("Main Folder");
+		bool bMain = ImGui::ListBox("##0", &iMainFolder, mainFolderPaths, (int)std::size(mainFolderPaths));
 
 		// TODO: load all folder names within current mainFolder and offer them as options
-		const char* subFolderPaths[] = { "cotton", "boxes"};
-		bool bSub = ImGui::ListBox("Sub Folder", &iSubFolder, subFolderPaths, std::size(subFolderPaths), 2);
+		const char* subFolderPaths[] = { "cotton", "boxes", "dino"};
+		ImGui::Text("Sub Folder");
+		bool bSub = ImGui::ListBox("##1", &iSubFolder, subFolderPaths, (int)std::size(subFolderPaths));
 
 		if (bMain || bSub) {
 			mainFolder.assign(mainFolderPaths[iMainFolder]).append("/");
 			subFolder.assign(subFolderPaths[iSubFolder]).append("/");
 			resize(true);
 		}
+		ImGui::End();
 
 		ImGui::EndFrame();
 	}
@@ -144,11 +150,11 @@ private:
 		if (input.keysPressed.count(SDLK_F10)) {
 			renderer.dump_mem_vma();
 		}
-		if (input.keysPressed.count(SDLK_F1)) iRenderMode = 0;
-		else if (input.keysPressed.count(SDLK_F2)) iRenderMode = 1;
-		else if (input.keysPressed.count(SDLK_F3)) iRenderMode = 2;
-		else if (input.keysPressed.count(SDLK_F4)) iRenderMode = 3;
-		else if (input.keysPressed.count(SDLK_F5)) iRenderMode = 4;
+		if (input.keysPressed.count(SDLK_F1)) pushConstant.iRenderMode = 0;
+		else if (input.keysPressed.count(SDLK_F2)) pushConstant.iRenderMode = 1;
+		else if (input.keysPressed.count(SDLK_F3)) pushConstant.iRenderMode = 2;
+		else if (input.keysPressed.count(SDLK_F4)) pushConstant.iRenderMode = 3;
+		else if (input.keysPressed.count(SDLK_F5)) pushConstant.iRenderMode = 4;
 	}
 	
 	void toggle_fullscreen()
@@ -178,7 +184,7 @@ private:
 	Renderer renderer;
 	Input input;
 	Scene scene;
-	uint32_t iRenderMode = 0;
+	PC pushConstant;
 
 	// lightfield data directory
 	int iMainFolder = 0, iSubFolder = 0;

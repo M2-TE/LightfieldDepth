@@ -73,9 +73,9 @@ public:
 
 			vk::DeviceCreateInfo createInfo = vk::DeviceCreateInfo()
 				// queues
-				.setQueueCreateInfoCount(queueInfos.size()).setPQueueCreateInfos(queueInfos.data())
+				.setQueueCreateInfoCount((uint32_t)queueInfos.size()).setPQueueCreateInfos(queueInfos.data())
 				// extensions
-				.setEnabledExtensionCount(requiredDeviceExtensions.size()).setPpEnabledExtensionNames(requiredDeviceExtensions.data())
+				.setEnabledExtensionCount((uint32_t)requiredDeviceExtensions.size()).setPpEnabledExtensionNames(requiredDeviceExtensions.data())
 				// device features
 				.setPEnabledFeatures(&deviceFeatures);
 
@@ -102,9 +102,9 @@ public:
 
 			vk::DeviceCreateInfo createInfo = vk::DeviceCreateInfo()
 				// queues
-				.setQueueCreateInfoCount(queueInfos.size()).setPQueueCreateInfos(queueInfos.data())
+				.setQueueCreateInfoCount((uint32_t)queueInfos.size()).setPQueueCreateInfos(queueInfos.data())
 				// extensions
-				.setEnabledExtensionCount(requiredDeviceExtensions.size()).setPpEnabledExtensionNames(requiredDeviceExtensions.data())
+				.setEnabledExtensionCount((uint32_t)requiredDeviceExtensions.size()).setPpEnabledExtensionNames(requiredDeviceExtensions.data())
 				// device features
 				.setPEnabledFeatures(&deviceFeatures);
 

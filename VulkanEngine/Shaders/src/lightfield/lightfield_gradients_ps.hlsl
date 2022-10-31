@@ -1,15 +1,22 @@
-#define BRIGHTNESS(col) dot(col, float3(0.333333f, 0.333333f, 0.333333f)); // using standard greyscale
-#define BRIGHTNESS_REAL(col) dot(col, float3(0.299f, 0.587f, 0.114f)); // using luminance construction
+//#define BRIGHTNESS(col) dot(col, float3(0.333333f, 0.333333f, 0.333333f)); // using standard greyscale
+#define BRIGHTNESS(col) dot(col, float3(0.299f, 0.587f, 0.114f)); // using luminance construction
 
-// cube rendern mit rausch/textur - DONE
-// -> schatten anpassen (-DONE..?)
-// heatmaps instead of black/white - DONE
 // fill algorithm for 0.0f spots
-// lightfield w/o rotation - DONE
-// rendermode for gradients - DONE
-// EXTRA: show current render mode + extra info in UI - DONE
+// fix imag loading thingy
 
-struct PCS { uint index; };
+// depth factor sliders
+// ui interaction for post processing + filter sizes
+// haar wavelet? transformation (blur instead of gauss) (kinda like fourier)
+// anisotropic filtering
+// substitute 3x3 by 5x5 if 0.0f
+//      -> blur results to combine diff filter sizes?
+// variable camera array size/shape
+// comparison to ideal depth/disparity
+
+struct PCS
+{
+    uint index; float depthModA; float depthModB;
+};
 [[vk::push_constant]] PCS pcs;
 Texture2DArray colBuffArr : register(t0);
 
@@ -62,6 +69,13 @@ float2 get_disparity(float4 gradients)
     float disparity = a / confidence;
     return float2(disparity, confidence);
 }
+float4 get_heat(float val)
+{
+    // heatmap view (https://www.shadertoy.com/view/WslGRN)
+    float heatLvl = val * 3.14159265 / 2;
+    return float4(sin(heatLvl), sin(heatLvl * 2), cos(heatLvl), 1.0f);
+}
+
 
 float4 main(float4 screenPos : SV_Position) : SV_Target
 {
@@ -77,16 +91,10 @@ float4 main(float4 screenPos : SV_Position) : SV_Target
     float p_tap9[9] = {  0.000721f,  0.015486f,  0.090341f,    0.234494f, 0.317916f,    0.234494f, 0.090341f,    0.015486f, 0.000721f };
     float d_tap9[9] = { -0.003059f, -0.035187f, -0.118739f,   -0.143928f, 0.000000f,    0.143928f, 0.118739f,    0.035187f, 0.003059f };
 
-    //
+    // use 3-tap filter to obtain gradients
     float4 gradients = get_gradients(texPos, 3, p_tap3, d_tap3);
-    //float4 gradients = get_gradients(texPos, 9, p_tap9, d_tap9);
     // get disparity for current pixel using given filters (x is disparity, y is confidence value)
     float2 disparity = get_disparity(gradients);
-    
-    //float2 s_3 = get_disparity(texPos, 5, p_tap5, d_tap5);
-    //float2 s_5 = get_disparity(texPos, 5, p_tap5, d_tap5);
-    //float2 s_7 = get_disparity(texPos, 7, p_tap7, d_tap7);
-    //float2 s_9 = get_disparity(texPos, 9, p_tap9, d_tap9);
     
     
     //return s_3;
@@ -109,9 +117,7 @@ float4 main(float4 screenPos : SV_Position) : SV_Target
         float s = disparity.x;
         //col = float4(s, s, s, 1.0f);
         
-        // heatmap view (https://www.shadertoy.com/view/WslGRN)
-        float heatLvl = s * 3.14159265 / 2;
-        col = float4(sin(heatLvl), sin(heatLvl * 2), cos(heatLvl), 1.0f);
+        return get_heat(s);
     }
     else if (pcs.index == 4) // depth view
     {
@@ -121,9 +127,7 @@ float4 main(float4 screenPos : SV_Position) : SV_Target
         float depth = 1.0f / (modA + modB * s);
         //col = float4(depth, depth, depth, 1.0f);
         
-        // heatmap view (https://www.shadertoy.com/view/WslGRN)
-        float heatLvl = depth * 3.14159265 / 2;
-        col = float4(sin(heatLvl), sin(heatLvl * 2), cos(heatLvl), 1.0f);
+        return get_heat(depth);
     }
     
     // marks undefined areas as red

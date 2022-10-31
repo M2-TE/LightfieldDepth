@@ -21,6 +21,7 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\vulkan\application\application.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\vulkan\application\input.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\vulkan\application\window.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\core\vulkan\buffers\push_constant.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\vulkan\buffers\ring_buffer.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\vulkan\buffers\uniform_buffer.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\core\vulkan\devices\device_manager.hpp" />

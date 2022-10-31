@@ -108,10 +108,11 @@ private:
 			.setUsage(vma::MemoryUsage::eAuto)
 			.setFlags(vma::AllocationCreateFlagBits::eHostAccessSequentialWrite | vma::AllocationCreateFlagBits::eMapped);
 
-		bufferFrames.set_size(info.nBuffers);
+		bufferFrames.set_size((uint32_t)info.nBuffers);
 		for (size_t i = 0; i < info.nBuffers; i++) {
 			auto& frame = bufferFrames[i];
-			info.allocator.createBuffer(&bufferInfo, &allocCreateInfo, &frame.buffer, &frame.alloc, &frame.allocInfo);
+			vk::Result result = info.allocator.createBuffer(&bufferInfo, &allocCreateInfo, &frame.buffer, &frame.alloc, &frame.allocInfo);
+			// TODO: check res
 		}
 	}
 	void create_descriptor_sets(BufferInfo& info) override

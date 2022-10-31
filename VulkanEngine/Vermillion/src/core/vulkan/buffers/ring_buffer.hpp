@@ -96,7 +96,7 @@ public:
 		reset();
 		return *this;
 	}
-	uint32_t get_size() { return frames.size(); }
+	uint32_t get_size() { return (uint32_t)frames.size(); }
 
 	void reset()
 	{

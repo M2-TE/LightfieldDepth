@@ -3,6 +3,7 @@
 #include "vk_mem_alloc.hpp"
 #include "utils/types.hpp"
 #include "scene_objects/camera.hpp"
+#include "buffers/push_constant.hpp"
 #include "wrappers/imgui_wrapper.hpp"
 #include "wrappers/swapchain_wrapper.hpp"
 #include "wrappers/shader_wrapper.hpp"
@@ -77,7 +78,7 @@ public:
 		deallocate_entities(deviceWrapper, reg);
 		allocate_entities(deviceWrapper, reg);
 	}
-	void render(DeviceWrapper& deviceWrapper, entt::registry& reg, uint32_t iRenderMode)
+	void render(DeviceWrapper& deviceWrapper, entt::registry& reg, PC pushConstant)
 	{
 		// get next frame of sync objects
 		auto& syncFrame = syncFrames.get_next();
@@ -105,7 +106,7 @@ public:
 
 			// reset command pool and then record into it (using command buffer)
 			deviceWrapper.logicalDevice.resetCommandPool(syncFrame.commandPool);
-			record_command_buffer(reg, syncFrame.commandBuffer, iFrame, iRenderMode);
+			record_command_buffer(reg, syncFrame.commandBuffer, iFrame, pushConstant);
 		}
 
 		// Render (submit)
@@ -226,7 +227,7 @@ private:
 	{
 		systems::Geometry::deallocate(reg, allocator);
 	}
-	void record_command_buffer(entt::registry& reg, vk::CommandBuffer& commandBuffer, uint32_t iFrame, uint32_t iRenderMode)
+	void record_command_buffer(entt::registry& reg, vk::CommandBuffer& commandBuffer, uint32_t iFrame, PC pushConstant)
 	{
 		// setting up command buffer
 		vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo()
@@ -255,7 +256,7 @@ private:
 			lightfield.layout_transition(commandBuffer, vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
 		}
 
-		gradientsRenderpass.execute(commandBuffer, iRenderMode);
+		gradientsRenderpass.execute(commandBuffer, pushConstant);
 		disparityRenderpass.execute(commandBuffer);
 
 		// direct write to swapchain image
