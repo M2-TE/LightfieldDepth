@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <algorithm>
 #include <fstream>
+#include <filesystem>
 
 // Enable the WSI extensions
 #if defined(_WIN32)

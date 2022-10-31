@@ -5,6 +5,7 @@
 #include "window.hpp"
 #include "devices/device_manager.hpp"
 #include "renderer.hpp"
+#include "utils/file_utils.hpp"
 
 class Application
 {
@@ -86,19 +87,21 @@ private:
 		ImGui::End();
 
 		ImGui::Begin("Source Selection");
-		// TODO: load all folder names in "lightfields" dynamically
-		const char* mainFolderPaths[] = { "additional", "stratified", "test", "training" };
-		ImGui::Text("Main Folder");
-		bool bMain = ImGui::ListBox("##0", &iMainFolder, mainFolderPaths, (int)std::size(mainFolderPaths));
+		std::string currentDir = std::filesystem::current_path().append("lightfields").string();
 
-		// TODO: load all folder names within current mainFolder and offer them as options
-		const char* subFolderPaths[] = { "cotton", "boxes", "dino"};
+		// load all folder names in "lightfields" dynamically
+		std::vector<std::string> mainDirs = get_directories("lightfields");
+		ImGui::Text("Main Folder");
+		bool bMain = ImGui::ListBox("##0", &iMainFolder, VectorOfStringGetter, (void*)&mainDirs, (int)mainDirs.size());
+
+		// load all folder names within current mainFolder and offer them as options
+		std::vector<std::string> subDirs = get_directories(std::filesystem::path("lightfields").append(mainDirs[iMainFolder]).string());
 		ImGui::Text("Sub Folder");
-		bool bSub = ImGui::ListBox("##1", &iSubFolder, subFolderPaths, (int)std::size(subFolderPaths));
+		bool bSub = ImGui::ListBox("##1", &iSubFolder, VectorOfStringGetter, (void*)&subDirs, (int)subDirs.size());
 
 		if (bMain || bSub) {
-			mainFolder.assign(mainFolderPaths[iMainFolder]).append("/");
-			subFolder.assign(subFolderPaths[iSubFolder]).append("/");
+			mainFolder.assign(mainDirs[iMainFolder]).append("/");
+			subFolder.assign(subDirs[iSubFolder]).append("/");
 			resize(true);
 		}
 		ImGui::End();
