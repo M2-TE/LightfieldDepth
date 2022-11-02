@@ -1,21 +1,27 @@
-//#define BRIGHTNESS(col) dot(col, float3(0.333333f, 0.333333f, 0.333333f)); // using standard greyscale
-#define BRIGHTNESS(col) dot(col, float3(0.299f, 0.587f, 0.114f)); // using luminance construction
+#define BRIGHTNESS(col) dot(col, float3(0.333333f, 0.333333f, 0.333333f)); // using standard greyscale
+//#define BRIGHTNESS(col) dot(col, float3(0.299f, 0.587f, 0.114f)); // using luminance construction
 
-// fill algorithm for 0.0f spots
-// fix imag loading thingy
+// anisotropic filtering? - UNFIT (static filter size, would potentially include false depths)
+// fix imag loading thingy - DONE
+// depth factor sliders - DONE
+// substitute 3x3 by 5x5 if 0.0f - DONE
+//      -> blur results to combine diff filter sizes? - NOT NEEDED
 
-// depth factor sliders
-// ui interaction for post processing + filter sizes
-// haar wavelet? transformation (blur instead of gauss) (kinda like fourier)
-// anisotropic filtering
-// substitute 3x3 by 5x5 if 0.0f
-//      -> blur results to combine diff filter sizes?
-// variable camera array size/shape
+// fill algorithm for 0.0f spots - IN PROGRESS
+
 // comparison to ideal depth/disparity
+// haar wavelet? transformation (blur instead of gauss) (kinda like fourier)
+
+// EXTRA:
+// variable camera array size/shape
+// ui interaction for post processing + filter sizes
 
 struct PCS
 {
-    uint index; float depthModA; float depthModB;
+    uint index;
+    float depthModA; 
+    float depthModB;
+    bool bGradientFillers;
 };
 [[vk::push_constant]] PCS pcs;
 Texture2DArray colBuffArr : register(t0);
@@ -76,7 +82,6 @@ float4 get_heat(float val)
     return float4(sin(heatLvl), sin(heatLvl * 2), cos(heatLvl), 1.0f);
 }
 
-
 float4 main(float4 screenPos : SV_Position) : SV_Target
 {
     int3 texPos = int3(screenPos.xy, 0);
@@ -92,25 +97,45 @@ float4 main(float4 screenPos : SV_Position) : SV_Target
     float d_tap9[9] = { -0.003059f, -0.035187f, -0.118739f,   -0.143928f, 0.000000f,    0.143928f, 0.118739f,    0.035187f, 0.003059f };
 
     // use 3-tap filter to obtain gradients
-    float4 gradients = get_gradients(texPos, 3, p_tap3, d_tap3);
+    float4 gradients3 = get_gradients(texPos, 3, p_tap3, d_tap3);
+    float4 gradients5 = get_gradients(texPos, 5, p_tap5, d_tap5);
+    float4 gradients7 = get_gradients(texPos, 7, p_tap7, d_tap7);
+    float4 gradients9 = get_gradients(texPos, 9, p_tap9, d_tap9);
+    
+    float4 gradients;
+    // choose gradients
+    if (pcs.bGradientFillers)
+    {
+        gradients = gradients3;
+        // when gradients equal 0, choose larger filter size
+        float cutoff = 0.000001f;
+        gradients =
+            gradients3 > cutoff || gradients3 < -cutoff ? gradients3 :
+            gradients5 > cutoff || gradients5 < -cutoff ? gradients5 :
+            gradients7 > cutoff || gradients7 < -cutoff ? gradients7 :
+            gradients9 > cutoff || gradients9 < -cutoff ? gradients9 : gradients3;
+    }
+    else
+    {
+        gradients = gradients3;
+    }
+    
     // get disparity for current pixel using given filters (x is disparity, y is confidence value)
     float2 disparity = get_disparity(gradients);
     
     
-    //return s_3;
-    
     float4 col = float4(0.0f, 0.0f, 0.0f, 1.0f);
     if (pcs.index == 0) // middle view
     {
-        col = colBuffArr[uint3(screenPos.xy, 4)];
+        return colBuffArr[uint3(screenPos.xy, 4)];
     }
     else if (pcs.index == 1) // gradients view (Lx & Lu)
     {
-        col = float4(gradients.x, gradients.z, 0.0f, 1.0f);
+        return float4(gradients.x, gradients.z, 0.0f, 1.0f);
     }
     else if (pcs.index == 2) // gradients view (Ly, Lv)
     {
-        col = float4(gradients.y, gradients.w, 0.0f, 1.0f);
+        return float4(gradients.y, gradients.w, 0.0f, 1.0f);
     }
     else if (pcs.index == 3) // disparity view
     {
@@ -121,20 +146,21 @@ float4 main(float4 screenPos : SV_Position) : SV_Target
     }
     else if (pcs.index == 4) // depth view
     {
-        // derive depth from disparity (barebones)
-        float s = disparity.x;
-        float modA = 0.0f, modB = 1.0f;
-        float depth = 1.0f / (modA + modB * s);
+        // derive depth from disparity
+        float depth = 1.0f / (pcs.depthModA + pcs.depthModB * disparity.x);
         //col = float4(depth, depth, depth, 1.0f);
         
         return get_heat(depth);
     }
-    
-    // marks undefined areas as red
-    float cutoff = 0.0000001f;
-    if (col.x < cutoff && col.y < cutoff && col.z < cutoff)
+    else // test filler view
     {
-        //return float4(0.5f, 0.0f, 0.0f, 1.0f);
+        float cutoff = 0.000001f;
+        gradients =
+            gradients3 > cutoff || gradients3 < -cutoff ? float4(0.0f, 0.0f, 0.0f, 1.0f) :
+            gradients5 > cutoff || gradients5 < -cutoff ? float4(1.0f, 0.0f, 0.0f, 1.0f) :
+            gradients7 > cutoff || gradients7 < -cutoff ? float4(0.0f, 1.0f, 0.0f, 1.0f) :
+            gradients9 > cutoff || gradients9 < -cutoff ? float4(0.0f, 1.0f, 0.0f, 1.0f) : float4(1.0f, 1.0f, 1.0f, 1.0f);
+        
+        return gradients;
     }
-    return col;
 }

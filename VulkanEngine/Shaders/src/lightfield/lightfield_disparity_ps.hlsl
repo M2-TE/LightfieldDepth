@@ -1,7 +1,14 @@
-[[vk::input_attachment_index(0)]] SubpassInput gradientBuffer;
+//[[vk::input_attachment_index(0)]] SubpassInput gradientBuffer;
+Texture2D colorTex : register(t0);
 
-// this shader pass isnt even necessary anymore
-float4 main() : SV_Target
+// basically post processing
+float4 main(float4 screenPos : SV_Position) : SV_Target
 {
-    return gradientBuffer.SubpassLoad();
+    // TODO: 
+    // gauss blur
+    // general average
+    // haar wavelet
+    
+    float4 color = colorTex[uint2(screenPos.x, screenPos.y)];
+    return color;
 }

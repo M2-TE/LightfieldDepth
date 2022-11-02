@@ -17,7 +17,8 @@ float4 main(Input input) : SV_Target
     integers = ((uint2) integers) % uint2(1u, 1u);
     uv = integers + fractionals;
     
-    color = float3(uv.x, uv.y, 0.0f);
+    // enable this for uv-colors
+    //color = float3(uv.x, uv.y, 0.0f);
     //
     
     

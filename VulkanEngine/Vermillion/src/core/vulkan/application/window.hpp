@@ -127,5 +127,5 @@ private:
 	std::vector<const char*> extensions;
 
 	// lazy constants (settings?)
-	const std::string WND_NAME = "Vermillion";
+	const std::string WND_NAME = "Lightfield Depth";
 };

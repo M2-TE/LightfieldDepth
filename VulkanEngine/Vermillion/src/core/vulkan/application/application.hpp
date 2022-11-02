@@ -76,14 +76,37 @@ private:
 	void imgui_end()
 	{
 		ImGui::Begin("Render Info");
-		switch (pushConstant.iRenderMode) {
-			case 0: ImGui::Text("Current render mode: Color - RGB"); break;
-			case 1: ImGui::Text("Current render mode: Gradients Horizontal - RG"); break;
-			case 2: ImGui::Text("Current render mode: Gradients Vertical - RG"); break;
-			case 3: ImGui::Text("Current render mode: Disparity - Heatmap RGB"); break;
-			case 4: ImGui::Text("Current render mode: Depth - Heatmap RGB"); break;
-		}
 		ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+		switch (pushConstant.iRenderMode) {
+			case 0: ImGui::Text("Color - RGB"); break;
+			case 1: ImGui::Text("Gradients Horizontal - RG"); break;
+			case 2: ImGui::Text("Gradients Vertical - RG"); break;
+			case 3: ImGui::Text("Disparity - Heatmap RGB"); break;
+			case 4: ImGui::Text("Depth - Heatmap RGB"); break;
+			case 5: {
+				ImGui::Text("0-filler spots - RGB");
+				ImGui::Text("Color refers to filter size used to fill:");
+				ImGui::Text("Red = 5");
+				ImGui::Text("Green = 7");
+				ImGui::Text("Blue = 9");
+				ImGui::Text("White = N/A");
+				break;
+			}
+		}
+		if (pushConstant.bGradientFillers) ImGui::Text("0-filler enabled");
+		else ImGui::Text("0-filler disabled");
+
+		ImGui::Text("\nKeybinds:");
+		ImGui::Text("F1 - F6: render modes");
+		ImGui::Text("LCTRL: toggle 0.0f filler");
+		ImGui::Text("F10: device memory dump");
+		ImGui::Text("F11: fullscreen");
+		ImGui::End();
+
+		ImGui::Begin("Depth Sliders");
+		ImGui::Text("Depth = 1 / A + B * disparity");
+		ImGui::SliderFloat("Depth Mod A", &pushConstant.depthModA, 0.0f, 1.0f);
+		ImGui::SliderFloat("Depth Mod B", &pushConstant.depthModB, 0.0f, 4.0f);
 		ImGui::End();
 
 		ImGui::Begin("Source Selection");
@@ -91,11 +114,13 @@ private:
 
 		// load all folder names in "lightfields" dynamically
 		std::vector<std::string> mainDirs = get_directories("lightfields");
+		iMainFolder = std::clamp(iMainFolder, 0, (int)mainDirs.size());
 		ImGui::Text("Main Folder");
 		bool bMain = ImGui::ListBox("##0", &iMainFolder, VectorOfStringGetter, (void*)&mainDirs, (int)mainDirs.size());
 
 		// load all folder names within current mainFolder and offer them as options
 		std::vector<std::string> subDirs = get_directories(std::filesystem::path("lightfields").append(mainDirs[iMainFolder]).string());
+		iSubFolder = std::clamp(iSubFolder, 0, (int)subDirs.size());
 		ImGui::Text("Sub Folder");
 		bool bSub = ImGui::ListBox("##1", &iSubFolder, VectorOfStringGetter, (void*)&subDirs, (int)subDirs.size());
 
@@ -158,6 +183,9 @@ private:
 		else if (input.keysPressed.count(SDLK_F3)) pushConstant.iRenderMode = 2;
 		else if (input.keysPressed.count(SDLK_F4)) pushConstant.iRenderMode = 3;
 		else if (input.keysPressed.count(SDLK_F5)) pushConstant.iRenderMode = 4;
+		else if (input.keysPressed.count(SDLK_F6)) pushConstant.iRenderMode = 5;
+
+		if (input.keysPressed.count(SDLK_LCTRL)) pushConstant.bGradientFillers = !pushConstant.bGradientFillers;
 	}
 	
 	void toggle_fullscreen()
