@@ -7,14 +7,16 @@
 // substitute 3x3 by 5x5 if 0.0f - DONE
 //      -> blur results to combine diff filter sizes? - NOT NEEDED
 
-// fill algorithm for 0.0f spots - IN PROGRESS
-
+// swich between filters using buttons
+// use certainty instead of 0.0 check
+// certainty view
+// model view with button
+// mean squared error/sum of absolute differences for comparison
+// variable camera array size/shape or distance
 // comparison to ideal depth/disparity
-// haar wavelet? transformation (blur instead of gauss) (kinda like fourier)
 
-// EXTRA:
-// variable camera array size/shape
-// ui interaction for post processing + filter sizes
+// extra:
+// haar wavelet? transformation (blur instead of gauss) (kinda like fourier)
 
 struct PCS
 {
@@ -159,7 +161,7 @@ float4 main(float4 screenPos : SV_Position) : SV_Target
             gradients3 > cutoff || gradients3 < -cutoff ? float4(0.0f, 0.0f, 0.0f, 1.0f) :
             gradients5 > cutoff || gradients5 < -cutoff ? float4(1.0f, 0.0f, 0.0f, 1.0f) :
             gradients7 > cutoff || gradients7 < -cutoff ? float4(0.0f, 1.0f, 0.0f, 1.0f) :
-            gradients9 > cutoff || gradients9 < -cutoff ? float4(0.0f, 1.0f, 0.0f, 1.0f) : float4(1.0f, 1.0f, 1.0f, 1.0f);
+            gradients9 > cutoff || gradients9 < -cutoff ? float4(0.0f, 0.0f, 1.0f, 1.0f) : float4(1.0f, 1.0f, 1.0f, 1.0f);
         
         return gradients;
     }
