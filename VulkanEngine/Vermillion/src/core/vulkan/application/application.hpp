@@ -93,8 +93,10 @@ private:
 				break;
 			}
 		}
-		if (pushConstant.bGradientFillers) ImGui::Text("0-filler enabled");
-		else ImGui::Text("0-filler disabled");
+
+		// TODO: show current iFilterMode status
+		//if (pushConstant.bGradientFillers) ImGui::Text("0-filler enabled");
+		//else ImGui::Text("0-filler disabled");
 
 		ImGui::Text("\nKeybinds:");
 		ImGui::Text("F1 - F6: render modes");
@@ -178,14 +180,23 @@ private:
 		if (input.keysPressed.count(SDLK_F10)) {
 			renderer.dump_mem_vma();
 		}
-		if (input.keysPressed.count(SDLK_F1)) pushConstant.iRenderMode = 0;
-		else if (input.keysPressed.count(SDLK_F2)) pushConstant.iRenderMode = 1;
-		else if (input.keysPressed.count(SDLK_F3)) pushConstant.iRenderMode = 2;
-		else if (input.keysPressed.count(SDLK_F4)) pushConstant.iRenderMode = 3;
-		else if (input.keysPressed.count(SDLK_F5)) pushConstant.iRenderMode = 4;
-		else if (input.keysPressed.count(SDLK_F6)) pushConstant.iRenderMode = 5;
-
-		if (input.keysPressed.count(SDLK_LCTRL)) pushConstant.bGradientFillers = !pushConstant.bGradientFillers;
+		
+		// shift key to switch between render mode and filter mode
+		if (input.keysDown.count(SDLK_LSHIFT) || input.keysDown.count(SDLK_RSHIFT)) {
+			if (input.keysPressed.count(SDLK_F1)) pushConstant.iFilterMode = 0;
+			else if (input.keysPressed.count(SDLK_F2)) pushConstant.iFilterMode = 1;
+			else if (input.keysPressed.count(SDLK_F3)) pushConstant.iFilterMode = 2;
+			else if (input.keysPressed.count(SDLK_F4)) pushConstant.iFilterMode = 3;
+			else if (input.keysPressed.count(SDLK_F5)) pushConstant.iFilterMode = 4;
+		}
+		else {
+			if (input.keysPressed.count(SDLK_F1)) pushConstant.iRenderMode = 0;
+			else if (input.keysPressed.count(SDLK_F2)) pushConstant.iRenderMode = 1;
+			else if (input.keysPressed.count(SDLK_F3)) pushConstant.iRenderMode = 2;
+			else if (input.keysPressed.count(SDLK_F4)) pushConstant.iRenderMode = 3;
+			else if (input.keysPressed.count(SDLK_F5)) pushConstant.iRenderMode = 4;
+			else if (input.keysPressed.count(SDLK_F6)) pushConstant.iRenderMode = 5;
+		}
 	}
 	
 	void toggle_fullscreen()

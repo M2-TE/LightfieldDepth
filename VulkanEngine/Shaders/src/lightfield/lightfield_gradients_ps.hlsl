@@ -7,23 +7,38 @@
 // substitute 3x3 by 5x5 if 0.0f - DONE
 //      -> blur results to combine diff filter sizes? - NOT NEEDED
 
-// swich between filters using buttons
-// use certainty instead of 0.0 check
-// certainty view
-// model view with button
-// mean squared error/sum of absolute differences for comparison
+// friday:
+// swich between filters using buttons // DONE
+// certainty view // DONE
+// use certainty instead of 0.0 check // DONE
+
+// saturday:
+// fix tex read error on post processing
+// simulated model view with button
+// make sphere have colored surface?
+
+// sunday:
 // variable camera array size/shape or distance
+
+// monday:
+// mean squared error/sum of absolute differences for comparison
 // comparison to ideal depth/disparity
 
+// tuesday:
+// fix linux implementation
+
+
 // extra:
+// gauss blur as post processing
 // haar wavelet? transformation (blur instead of gauss) (kinda like fourier)
 
 struct PCS
 {
-    uint index;
+    uint iRenderMode;
+    uint iFilterMode;
+    
     float depthModA; 
     float depthModB;
-    bool bGradientFillers;
 };
 [[vk::push_constant]] PCS pcs;
 Texture2DArray colBuffArr : register(t0);
@@ -103,56 +118,91 @@ float4 main(float4 screenPos : SV_Position) : SV_Target
     float4 gradients5 = get_gradients(texPos, 5, p_tap5, d_tap5);
     float4 gradients7 = get_gradients(texPos, 7, p_tap7, d_tap7);
     float4 gradients9 = get_gradients(texPos, 9, p_tap9, d_tap9);
+    float4x4 allGradients =
+    {
+        get_gradients(texPos, 3, p_tap3, d_tap3),
+        get_gradients(texPos, 5, p_tap5, d_tap5),
+        get_gradients(texPos, 7, p_tap7, d_tap7),
+        get_gradients(texPos, 9, p_tap9, d_tap9)
+    };
+    float2x4 allDisparities =
+    {
+        get_disparity(allGradients[0]),
+        get_disparity(allGradients[1]),
+        get_disparity(allGradients[2]),
+        get_disparity(allGradients[3])
+    };
     
     float4 gradients;
+    float disparity;
+    float certainty;
     // choose gradients
-    if (pcs.bGradientFillers)
+    if (pcs.iFilterMode == 0)
     {
-        gradients = gradients3;
-        // when gradients equal 0, choose larger filter size
-        float cutoff = 0.000001f;
-        gradients =
-            gradients3 > cutoff || gradients3 < -cutoff ? gradients3 :
-            gradients5 > cutoff || gradients5 < -cutoff ? gradients5 :
-            gradients7 > cutoff || gradients7 < -cutoff ? gradients7 :
-            gradients9 > cutoff || gradients9 < -cutoff ? gradients9 : gradients3;
+        // switching between gradients based on their values
+        if (false)
+        {
+            // when gradients equal 0, choose larger filter size
+            const float cutoff = 0.000001f;
+            gradients =
+                allGradients[0] > cutoff || allGradients[0] < -cutoff ? allGradients[0] :
+                allGradients[1] > cutoff || allGradients[1] < -cutoff ? allGradients[1] :
+                allGradients[2] > cutoff || allGradients[2] < -cutoff ? allGradients[2] :
+                allGradients[3] > cutoff || allGradients[3] < -cutoff ? allGradients[3] : allGradients[0];
+        }
+        // choose the filter with the highest certainty
+        else
+        {
+            uint baseIndex = 0;
+            certainty = allDisparities[baseIndex].y;
+            for (int i = 1; i < 4; i++)
+            {
+                baseIndex = certainty < allDisparities[i].y ? i : baseIndex;
+                certainty = allDisparities[baseIndex].y;
+            }
+            gradients = allGradients[baseIndex];
+        }
     }
-    else
-    {
-        gradients = gradients3;
-    }
+    else gradients = allGradients[pcs.iFilterMode - 1u];
     
     // get disparity for current pixel using given filters (x is disparity, y is confidence value)
-    float2 disparity = get_disparity(gradients);
+    float2 val = get_disparity(gradients);
+    disparity = val.x;
+    // *81 to scale back up (using 3x3 camera array with 3x3 pixel patch size -> 9*9 = 81)
+    certainty = val.y * 81.0f;
     
     
     float4 col = float4(0.0f, 0.0f, 0.0f, 1.0f);
-    if (pcs.index == 0) // middle view
+    if (pcs.iRenderMode == 0) // middle view
     {
         return colBuffArr[uint3(screenPos.xy, 4)];
     }
-    else if (pcs.index == 1) // gradients view (Lx & Lu)
+    else if (pcs.iRenderMode == 1) // gradients view (Lx & Lu)
     {
         return float4(gradients.x, gradients.z, 0.0f, 1.0f);
     }
-    else if (pcs.index == 2) // gradients view (Ly, Lv)
+    else if (pcs.iRenderMode == 2) // gradients view (Ly, Lv)
     {
         return float4(gradients.y, gradients.w, 0.0f, 1.0f);
     }
-    else if (pcs.index == 3) // disparity view
+    else if (pcs.iRenderMode == 3) // disparity view
     {
         float s = disparity.x;
         //col = float4(s, s, s, 1.0f);
         
         return get_heat(s);
     }
-    else if (pcs.index == 4) // depth view
+    else if (pcs.iRenderMode == 4) // depth view
     {
         // derive depth from disparity
         float depth = 1.0f / (pcs.depthModA + pcs.depthModB * disparity.x);
         //col = float4(depth, depth, depth, 1.0f);
         
         return get_heat(depth);
+    }
+    else if (pcs.iRenderMode == 5) // certainty view
+    {
+        return (get_heat(certainty));
     }
     else // test filler view
     {
