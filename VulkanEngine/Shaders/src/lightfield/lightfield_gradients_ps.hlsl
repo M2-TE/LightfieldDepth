@@ -11,6 +11,7 @@
 // swich between filters using buttons // DONE
 // certainty view // DONE
 // use certainty instead of 0.0 check // DONE
+//  -> scaling certainty to make it visible // DONE
 
 // saturday:
 // fix tex read error on post processing
@@ -114,10 +115,6 @@ float4 main(float4 screenPos : SV_Position) : SV_Target
     float d_tap9[9] = { -0.003059f, -0.035187f, -0.118739f,   -0.143928f, 0.000000f,    0.143928f, 0.118739f,    0.035187f, 0.003059f };
 
     // use 3-tap filter to obtain gradients
-    float4 gradients3 = get_gradients(texPos, 3, p_tap3, d_tap3);
-    float4 gradients5 = get_gradients(texPos, 5, p_tap5, d_tap5);
-    float4 gradients7 = get_gradients(texPos, 7, p_tap7, d_tap7);
-    float4 gradients9 = get_gradients(texPos, 9, p_tap9, d_tap9);
     float4x4 allGradients =
     {
         get_gradients(texPos, 3, p_tap3, d_tap3),
@@ -125,7 +122,7 @@ float4 main(float4 screenPos : SV_Position) : SV_Target
         get_gradients(texPos, 7, p_tap7, d_tap7),
         get_gradients(texPos, 9, p_tap9, d_tap9)
     };
-    float2x4 allDisparities =
+    float4x2 allDisparities =
     {
         get_disparity(allGradients[0]),
         get_disparity(allGradients[1]),
@@ -161,18 +158,18 @@ float4 main(float4 screenPos : SV_Position) : SV_Target
                 certainty = allDisparities[baseIndex].y;
             }
             gradients = allGradients[baseIndex];
+            disparity = allDisparities[baseIndex].x;
+            
         }
     }
-    else gradients = allGradients[pcs.iFilterMode - 1u];
+    else // specific filter for gradients
+    {
+        uint index = pcs.iFilterMode - 1u;
+        gradients = allGradients[index];
+        disparity = allDisparities[index].x;
+        certainty = allDisparities[index].y;
+    }
     
-    // get disparity for current pixel using given filters (x is disparity, y is confidence value)
-    float2 val = get_disparity(gradients);
-    disparity = val.x;
-    // *81 to scale back up (using 3x3 camera array with 3x3 pixel patch size -> 9*9 = 81)
-    certainty = val.y * 81.0f;
-    
-    
-    float4 col = float4(0.0f, 0.0f, 0.0f, 1.0f);
     if (pcs.iRenderMode == 0) // middle view
     {
         return colBuffArr[uint3(screenPos.xy, 4)];
@@ -202,16 +199,19 @@ float4 main(float4 screenPos : SV_Position) : SV_Target
     }
     else if (pcs.iRenderMode == 5) // certainty view
     {
+        // scale certainty to make it visible
+        certainty *= 500.0f;
         return (get_heat(certainty));
     }
     else // test filler view
     {
-        float cutoff = 0.000001f;
+        // when gradients equal 0, choose larger filter size
+        const float cutoff = 0.000001f;
         gradients =
-            gradients3 > cutoff || gradients3 < -cutoff ? float4(0.0f, 0.0f, 0.0f, 1.0f) :
-            gradients5 > cutoff || gradients5 < -cutoff ? float4(1.0f, 0.0f, 0.0f, 1.0f) :
-            gradients7 > cutoff || gradients7 < -cutoff ? float4(0.0f, 1.0f, 0.0f, 1.0f) :
-            gradients9 > cutoff || gradients9 < -cutoff ? float4(0.0f, 0.0f, 1.0f, 1.0f) : float4(1.0f, 1.0f, 1.0f, 1.0f);
+            allGradients[0] > cutoff || allGradients[0] < -cutoff ? float4(0.0f, 0.0f, 0.0f, 1.0f) :
+            allGradients[1] > cutoff || allGradients[1] < -cutoff ? float4(1.0f, 0.0f, 0.0f, 1.0f) :
+            allGradients[2] > cutoff || allGradients[2] < -cutoff ? float4(0.0f, 1.0f, 0.0f, 1.0f) :
+            allGradients[3] > cutoff || allGradients[3] < -cutoff ? float4(0.0f, 0.0f, 1.0f, 1.0f) : float4(1.0f, 1.0f, 1.0f, 1.0f);
         
         return gradients;
     }
