@@ -23,7 +23,7 @@ public:
 		create_render_pass(info);
 		create_framebuffer(info);
 
-		descSet = info.lightfield.descSet;
+		descSet = info.lightfield.descSetLightfield;
 		descSetLayout = info.lightfield.descSetLayout;
 
 		create_pipeline_layout(info);
@@ -63,7 +63,6 @@ public:
 		// draw fullscreen triangle
 		commandBuffer.pushConstants<PC>(pipelineLayout, vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
 
-		//commandBuffer.pushConstants<uint32_t>(pipelineLayout, vk::ShaderStageFlagBits::eFragment, 0, iRenderMode);
 		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, descSet, {});
 		commandBuffer.draw(3, 1, 0, 0);
 
@@ -81,7 +80,7 @@ private:
 		std::array<vk::AttachmentDescription, 1> attachments = {
 			// Output
 			vk::AttachmentDescription()
-				.setFormat(vk::Format::eR32G32B32A32Sfloat)
+				.setFormat(colorFormat)
 				.setSamples(vk::SampleCountFlagBits::e1)
 				.setLoadOp(vk::AttachmentLoadOp::eDontCare)
 				.setStoreOp(vk::AttachmentStoreOp::eStore)

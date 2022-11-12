@@ -45,7 +45,8 @@ public:
 		deviceWrapper.logicalDevice.destroyImageView(lightfieldImageView);
 		deviceWrapper.logicalDevice.destroyImageView(gradientsImageView);
 		deviceWrapper.logicalDevice.destroyImageView(disparityImageView);
-		deviceWrapper.logicalDevice.destroySampler(sampler);
+		deviceWrapper.logicalDevice.destroySampler(samplerLightfields);
+		deviceWrapper.logicalDevice.destroySampler(samplerGradients);
 
 		for (auto i = 0u; i < nCameras; i++) {
 			deviceWrapper.logicalDevice.destroyImageView(lightfieldSingleImageViews[i]);
@@ -53,7 +54,7 @@ public:
 
 		deviceWrapper.logicalDevice.destroyDescriptorSetLayout(descSetLayout);
 	}
-	void layout_transition(vk::CommandBuffer& commandBuffer, vk::ImageLayout from, vk::ImageLayout to)
+	void layout_transition_lightfields(vk::CommandBuffer& commandBuffer, vk::ImageLayout from, vk::ImageLayout to)
 	{
 		// change all 9 images
 		for (int i = 0; i < 9; i++) {
@@ -67,6 +68,18 @@ public:
 					.setBaseMipLevel(0).setLevelCount(1));
 			commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eTransfer, {}, {}, {}, barrier);
 		}
+	}
+	void layout_transition_gradients(vk::CommandBuffer& commandBuffer, vk::ImageLayout from, vk::ImageLayout to)
+	{
+		vk::ImageMemoryBarrier barrier = vk::ImageMemoryBarrier()
+			.setOldLayout(from)
+			.setNewLayout(to)
+			.setImage(gradientsImage)
+			.setSubresourceRange(vk::ImageSubresourceRange()
+				.setAspectMask(vk::ImageAspectFlagBits::eColor)
+				.setBaseArrayLayer(0).setLayerCount(1)
+				.setBaseMipLevel(0).setLevelCount(1));
+		commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eTransfer, {}, {}, {}, barrier);
 	}
 
 private:
@@ -93,14 +106,13 @@ private:
 
 		// gradients
 		imageCreateInfo.setArrayLayers(1);
-		imageCreateInfo.setFormat(vk::Format::eR32G32B32A32Sfloat);
-		imageCreateInfo.setUsage(vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment);
+		imageCreateInfo.setUsage(vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled);
 		result = allocator.createImage(&imageCreateInfo, &allocCreateInfo, &gradientsImage, &gradientsAlloc, nullptr);
 		if (result != vk::Result::eSuccess) VMI_ERR("Gradients image creation unsuccessful");
 		allocator.setAllocationName(gradientsAlloc, std::string("Gradients").c_str());
 
 		// disparity
-		imageCreateInfo.setFormat(colorFormat);
+		imageCreateInfo.setUsage(vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment);
 		result = allocator.createImage(&imageCreateInfo, &allocCreateInfo, &disparityImage, &disparityAlloc, nullptr);
 		if (result != vk::Result::eSuccess) VMI_ERR("Disparity image creation unsuccessful");
 		allocator.setAllocationName(disparityAlloc, std::string("Disparity Map").c_str());
@@ -133,12 +145,10 @@ private:
 
 		// gradients view
 		imageViewInfo.subresourceRange.baseArrayLayer = 0;
-		imageViewInfo.setFormat(vk::Format::eR32G32B32A32Sfloat);
 		imageViewInfo.setImage(gradientsImage);
 		gradientsImageView = deviceWrapper.logicalDevice.createImageView(imageViewInfo);
 
 		// disparity view
-		imageViewInfo.setFormat(colorFormat);
 		imageViewInfo.setImage(disparityImage);
 		disparityImageView = deviceWrapper.logicalDevice.createImageView(imageViewInfo);
 	}
@@ -257,50 +267,101 @@ private:
 	}
 	void create_desc_set(DeviceWrapper& deviceWrapper, vk::DescriptorPool& descPool)
 	{
-		// allocate the descriptor sets using descriptor pool
-		vk::DescriptorSetAllocateInfo allocInfo = vk::DescriptorSetAllocateInfo()
-			.setDescriptorPool(descPool)
-			.setDescriptorSetCount(1).setPSetLayouts(&descSetLayout);
-		descSet = deviceWrapper.logicalDevice.allocateDescriptorSets(allocInfo)[0];
+		// lightfield images
+		{
+			// allocate the descriptor sets using descriptor pool
+			vk::DescriptorSetAllocateInfo allocInfo = vk::DescriptorSetAllocateInfo()
+				.setDescriptorPool(descPool)
+				.setDescriptorSetCount(1).setPSetLayouts(&descSetLayout);
+			descSetLightfield = deviceWrapper.logicalDevice.allocateDescriptorSets(allocInfo)[0];
 
-		// create sampler for image
-		vk::SamplerCreateInfo samplerInfo = vk::SamplerCreateInfo()
-			.setMagFilter(vk::Filter::eNearest)
-			.setMinFilter(vk::Filter::eNearest)
-			.setAnisotropyEnable(VK_FALSE) // not needed for now
-			.setMaxAnisotropy(0.0f)
-			.setUnnormalizedCoordinates(VK_FALSE)
-			.setBorderColor(vk::BorderColor::eIntOpaqueBlack)
-			.setAddressModeU(vk::SamplerAddressMode::eClampToEdge)
-			.setAddressModeV(vk::SamplerAddressMode::eClampToEdge)
-			.setAddressModeW(vk::SamplerAddressMode::eClampToEdge)
-			.setCompareEnable(VK_FALSE)
-			.setCompareOp(vk::CompareOp::eAlways)
-			.setMipmapMode(vk::SamplerMipmapMode::eNearest)
-			.setMipLodBias(0.0f)
-			.setMinLod(0.0f)
-			.setMaxLod(0.0f);
-		sampler = deviceWrapper.logicalDevice.createSampler(samplerInfo);
+			// create sampler for images
+			vk::SamplerCreateInfo samplerInfo = vk::SamplerCreateInfo()
+				.setMagFilter(vk::Filter::eNearest)
+				.setMinFilter(vk::Filter::eNearest)
+				.setAnisotropyEnable(VK_FALSE) // not needed for now
+				.setMaxAnisotropy(0.0f)
+				.setUnnormalizedCoordinates(VK_FALSE)
+				.setBorderColor(vk::BorderColor::eIntOpaqueBlack)
+				.setAddressModeU(vk::SamplerAddressMode::eClampToEdge)
+				.setAddressModeV(vk::SamplerAddressMode::eClampToEdge)
+				.setAddressModeW(vk::SamplerAddressMode::eClampToEdge)
+				.setCompareEnable(VK_FALSE)
+				.setCompareOp(vk::CompareOp::eAlways)
+				.setMipmapMode(vk::SamplerMipmapMode::eNearest)
+				.setMipLodBias(0.0f)
+				.setMinLod(0.0f)
+				.setMaxLod(0.0f);
+			samplerLightfields = deviceWrapper.logicalDevice.createSampler(samplerInfo);
 
-		std::array<vk::DescriptorImageInfo, 1> descriptors;
-		descriptors[0]
-			.setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
-			.setImageView(lightfieldImageView)
-			.setSampler(sampler);
+			std::array<vk::DescriptorImageInfo, 1> descriptors;
+			descriptors[0]
+				.setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
+				.setImageView(lightfieldImageView)
+				.setSampler(samplerLightfields);
 
-		// desc set
-		vk::WriteDescriptorSet descBufferWrites = vk::WriteDescriptorSet()
-			.setDstSet(descSet)
-			.setDstBinding(0)
-			.setDstArrayElement(0)
-			.setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
-			.setDescriptorCount((uint32_t)descriptors.size())
-			//
-			.setPBufferInfo(nullptr)
-			.setPImageInfo(descriptors.data())
-			.setPTexelBufferView(nullptr);
+			// desc set
+			vk::WriteDescriptorSet descBufferWrites = vk::WriteDescriptorSet()
+				.setDstSet(descSetLightfield)
+				.setDstBinding(0)
+				.setDstArrayElement(0)
+				.setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
+				.setDescriptorCount((uint32_t)descriptors.size())
+				//
+				.setPBufferInfo(nullptr)
+				.setPImageInfo(descriptors.data())
+				.setPTexelBufferView(nullptr);
 
-		deviceWrapper.logicalDevice.updateDescriptorSets(descBufferWrites, {});
+			deviceWrapper.logicalDevice.updateDescriptorSets(descBufferWrites, {});
+		}
+
+		// gradient image
+		{
+			// allocate the descriptor sets using descriptor pool
+			vk::DescriptorSetAllocateInfo allocInfo = vk::DescriptorSetAllocateInfo()
+				.setDescriptorPool(descPool)
+				.setDescriptorSetCount(1).setPSetLayouts(&descSetLayout);
+			descSetGradients = deviceWrapper.logicalDevice.allocateDescriptorSets(allocInfo)[0];
+
+			// create sampler for images
+			vk::SamplerCreateInfo samplerInfo = vk::SamplerCreateInfo()
+				.setMagFilter(vk::Filter::eNearest)
+				.setMinFilter(vk::Filter::eNearest)
+				.setAnisotropyEnable(VK_FALSE) // not needed for now
+				.setMaxAnisotropy(0.0f)
+				.setUnnormalizedCoordinates(VK_FALSE)
+				.setBorderColor(vk::BorderColor::eIntOpaqueBlack)
+				.setAddressModeU(vk::SamplerAddressMode::eClampToEdge)
+				.setAddressModeV(vk::SamplerAddressMode::eClampToEdge)
+				.setAddressModeW(vk::SamplerAddressMode::eClampToEdge)
+				.setCompareEnable(VK_FALSE)
+				.setCompareOp(vk::CompareOp::eAlways)
+				.setMipmapMode(vk::SamplerMipmapMode::eNearest)
+				.setMipLodBias(0.0f)
+				.setMinLod(0.0f)
+				.setMaxLod(0.0f);
+			samplerGradients = deviceWrapper.logicalDevice.createSampler(samplerInfo);
+
+			std::array<vk::DescriptorImageInfo, 1> descriptors;
+			descriptors[0]
+				.setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
+				.setImageView(gradientsImageView)
+				.setSampler(samplerGradients);
+
+			// desc set
+			vk::WriteDescriptorSet descBufferWrites = vk::WriteDescriptorSet()
+				.setDstSet(descSetGradients)
+				.setDstBinding(0)
+				.setDstArrayElement(0)
+				.setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
+				.setDescriptorCount((uint32_t)descriptors.size())
+				//
+				.setPBufferInfo(nullptr)
+				.setPImageInfo(descriptors.data())
+				.setPTexelBufferView(nullptr);
+
+			deviceWrapper.logicalDevice.updateDescriptorSets(descBufferWrites, {});
+		}
 	}
 
 public:
@@ -313,6 +374,8 @@ public:
 	std::vector<vk::ImageView> lightfieldSingleImageViews; // one view for each cam to render into
 
 	vk::DescriptorSetLayout descSetLayout;
-	vk::DescriptorSet descSet;
-	vk::Sampler sampler;
+	vk::DescriptorSet descSetLightfield;
+	vk::DescriptorSet descSetGradients;
+	vk::Sampler samplerLightfields;
+	vk::Sampler samplerGradients;
 };

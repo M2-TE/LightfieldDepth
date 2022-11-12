@@ -242,7 +242,7 @@ private:
 			camera.update();
 
 			// transition lightfield images
-			lightfield.layout_transition(commandBuffer, vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal);
+			lightfield.layout_transition_lightfields(commandBuffer, vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal);
 
 			// writing to lightfield (9 cams)
 			for (auto i = 0u; i < 9; i++) {
@@ -253,10 +253,11 @@ private:
 			}
 
 			// transition lightfield images
-			lightfield.layout_transition(commandBuffer, vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
+			lightfield.layout_transition_lightfields(commandBuffer, vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
 		}
 
 		gradientsRenderpass.execute(commandBuffer, pushConstant);
+		lightfield.layout_transition_gradients(commandBuffer, vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
 		disparityRenderpass.execute(commandBuffer);
 
 		// direct write to swapchain image
