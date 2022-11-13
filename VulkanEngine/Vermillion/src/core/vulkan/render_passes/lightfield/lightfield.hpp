@@ -23,16 +23,7 @@ public:
 	{
 		create_images(info.allocator, info.swapchainWrapper);
 		create_image_views(info.deviceWrapper);
-		std::string folder;
-		load_image_data(folder.assign(info.srcFolder).append("input_Cam039.png").c_str(), 0, info.deviceWrapper, info.allocator, info.commandPool);
-		load_image_data(folder.assign(info.srcFolder).append("input_Cam048.png").c_str(), 1, info.deviceWrapper, info.allocator, info.commandPool);
-		load_image_data(folder.assign(info.srcFolder).append("input_Cam057.png").c_str(), 2, info.deviceWrapper, info.allocator, info.commandPool);
-		load_image_data(folder.assign(info.srcFolder).append("input_Cam040.png").c_str(), 3, info.deviceWrapper, info.allocator, info.commandPool);
-		load_image_data(folder.assign(info.srcFolder).append("input_Cam049.png").c_str(), 4, info.deviceWrapper, info.allocator, info.commandPool);
-		load_image_data(folder.assign(info.srcFolder).append("input_Cam058.png").c_str(), 5, info.deviceWrapper, info.allocator, info.commandPool);
-		load_image_data(folder.assign(info.srcFolder).append("input_Cam041.png").c_str(), 6, info.deviceWrapper, info.allocator, info.commandPool);
-		load_image_data(folder.assign(info.srcFolder).append("input_Cam050.png").c_str(), 7, info.deviceWrapper, info.allocator, info.commandPool);
-		load_image_data(folder.assign(info.srcFolder).append("input_Cam059.png").c_str(), 8, info.deviceWrapper, info.allocator, info.commandPool);
+		load_images(info.deviceWrapper, info.allocator, info.commandPool, info.srcFolder);
 		create_desc_set_layout(info.deviceWrapper);
 		create_desc_set(info.deviceWrapper, info.descPool);
 	}
@@ -53,6 +44,22 @@ public:
 		}
 
 		deviceWrapper.logicalDevice.destroyDescriptorSetLayout(descSetLayout);
+	}
+	void load_images(DeviceWrapper& deviceWrapper, vma::Allocator& allocator, vk::CommandPool& commandPool, std::string srcFolder = "")
+	{
+		if (srcFolder == "") srcFolder = srcFolderCache;
+		else srcFolderCache = srcFolder;
+		
+		std::string folder;
+		load_image_data(folder.assign(srcFolder).append("input_Cam039.png").c_str(), 0, deviceWrapper, allocator, commandPool);
+		load_image_data(folder.assign(srcFolder).append("input_Cam048.png").c_str(), 1, deviceWrapper, allocator, commandPool);
+		load_image_data(folder.assign(srcFolder).append("input_Cam057.png").c_str(), 2, deviceWrapper, allocator, commandPool);
+		load_image_data(folder.assign(srcFolder).append("input_Cam040.png").c_str(), 3, deviceWrapper, allocator, commandPool);
+		load_image_data(folder.assign(srcFolder).append("input_Cam049.png").c_str(), 4, deviceWrapper, allocator, commandPool);
+		load_image_data(folder.assign(srcFolder).append("input_Cam058.png").c_str(), 5, deviceWrapper, allocator, commandPool);
+		load_image_data(folder.assign(srcFolder).append("input_Cam041.png").c_str(), 6, deviceWrapper, allocator, commandPool);
+		load_image_data(folder.assign(srcFolder).append("input_Cam050.png").c_str(), 7, deviceWrapper, allocator, commandPool);
+		load_image_data(folder.assign(srcFolder).append("input_Cam059.png").c_str(), 8, deviceWrapper, allocator, commandPool);
 	}
 	void layout_transition_lightfields(vk::CommandBuffer& commandBuffer, vk::ImageLayout from, vk::ImageLayout to)
 	{
@@ -378,4 +385,5 @@ public:
 	vk::DescriptorSet descSetGradients;
 	vk::Sampler samplerLightfields;
 	vk::Sampler samplerGradients;
+	std::string srcFolderCache;
 };

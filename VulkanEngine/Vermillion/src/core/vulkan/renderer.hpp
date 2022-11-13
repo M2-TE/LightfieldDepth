@@ -142,9 +142,16 @@ public:
 	}
 
 	// TESTING
-	void handle_input(Input& input)
+	void handle_input(DeviceWrapper& deviceWrapper, Input& input)
 	{
-		camera.handle_input(input);
+		if (input.keysPressed.count(SDLK_LCTRL)) {
+			bSimulateLightfield = !bSimulateLightfield;
+			if (!bSimulateLightfield) lightfield.load_images(deviceWrapper, allocator, transientCommandPool);
+		}
+
+		if (bSimulateLightfield) {
+			camera.handle_input(input);
+		}
 	}
 
 private:
@@ -236,7 +243,7 @@ private:
 		commandBuffer.begin(beginInfo);
 
 		// manually switching between rendering geometry vs reading image data
-		if (false)
+		if (bSimulateLightfield)
 		{
 			// update camera buffer (and other buffers later)
 			camera.update();
@@ -284,4 +291,5 @@ private:
 
 	// scene objects
 	Camera camera;
+	bool bSimulateLightfield = false;
 };

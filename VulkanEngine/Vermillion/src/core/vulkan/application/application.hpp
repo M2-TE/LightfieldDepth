@@ -172,7 +172,7 @@ private:
 	}
 	void handle_inputs()
 	{
-		renderer.handle_input(input);
+		renderer.handle_input(deviceManager.get_device_wrapper(), input);
 
 		if (input.keysPressed.count(SDLK_F11)) {
 			toggle_fullscreen();
@@ -196,6 +196,7 @@ private:
 			else if (input.keysPressed.count(SDLK_F4)) pushConstant.iRenderMode = 3;
 			else if (input.keysPressed.count(SDLK_F5)) pushConstant.iRenderMode = 4;
 			else if (input.keysPressed.count(SDLK_F6)) pushConstant.iRenderMode = 5;
+			else if (input.keysPressed.count(SDLK_F7)) pushConstant.iRenderMode = 6;
 		}
 	}
 	
@@ -216,7 +217,7 @@ private:
 	{
 		Sint32 w, h;
 		SDL_GetWindowSize(window.get_window(), &w, &h);
-		VMI_LOG("Attempting swapchain rebuild: (" << bForceRebuild << ") " << w << "x" << h);
+		VMI_LOG("Attempting swapchain rebuild: " << w << "x" << h);
 		renderer.recreate_KHR(deviceManager.get_device_wrapper(), window, bForceRebuild, std::string("lightfields/").append(mainFolder).append(subFolder).c_str());
 	}
 

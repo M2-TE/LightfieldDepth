@@ -14,9 +14,10 @@
 //  -> scaling certainty to make it visible // DONE
 
 // saturday:
-// fix tex read error on post processing
+// fix tex read error on post processing // DONE
 // simulated model view with button
 // make sphere have colored surface?
+// change the color algorithm with sine wave?
 
 // sunday:
 // variable camera array size/shape or distance
@@ -28,6 +29,8 @@
 // tuesday:
 // fix linux implementation
 
+// TODO: update ui with all the new features!
+// general ui cleanup..
 
 // extra:
 // gauss blur as post processing
