@@ -15,9 +15,9 @@
 
 // saturday:
 // fix tex read error on post processing // DONE
-// simulated model view with button
-// make sphere have colored surface?
-// change the color algorithm with sine wave?
+// simulated model view with button // DONE
+// make sphere have colored surface? // DONE
+// change the color algorithm with sine wave? // found something better
 
 // sunday:
 // variable camera array size/shape or distance

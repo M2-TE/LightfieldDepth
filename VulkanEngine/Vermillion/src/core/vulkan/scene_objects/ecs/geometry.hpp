@@ -124,19 +124,24 @@ namespace components
 		}
 		void set_sphere()
 		{
+			static constexpr float4x4 cols = {
+				float4(1.0f, 1.0f, 1.0f, 1.0f),
+				float4(1.0f, 0.0f, 0.0f, 1.0f),
+				float4(0.0f, 1.0f, 0.0f, 1.0f),
+				float4(0.0f, 0.0f, 1.0f, 1.0f)
+			};
 			static constexpr float4 white = float4(1.0f, 1.0f, 1.0f, 1.0f);
 			static constexpr float M = 50.0f;
 			static constexpr float N = 50.0f;
 			static constexpr float pi = (float)M_PI;
 
-			// TODO: reserve space for vertices/indices?
+			uint colIndex = 0;
 			for (float m = 0; m <= M; m++) {
 				for (float n = 0; n <= N; n++) {
 					float x = sinf(pi * m / M) * cosf(2 * pi * n / N);
 					float y = sinf(pi * m / M) * sinf(2 * pi * n / N);
 					float z = cosf(pi * m / M);
-
-					vertices.emplace_back(float4(x, y, z, 1.0f), white, float4(x, y, z, 1.0f));
+					vertices.emplace_back(float4(x, y, z, 1.0f), cols[(colIndex++) % 4], float4(x, y, z, 1.0f));
 				}
 			}
 
