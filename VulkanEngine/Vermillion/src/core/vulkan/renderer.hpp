@@ -141,7 +141,6 @@ public:
 		}
 	}
 
-	// TESTING
 	void handle_input(DeviceWrapper& deviceWrapper, Input& input)
 	{
 		if (input.keysPressed.count(SDLK_LCTRL)) {
@@ -152,6 +151,16 @@ public:
 		if (bSimulateLightfield) {
 			camera.handle_input(input);
 		}
+	}
+
+	void handle_imgui()
+	{
+		ImGui::Begin("Camera offset");
+		ImGui::Text("Distance to center camera, uniform for all");
+		if (ImGui::SliderFloat("Value", &camOffset, 0.0f, 0.1f)) {
+			forwardRenderpass.update_cam_offsets(camOffset);
+		}
+		ImGui::End();
 	}
 
 private:
@@ -291,5 +300,6 @@ private:
 
 	// scene objects
 	Camera camera;
+	float camOffset = 0.01f;
 	bool bSimulateLightfield = false;
 };

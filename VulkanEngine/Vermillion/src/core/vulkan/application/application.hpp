@@ -131,6 +131,7 @@ private:
 			subFolder.assign(subDirs[iSubFolder]).append("/");
 			resize(true);
 		}
+		renderer.handle_imgui();
 		ImGui::End();
 
 		ImGui::EndFrame();

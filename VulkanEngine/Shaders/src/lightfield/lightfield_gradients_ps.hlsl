@@ -20,7 +20,10 @@
 // change the color algorithm with sine wave? // found something better
 
 // sunday:
-// variable camera array size/shape or distance
+// variable camera array size/shape or distance // DONE
+//  -> shape can now be varied using UI element
+//  -> selecting specific cameras at runtime is a bit difficult atm, 
+//     opting to just hardcode them instead just to test the results
 
 // monday:
 // mean squared error/sum of absolute differences for comparison

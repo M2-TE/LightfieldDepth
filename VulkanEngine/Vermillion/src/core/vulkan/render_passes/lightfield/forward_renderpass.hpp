@@ -50,6 +50,29 @@ public:
 
 
 	}
+	void update_cam_offsets(float offset = 0.01f)
+	{
+		float d = offset;
+		float z = 0.0f;
+		std::array<float2, nCams> offsets = {
+			float2(d,  d),
+			float2(d,  z),
+			float2(d, -d),
+
+			float2(z,  d),
+			float2(z,  z),
+			float2(z, -d),
+
+			float2(-d,  d),
+			float2(-d,  z),
+			float2(-d, -d),
+		};
+
+		for (auto i = 0; i < nCams; i++) {
+			camOffsetBuffers[i].data = float4(offsets[i].x, offsets[i].y, 0.0f, 0.0f);
+			camOffsetBuffers[i].write_buffer();
+		}
+	}
 
 	void begin(vk::CommandBuffer& commandBuffer, uint32_t iCam)
 	{
