@@ -19,4 +19,7 @@ struct PC
 
 	float depthModA = 0.0f;
 	float depthModB = 1.0f;
+
+	// used to temporarily disable heatmap for single render
+	uint bUseHeat;
 };

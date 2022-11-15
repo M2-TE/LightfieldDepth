@@ -2,10 +2,6 @@
 //#define BRIGHTNESS(col) dot(col, float3(0.299f, 0.587f, 0.114f)); // using luminance construction
 
 // anisotropic filtering? - UNFIT (static filter size, would potentially include false depths)
-// fix imag loading thingy - DONE
-// depth factor sliders - DONE
-// substitute 3x3 by 5x5 if 0.0f - DONE
-//      -> blur results to combine diff filter sizes? - NOT NEEDED
 
 // friday:
 // swich between filters using buttons // DONE
@@ -21,13 +17,15 @@
 
 // sunday:
 // variable camera array size/shape or distance // DONE
-//  -> shape can now be varied using UI element
+//  -> offset can now be varied using UI element
 //  -> selecting specific cameras at runtime is a bit difficult atm, 
 //     opting to just hardcode them instead just to test the results
 
 // monday:
 // mean squared error/sum of absolute differences for comparison
 // comparison to ideal depth/disparity
+// why the hell are they using .pfm file formats for ground truth..
+// -> its not even standard pfm, its just a grayscale..
 
 // tuesday:
 // fix linux implementation
@@ -46,6 +44,8 @@ struct PCS
     
     float depthModA; 
     float depthModB;
+    
+    uint bUseHeat;
 };
 [[vk::push_constant]] PCS pcs;
 Texture2DArray colBuffArr : register(t0);
@@ -73,6 +73,13 @@ float4 get_gradients(int3 texPos, int tapSize, float p[9], float d[9])
             {
                 for (int v = 0; v < nCams; v++)
                 {
+                    bool3x3 enabledCams = {
+                        true, true, true,
+                        true, true, true,
+                        true, true, true
+                    };
+                    if (!enabledCams[u][v]) continue;
+                    
                     int camIndex = u * 3 + v;
                     int3 texOffset = int3(x - pixelOffset, y - pixelOffset, camIndex);
 

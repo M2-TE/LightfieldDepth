@@ -32,10 +32,12 @@ public:
 		allocator.destroyImage(lightfieldImage, lightfieldAlloc);
 		allocator.destroyImage(gradientsImage, gradientsAlloc);
 		allocator.destroyImage(disparityImage, disparityAlloc);
+		allocator.destroyImage(comparisonImage, comparisonAlloc);
 
 		deviceWrapper.logicalDevice.destroyImageView(lightfieldImageView);
 		deviceWrapper.logicalDevice.destroyImageView(gradientsImageView);
 		deviceWrapper.logicalDevice.destroyImageView(disparityImageView);
+		deviceWrapper.logicalDevice.destroyImageView(comparisonImageView);
 		deviceWrapper.logicalDevice.destroySampler(samplerLightfields);
 		deviceWrapper.logicalDevice.destroySampler(samplerGradients);
 
@@ -43,7 +45,8 @@ public:
 			deviceWrapper.logicalDevice.destroyImageView(lightfieldSingleImageViews[i]);
 		}
 
-		deviceWrapper.logicalDevice.destroyDescriptorSetLayout(descSetLayout);
+		deviceWrapper.logicalDevice.destroyDescriptorSetLayout(descSetLayoutSingle);
+		deviceWrapper.logicalDevice.destroyDescriptorSetLayout(descSetLayoutDouble);
 	}
 	void load_images(DeviceWrapper& deviceWrapper, vma::Allocator& allocator, vk::CommandPool& commandPool, std::string srcFolder = "")
 	{
@@ -60,6 +63,9 @@ public:
 		load_image_data(folder.assign(srcFolder).append("input_Cam041.png").c_str(), 6, deviceWrapper, allocator, commandPool);
 		load_image_data(folder.assign(srcFolder).append("input_Cam050.png").c_str(), 7, deviceWrapper, allocator, commandPool);
 		load_image_data(folder.assign(srcFolder).append("input_Cam059.png").c_str(), 8, deviceWrapper, allocator, commandPool);
+
+		//load_comparison_image_data(folder.assign(srcFolder).append("gt_disp_lowres.pfm").c_str(), deviceWrapper, allocator, commandPool);
+		load_comparison_image_data(folder.assign(srcFolder).append("gt_depth_lowres.pfm").c_str(), deviceWrapper, allocator, commandPool);
 	}
 	void layout_transition_lightfields(vk::CommandBuffer& commandBuffer, vk::ImageLayout from, vk::ImageLayout to)
 	{
@@ -118,6 +124,12 @@ private:
 		if (result != vk::Result::eSuccess) VMI_ERR("Gradients image creation unsuccessful");
 		allocator.setAllocationName(gradientsAlloc, std::string("Gradients").c_str());
 
+		// comparison
+		imageCreateInfo.setUsage(vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst);
+		result = allocator.createImage(&imageCreateInfo, &allocCreateInfo, &comparisonImage, &comparisonAlloc, nullptr);
+		if (result != vk::Result::eSuccess) VMI_ERR("Gradients image creation unsuccessful");
+		allocator.setAllocationName(comparisonAlloc, std::string("Comparison").c_str());
+
 		// disparity
 		imageCreateInfo.setUsage(vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment);
 		result = allocator.createImage(&imageCreateInfo, &allocCreateInfo, &disparityImage, &disparityAlloc, nullptr);
@@ -155,6 +167,10 @@ private:
 		imageViewInfo.setImage(gradientsImage);
 		gradientsImageView = deviceWrapper.logicalDevice.createImageView(imageViewInfo);
 
+		// comparison view
+		imageViewInfo.setImage(comparisonImage);
+		comparisonImageView = deviceWrapper.logicalDevice.createImageView(imageViewInfo);
+
 		// disparity view
 		imageViewInfo.setImage(disparityImage);
 		disparityImageView = deviceWrapper.logicalDevice.createImageView(imageViewInfo);
@@ -166,15 +182,15 @@ private:
 		if (!img) {
 			VMI_ERR("Error on img load: Camera " << iCam << " with path: " << filename);
 			switch (iCam) {
-				case 0: img = stbi_load("lightfields/training/cotton/input_Cam039.png", &x, &y, &n, STBI_rgb_alpha); break;
-				case 1: img = stbi_load("lightfields/training/cotton/input_Cam048.png", &x, &y, &n, STBI_rgb_alpha); break;
-				case 2: img = stbi_load("lightfields/training/cotton/input_Cam057.png", &x, &y, &n, STBI_rgb_alpha); break;
-				case 3: img = stbi_load("lightfields/training/cotton/input_Cam040.png", &x, &y, &n, STBI_rgb_alpha); break;
-				case 4: img = stbi_load("lightfields/training/cotton/input_Cam049.png", &x, &y, &n, STBI_rgb_alpha); break;
-				case 5: img = stbi_load("lightfields/training/cotton/input_Cam058.png", &x, &y, &n, STBI_rgb_alpha); break;
-				case 6: img = stbi_load("lightfields/training/cotton/input_Cam041.png", &x, &y, &n, STBI_rgb_alpha); break;
-				case 7: img = stbi_load("lightfields/training/cotton/input_Cam050.png", &x, &y, &n, STBI_rgb_alpha); break;
-				case 8: img = stbi_load("lightfields/training/cotton/input_Cam059.png", &x, &y, &n, STBI_rgb_alpha); break;
+			case 0: img = stbi_load("lightfields/training/cotton/input_Cam039.png", &x, &y, &n, STBI_rgb_alpha); break;
+			case 1: img = stbi_load("lightfields/training/cotton/input_Cam048.png", &x, &y, &n, STBI_rgb_alpha); break;
+			case 2: img = stbi_load("lightfields/training/cotton/input_Cam057.png", &x, &y, &n, STBI_rgb_alpha); break;
+			case 3: img = stbi_load("lightfields/training/cotton/input_Cam040.png", &x, &y, &n, STBI_rgb_alpha); break;
+			case 4: img = stbi_load("lightfields/training/cotton/input_Cam049.png", &x, &y, &n, STBI_rgb_alpha); break;
+			case 5: img = stbi_load("lightfields/training/cotton/input_Cam058.png", &x, &y, &n, STBI_rgb_alpha); break;
+			case 6: img = stbi_load("lightfields/training/cotton/input_Cam041.png", &x, &y, &n, STBI_rgb_alpha); break;
+			case 7: img = stbi_load("lightfields/training/cotton/input_Cam050.png", &x, &y, &n, STBI_rgb_alpha); break;
+			case 8: img = stbi_load("lightfields/training/cotton/input_Cam059.png", &x, &y, &n, STBI_rgb_alpha); break;
 			}
 		}
 		vk::DeviceSize fileSize = x * y * STBI_rgb_alpha;
@@ -255,22 +271,128 @@ private:
 		allocator.destroyBuffer(stagingBuffer.first, stagingBuffer.second);
 		stbi_image_free(img);
 	}
+	void load_comparison_image_data(const char* filename, DeviceWrapper& deviceWrapper, vma::Allocator& allocator, vk::CommandPool& commandPool)
+	{
+		// reading grayscale .pfm file
+		std::ifstream myfile(filename, std::ios::binary);
+		std::streampos begin = myfile.tellg();
+		myfile.seekg(0, std::ios::end);
+		std::streampos end = myfile.tellg();
+		std::vector<float> imgData((end - begin) / sizeof(float));
+		myfile.seekg(0, std::ios::beg);
+		myfile.read(reinterpret_cast<char*>(imgData.data()), end - begin);
+		myfile.close();
+
+		float* img = imgData.data() + 3; // 3x4 bytes header
+		int x = 512;
+		int y = 512;
+		if (!img) {
+			VMI_ERR("Error on img load: Comparison image with path: " << filename);
+		}
+		vk::DeviceSize fileSize = x * y * STBI_rgb_alpha;
+
+		// staging buffer
+		vk::BufferCreateInfo bufferInfo = vk::BufferCreateInfo()
+			.setSize(fileSize)
+			.setUsage(vk::BufferUsageFlagBits::eTransferSrc);
+		vma::AllocationCreateInfo allocCreateInfo = vma::AllocationCreateInfo()
+			.setUsage(vma::MemoryUsage::eAuto)
+			.setFlags(vma::AllocationCreateFlagBits::eHostAccessSequentialWrite | vma::AllocationCreateFlagBits::eMapped);
+		vma::AllocationInfo allocInfo;
+		auto stagingBuffer = allocator.createBuffer(bufferInfo, allocCreateInfo, allocInfo);
+
+		// already mapped, so just copy over
+		memcpy(allocInfo.pMappedData, img, fileSize);
+
+		// copy from staging buffer to image
+		// memory transfer
+		{
+			vk::CommandBufferAllocateInfo allocInfo = vk::CommandBufferAllocateInfo()
+				.setLevel(vk::CommandBufferLevel::ePrimary)
+				.setCommandPool(commandPool)
+				.setCommandBufferCount(1);
+
+			vk::CommandBuffer commandBuffer;
+			auto res = deviceWrapper.logicalDevice.allocateCommandBuffers(&allocInfo, &commandBuffer);
+
+			// begin recording to temporary command buffer
+			vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo()
+				.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
+			commandBuffer.begin(beginInfo);
+
+			// TODO: describe subresource here, need to select each image in lightfield array individually
+			vk::BufferImageCopy region = vk::BufferImageCopy()
+				// buffer
+				.setBufferRowLength(x)
+				.setBufferImageHeight(y)
+				.setBufferOffset(0)
+				// img
+				.setImageExtent(vk::Extent3D(x, y, 1))
+				.setImageOffset(0)
+				.setImageSubresource(vk::ImageSubresourceLayers()
+					.setAspectMask(vk::ImageAspectFlagBits::eColor)
+					.setBaseArrayLayer(0)
+					.setLayerCount(1)
+					.setMipLevel(0));
+
+			vk::ImageMemoryBarrier barrier = vk::ImageMemoryBarrier()
+				.setOldLayout(vk::ImageLayout::eUndefined)
+				.setNewLayout(vk::ImageLayout::eTransferDstOptimal)
+				.setImage(comparisonImage)
+				.setSubresourceRange(vk::ImageSubresourceRange()
+					.setAspectMask(vk::ImageAspectFlagBits::eColor)
+					.setBaseArrayLayer(0)
+					.setLayerCount(1)
+					.setBaseMipLevel(0)
+					.setLevelCount(1));
+			commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eTransfer, {}, {}, {}, barrier);
+			commandBuffer.copyBufferToImage(stagingBuffer.first, comparisonImage, vk::ImageLayout::eTransferDstOptimal, region);
+			barrier.oldLayout = vk::ImageLayout::eTransferDstOptimal;
+			barrier.newLayout = vk::ImageLayout::eReadOnlyOptimal;
+			//barrier.newLayout = vk::ImageLayout::eColorAttachmentOptimal;
+			commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eTransfer, {}, {}, {}, barrier);
+			commandBuffer.end();
+
+			vk::SubmitInfo submitInfo = vk::SubmitInfo()
+				.setCommandBufferCount(1)
+				.setPCommandBuffers(&commandBuffer);
+			deviceWrapper.queue.submit(submitInfo);
+			deviceWrapper.queue.waitIdle(); // TODO: change this to wait on a fence instead (upon queue submit) so multiple memory transfers would be possible
+
+			// free command buffer directly after use
+			deviceWrapper.logicalDevice.freeCommandBuffers(commandPool, commandBuffer);
+		}
+
+		// clean up
+		allocator.destroyBuffer(stagingBuffer.first, stagingBuffer.second);
+	}
 
 	void create_desc_set_layout(DeviceWrapper& deviceWrapper)
 	{
 		// one binding for each image in gbuffer
-		std::array<vk::DescriptorSetLayoutBinding, 1> setLayoutBindings;
+		std::array<vk::DescriptorSetLayoutBinding, 2> setLayoutBindings;
 		setLayoutBindings[0]
 			.setBinding(0)
 			.setDescriptorCount(1)
 			.setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
 			.setStageFlags(vk::ShaderStageFlagBits::eFragment);
+		setLayoutBindings[1]
+			.setBinding(1)
+			.setDescriptorCount(1)
+			.setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
+			.setStageFlags(vk::ShaderStageFlagBits::eFragment);
+
 
 		// create descriptor set layout from the bindings
 		vk::DescriptorSetLayoutCreateInfo createInfo = vk::DescriptorSetLayoutCreateInfo()
 			.setBindingCount((uint32_t)setLayoutBindings.size())
 			.setPBindings(setLayoutBindings.data());
-		descSetLayout = deviceWrapper.logicalDevice.createDescriptorSetLayout(createInfo);
+		descSetLayoutDouble = deviceWrapper.logicalDevice.createDescriptorSetLayout(createInfo);
+
+		createInfo = vk::DescriptorSetLayoutCreateInfo()
+			.setBindingCount(1u)
+			.setPBindings(setLayoutBindings.data());
+		descSetLayoutSingle = deviceWrapper.logicalDevice.createDescriptorSetLayout(createInfo);
 	}
 	void create_desc_set(DeviceWrapper& deviceWrapper, vk::DescriptorPool& descPool)
 	{
@@ -279,7 +401,7 @@ private:
 			// allocate the descriptor sets using descriptor pool
 			vk::DescriptorSetAllocateInfo allocInfo = vk::DescriptorSetAllocateInfo()
 				.setDescriptorPool(descPool)
-				.setDescriptorSetCount(1).setPSetLayouts(&descSetLayout);
+				.setDescriptorSetCount(1).setPSetLayouts(&descSetLayoutSingle);
 			descSetLightfield = deviceWrapper.logicalDevice.allocateDescriptorSets(allocInfo)[0];
 
 			// create sampler for images
@@ -327,7 +449,7 @@ private:
 			// allocate the descriptor sets using descriptor pool
 			vk::DescriptorSetAllocateInfo allocInfo = vk::DescriptorSetAllocateInfo()
 				.setDescriptorPool(descPool)
-				.setDescriptorSetCount(1).setPSetLayouts(&descSetLayout);
+				.setDescriptorSetCount(1).setPSetLayouts(&descSetLayoutDouble);
 			descSetGradients = deviceWrapper.logicalDevice.allocateDescriptorSets(allocInfo)[0];
 
 			// create sampler for images
@@ -349,10 +471,14 @@ private:
 				.setMaxLod(0.0f);
 			samplerGradients = deviceWrapper.logicalDevice.createSampler(samplerInfo);
 
-			std::array<vk::DescriptorImageInfo, 1> descriptors;
+			std::array<vk::DescriptorImageInfo, 2> descriptors;
 			descriptors[0]
 				.setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
 				.setImageView(gradientsImageView)
+				.setSampler(samplerGradients);
+			descriptors[1]
+				.setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
+				.setImageView(comparisonImageView)
 				.setSampler(samplerGradients);
 
 			// desc set
@@ -375,15 +501,14 @@ public:
 	static constexpr size_t nCameras = 9;
 	static constexpr vk::Format colorFormat = vk::Format::eR8G8B8A8Srgb;
 
-	vma::Allocation lightfieldAlloc, gradientsAlloc, disparityAlloc;
-	vk::Image lightfieldImage, gradientsImage, disparityImage;
-	vk::ImageView lightfieldImageView, gradientsImageView, disparityImageView;
+	vma::Allocation lightfieldAlloc, gradientsAlloc, disparityAlloc, comparisonAlloc;
+	vk::Image lightfieldImage, gradientsImage, disparityImage, comparisonImage;
+	vk::ImageView lightfieldImageView, gradientsImageView, disparityImageView, comparisonImageView;
 	std::vector<vk::ImageView> lightfieldSingleImageViews; // one view for each cam to render into
 
-	vk::DescriptorSetLayout descSetLayout;
-	vk::DescriptorSet descSetLightfield;
-	vk::DescriptorSet descSetGradients;
-	vk::Sampler samplerLightfields;
-	vk::Sampler samplerGradients;
+	vk::DescriptorSetLayout descSetLayoutSingle;
+	vk::DescriptorSetLayout descSetLayoutDouble;
+	vk::DescriptorSet descSetLightfield, descSetGradients;
+	vk::Sampler samplerLightfields, samplerGradients;
 	std::string srcFolderCache;
 };

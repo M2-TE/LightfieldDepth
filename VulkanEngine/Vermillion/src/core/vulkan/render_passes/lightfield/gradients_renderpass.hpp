@@ -24,7 +24,7 @@ public:
 		create_framebuffer(info);
 
 		descSet = info.lightfield.descSetLightfield;
-		descSetLayout = info.lightfield.descSetLayout;
+		descSetLayout = info.lightfield.descSetLayoutSingle;
 
 		create_pipeline_layout(info);
 		create_pipeline(info);
