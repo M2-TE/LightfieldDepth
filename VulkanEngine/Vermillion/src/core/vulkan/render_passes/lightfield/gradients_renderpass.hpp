@@ -62,7 +62,6 @@ public:
 
 		// draw fullscreen triangle
 		commandBuffer.pushConstants<PC>(pipelineLayout, vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
-
 		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, descSet, {});
 		commandBuffer.draw(3, 1, 0, 0);
 

@@ -64,8 +64,8 @@ public:
 		load_image_data(folder.assign(srcFolder).append("input_Cam050.png").c_str(), 7, deviceWrapper, allocator, commandPool);
 		load_image_data(folder.assign(srcFolder).append("input_Cam059.png").c_str(), 8, deviceWrapper, allocator, commandPool);
 
-		//load_comparison_image_data(folder.assign(srcFolder).append("gt_disp_lowres.pfm").c_str(), deviceWrapper, allocator, commandPool);
-		load_comparison_image_data(folder.assign(srcFolder).append("gt_depth_lowres.pfm").c_str(), deviceWrapper, allocator, commandPool);
+		load_comparison_image_data(folder.assign(srcFolder).append("gt_disp_lowres.pfm").c_str(), deviceWrapper, allocator, commandPool);
+		//load_comparison_image_data(folder.assign(srcFolder).append("gt_depth_lowres.pfm").c_str(), deviceWrapper, allocator, commandPool);
 	}
 	void layout_transition_lightfields(vk::CommandBuffer& commandBuffer, vk::ImageLayout from, vk::ImageLayout to)
 	{
@@ -126,12 +126,14 @@ private:
 
 		// comparison
 		imageCreateInfo.setUsage(vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst);
+		imageCreateInfo.setFormat(vk::Format::eR32Sfloat);
 		result = allocator.createImage(&imageCreateInfo, &allocCreateInfo, &comparisonImage, &comparisonAlloc, nullptr);
 		if (result != vk::Result::eSuccess) VMI_ERR("Gradients image creation unsuccessful");
 		allocator.setAllocationName(comparisonAlloc, std::string("Comparison").c_str());
 
 		// disparity
 		imageCreateInfo.setUsage(vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment);
+		imageCreateInfo.setFormat(colorFormat);
 		result = allocator.createImage(&imageCreateInfo, &allocCreateInfo, &disparityImage, &disparityAlloc, nullptr);
 		if (result != vk::Result::eSuccess) VMI_ERR("Disparity image creation unsuccessful");
 		allocator.setAllocationName(disparityAlloc, std::string("Disparity Map").c_str());
@@ -169,10 +171,12 @@ private:
 
 		// comparison view
 		imageViewInfo.setImage(comparisonImage);
+		imageViewInfo.setFormat(vk::Format::eR32Sfloat);
 		comparisonImageView = deviceWrapper.logicalDevice.createImageView(imageViewInfo);
 
 		// disparity view
 		imageViewInfo.setImage(disparityImage);
+		imageViewInfo.setFormat(colorFormat);
 		disparityImageView = deviceWrapper.logicalDevice.createImageView(imageViewInfo);
 	}
 	void load_image_data(const char* filename, uint32_t iCam, DeviceWrapper& deviceWrapper, vma::Allocator& allocator, vk::CommandPool& commandPool)
@@ -278,18 +282,29 @@ private:
 		std::streampos begin = myfile.tellg();
 		myfile.seekg(0, std::ios::end);
 		std::streampos end = myfile.tellg();
-		std::vector<float> imgData((end - begin) / sizeof(float));
 		myfile.seekg(0, std::ios::beg);
-		myfile.read(reinterpret_cast<char*>(imgData.data()), end - begin);
+		myfile.seekg(14); // header is 14 bytes
+		std::vector<char> imgData(end - begin);
+		myfile.read(imgData.data(), end - begin);
 		myfile.close();
 
-		float* img = imgData.data() + 3; // 3x4 bytes header
-		int x = 512;
+		int x = 512; // TODO: read from header
 		int y = 512;
-		if (!img) {
+		comparisonImageData.resize(x * y);
+		// mirror in y axis
+		float* curWrite = comparisonImageData.data();
+		float* curRead = reinterpret_cast<float*>(imgData.data());
+		for (int j = 0; j < y; j++) {
+			int yIndex = (x * y - y - j * y);
+			for (int i = 0; i < x; i++) {
+				curWrite[i + j * y] = curRead[i + yIndex];
+			}
+		}
+
+		if (!comparisonImageData.data()) {
 			VMI_ERR("Error on img load: Comparison image with path: " << filename);
 		}
-		vk::DeviceSize fileSize = x * y * STBI_rgb_alpha;
+		vk::DeviceSize fileSize = x * y * sizeof(float);
 
 		// staging buffer
 		vk::BufferCreateInfo bufferInfo = vk::BufferCreateInfo()
@@ -302,7 +317,7 @@ private:
 		auto stagingBuffer = allocator.createBuffer(bufferInfo, allocCreateInfo, allocInfo);
 
 		// already mapped, so just copy over
-		memcpy(allocInfo.pMappedData, img, fileSize);
+		memcpy(allocInfo.pMappedData, comparisonImageData.data(), fileSize);
 
 		// copy from staging buffer to image
 		// memory transfer
@@ -511,4 +526,5 @@ public:
 	vk::DescriptorSet descSetLightfield, descSetGradients;
 	vk::Sampler samplerLightfields, samplerGradients;
 	std::string srcFolderCache;
+	std::vector<float> comparisonImageData;
 };

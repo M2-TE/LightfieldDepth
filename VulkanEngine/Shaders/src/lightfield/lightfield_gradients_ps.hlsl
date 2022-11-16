@@ -26,6 +26,9 @@
 // comparison to ideal depth/disparity
 // why the hell are they using .pfm file formats for ground truth..
 // -> its not even standard pfm, its just a grayscale..
+// -> worse yet, its in big endian.. actually its not, header is just encoded in ascii for some reason
+// -> oh god its getting worse, it is reversed.. but only on its y axis..
+// https://netpbm.sourceforge.net/doc/pfm.html
 
 // tuesday:
 // fix linux implementation
@@ -41,6 +44,7 @@ struct PCS
 {
     uint iRenderMode;
     uint iFilterMode;
+    uint iPostProcessingMode;
     
     float depthModA; 
     float depthModB;

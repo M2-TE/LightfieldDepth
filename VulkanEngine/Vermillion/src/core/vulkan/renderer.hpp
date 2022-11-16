@@ -274,7 +274,7 @@ private:
 
 		gradientsRenderpass.execute(commandBuffer, pushConstant);
 		lightfield.layout_transition_gradients(commandBuffer, vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
-		disparityRenderpass.execute(commandBuffer);
+		disparityRenderpass.execute(commandBuffer, pushConstant);
 
 		// direct write to swapchain image
 		swapchainWriteRenderpass.execute(commandBuffer, iFrame);

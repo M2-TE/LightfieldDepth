@@ -50,7 +50,7 @@ public:
 		deviceWrapper.logicalDevice.destroyPipeline(graphicsPipeline);
 	}
 
-	void execute(vk::CommandBuffer& commandBuffer)
+	void execute(vk::CommandBuffer& commandBuffer, PC pushConstant)
 	{
 		vk::RenderPassBeginInfo renderPassBeginInfo = vk::RenderPassBeginInfo()
 			.setRenderPass(renderPass)
@@ -61,6 +61,7 @@ public:
 		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline);
 
 		// draw fullscreen triangle
+		commandBuffer.pushConstants<PC>(pipelineLayout, vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
 		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, descSet, {});
 		commandBuffer.draw(3, 1, 0, 0);
 
@@ -131,9 +132,10 @@ private:
 
 	void create_pipeline_layout(DisparityRenderpassCreateInfo& info)
 	{
+		vk::PushConstantRange pcr(vk::ShaderStageFlagBits::eFragment, 0, sizeof(PC));
 		vk::PipelineLayoutCreateInfo pipelineLayoutInfo = vk::PipelineLayoutCreateInfo()
 			.setSetLayouts(descSetLayout)
-			.setPushConstantRangeCount(0).setPushConstantRanges(nullptr);
+			.setPushConstantRanges(pcr);
 		pipelineLayout = info.deviceWrapper.logicalDevice.createPipelineLayout(pipelineLayoutInfo);
 	}
 	void create_pipeline(DisparityRenderpassCreateInfo& info)
