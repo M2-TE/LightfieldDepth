@@ -220,16 +220,16 @@ float4 main(float4 screenPos : SV_Position) : SV_Target
         certainty *= 500.0f;
         return (get_heat(certainty));
     }
-    else // test filler view
+    else // passthrough
     {
         // when gradients equal 0, choose larger filter size
-        const float cutoff = 0.000001f;
-        gradients =
-            allGradients[0] > cutoff || allGradients[0] < -cutoff ? float4(0.0f, 0.0f, 0.0f, 1.0f) :
-            allGradients[1] > cutoff || allGradients[1] < -cutoff ? float4(1.0f, 0.0f, 0.0f, 1.0f) :
-            allGradients[2] > cutoff || allGradients[2] < -cutoff ? float4(0.0f, 1.0f, 0.0f, 1.0f) :
-            allGradients[3] > cutoff || allGradients[3] < -cutoff ? float4(0.0f, 0.0f, 1.0f, 1.0f) : float4(1.0f, 1.0f, 1.0f, 1.0f);
+        //const float cutoff = 0.000001f;
+        //gradients =
+        //    allGradients[0] > cutoff || allGradients[0] < -cutoff ? float4(0.0f, 0.0f, 0.0f, 1.0f) :
+        //    allGradients[1] > cutoff || allGradients[1] < -cutoff ? float4(1.0f, 0.0f, 0.0f, 1.0f) :
+        //    allGradients[2] > cutoff || allGradients[2] < -cutoff ? float4(0.0f, 1.0f, 0.0f, 1.0f) :
+        //    allGradients[3] > cutoff || allGradients[3] < -cutoff ? float4(0.0f, 0.0f, 1.0f, 1.0f) : float4(1.0f, 1.0f, 1.0f, 1.0f);
         
-        return gradients;
+        return float4(0.0f, 0.0f, 0.0f, 1.0f);
     }
 }

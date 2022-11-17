@@ -27,12 +27,7 @@ float4 main(float4 screenPos : SV_Position) : SV_Target
     // gauss blur
     // general average
     // haar wavelet
-    if (pcs.iPostProcessingMode == 0)
-    {
-        float4 color = colorTex[uint2(screenPos.x, screenPos.y)];
-        return color;
-    }
-    else if (pcs.iPostProcessingMode == 1)
+    if (pcs.iRenderMode == 6)
     {
         float comparison = comparisonTex[uint2(screenPos.x, screenPos.y)];
         float4 color = get_heat(comparison);
@@ -40,6 +35,7 @@ float4 main(float4 screenPos : SV_Position) : SV_Target
     }
     else
     {
-        return float4(0.0f, 0.0f, 0.0f, 0.0f);
+        float4 color = colorTex[uint2(screenPos.x, screenPos.y)];
+        return color;
     }
 }
