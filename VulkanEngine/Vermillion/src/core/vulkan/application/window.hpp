@@ -15,6 +15,10 @@ public:
 	{
 		VMI_LOG("[Initializing] SDL window...");
 		init_sdl_window(resolution, fullscreenMode);
+		SDL_version version;
+		SDL_GetVersion(&version);
+		std::string spacing = "    ";
+		VMI_LOG(spacing << "SDL version: " << (uint32_t)version.major << "." << (uint32_t)version.minor << "." << (uint32_t)version.patch);
 
 		VMI_LOG("[Initializing] Vulkan instance...");
 		create_vulkan_instance();
@@ -27,6 +31,8 @@ public:
 		ImGui::CreateContext();
 		ImGui_ImplSDL2_InitForVulkan(pWindow);
 		ImGui::StyleColorsDark();
+		std::string imguiVer = ImGui::GetVersion();
+		VMI_LOG(spacing << "ImGui version: " << imguiVer);
 	}
 	void destroy()
 	{
@@ -57,6 +63,11 @@ private:
 	}
 	void create_vulkan_instance()
 	{
+		uint32_t apiVersion = VK_API_VERSION_1_1;
+		std::string spacing = "    ";
+		VMI_LOG(spacing << "Vulkan API version: 1.1");
+
+
 		// Look for all the available extensions
 		std::vector<vk::ExtensionProperties> availableExtensions = vk::enumerateInstanceExtensionProperties();
 		if (false) {
@@ -75,7 +86,6 @@ private:
 		DEBUG_ONLY(vk::DebugUtilsMessengerCreateInfoEXT messengerInfo = Logging::SetupDebugMessenger(extensions));
 
 		// Log output:
-		std::string spacing = "    ";
 		VMI_LOG(spacing << "Required instance extensions:");
 		for (const auto& extension : extensions) VMI_LOG(spacing << "- " << extension);
 
@@ -85,7 +95,7 @@ private:
 			.setApplicationVersion(VK_MAKE_API_VERSION(0, 0, 1, 0))
 			.setPEngineName("Vermillion")
 			.setEngineVersion(VK_MAKE_API_VERSION(0, 0, 1, 0))
-			.setApiVersion(VK_API_VERSION_1_1);
+			.setApiVersion(apiVersion);
 
 		// Use validation layer on debug
 		DEBUG_ONLY(layers.push_back("VK_LAYER_KHRONOS_validation"));

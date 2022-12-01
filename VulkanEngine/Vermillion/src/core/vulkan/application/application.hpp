@@ -183,12 +183,17 @@ private:
 		}
 		
 		// shift key to switch between render mode and filter mode
-		if (input.keysDown.count(SDLK_LSHIFT) || input.keysDown.count(SDLK_RSHIFT)) {
+		if (input.keysDown.count(SDLK_LSHIFT)) {
 			if (input.keysPressed.count(SDLK_F1)) pushConstant.iFilterMode = 0;
 			else if (input.keysPressed.count(SDLK_F2)) pushConstant.iFilterMode = 1;
 			else if (input.keysPressed.count(SDLK_F3)) pushConstant.iFilterMode = 2;
 			else if (input.keysPressed.count(SDLK_F4)) pushConstant.iFilterMode = 3;
 			else if (input.keysPressed.count(SDLK_F5)) pushConstant.iFilterMode = 4;
+		}
+		else if (input.keysDown.count(SDLK_LCTRL)) {
+			if (input.keysPressed.count(SDLK_F1)) pushConstant.iPostProcessingMode = 0;
+			else if (input.keysPressed.count(SDLK_F2)) pushConstant.iPostProcessingMode = 1;
+			else if (input.keysPressed.count(SDLK_F3)) pushConstant.iPostProcessingMode = 2;
 		}
 		else {
 			if (input.keysPressed.count(SDLK_F1)) pushConstant.iRenderMode = 0;
@@ -199,6 +204,7 @@ private:
 			else if (input.keysPressed.count(SDLK_F6)) pushConstant.iRenderMode = 5;
 			else if (input.keysPressed.count(SDLK_F7)) pushConstant.iRenderMode = 6;
 		}
+
 	}
 	
 	void toggle_fullscreen()

@@ -143,7 +143,7 @@ public:
 
 	void handle_input(DeviceWrapper& deviceWrapper, Input& input)
 	{
-		if (input.keysPressed.count(SDLK_LCTRL)) {
+		if (input.keysPressed.count(SDLK_RCTRL)) {
 			bSimulateLightfield = !bSimulateLightfield;
 			if (!bSimulateLightfield) lightfield.load_images(deviceWrapper, allocator, transientCommandPool);
 		}

@@ -23,8 +23,8 @@
 
 // monday:
 // mean squared error/sum of absolute differences for comparison
-// comparison to ideal depth/disparity
-// why the hell are they using .pfm file formats for ground truth..
+// comparison to ideal depth/disparity // DONE (kinda)
+// ->>why the hell are they using .pfm file formats for ground truth..
 // -> its not even standard pfm, its just a grayscale..
 // -> worse yet, its in big endian.. actually its not, header is just encoded in ascii for some reason
 // -> oh god its getting worse, it is reversed.. but only on its y axis..
@@ -35,6 +35,8 @@
 
 // TODO: update ui with all the new features!
 // general ui cleanup..
+// use camera distance in depth formula
+// fill low certainty, talk about in paper
 
 // extra:
 // gauss blur as post processing
@@ -77,6 +79,7 @@ float4 get_gradients(int3 texPos, int tapSize, float p[9], float d[9])
             {
                 for (int v = 0; v < nCams; v++)
                 {
+                    // selecting cameras to be used, not working with current filter
                     bool3x3 enabledCams = {
                         true, true, true,
                         true, true, true,
@@ -115,6 +118,10 @@ float4 get_heat(float val)
     // heatmap view (https://www.shadertoy.com/view/WslGRN)
     float heatLvl = val * 3.14159265 / 2;
     return float4(sin(heatLvl), sin(heatLvl * 2), cos(heatLvl), 1.0f);
+}
+float convert(float val)
+{
+    return (val + 10.0f) / 20.0f;
 }
 
 float4 main(float4 screenPos : SV_Position) : SV_Target
@@ -189,7 +196,7 @@ float4 main(float4 screenPos : SV_Position) : SV_Target
     
     if (pcs.iRenderMode == 0) // middle view
     {
-        return colBuffArr[uint3(screenPos.xy, 4)];
+        return colBuffArr[uint3(screenPos.xy, 4)]; // TODO: switch between views?
     }
     else if (pcs.iRenderMode == 1) // gradients view (Lx & Lu)
     {
@@ -204,7 +211,7 @@ float4 main(float4 screenPos : SV_Position) : SV_Target
         float s = disparity.x;
         //col = float4(s, s, s, 1.0f);
         
-        return get_heat(s);
+        return convert(s).rrrr;
     }
     else if (pcs.iRenderMode == 4) // depth view
     {
