@@ -32,6 +32,12 @@ float4 read_color(uint2 pos)
         float f = colorTex[pos].r;
         return get_heat(convert_back(f));
     }
+    
+    if (pcs.iRenderMode == 7)
+    {
+        float f = colorTex[pos].r;
+        return convert_back(f).rrrr;
+    }
     else
     {
         return colorTex[pos];
@@ -48,8 +54,7 @@ float4 main(float4 screenPos : SV_Position) : SV_Target
     if (pcs.iRenderMode == 6)
     {
         float comparison = comparisonTex[uint2(screenPos.x, screenPos.y)];
-        float4 color = get_heat(comparison);
-        return color;
+        return get_heat(comparison);
     }
     else
     {
@@ -94,6 +99,18 @@ float4 main(float4 screenPos : SV_Position) : SV_Target
             color.xyz = val;
             
         }
-        return color;
+        
+        if (pcs.iRenderMode == 7) // comparison mode, comparing approximated disparity with approximated depth
+        {
+            float comparison = comparisonTex[uint2(screenPos.x, screenPos.y)];
+            //float disp = read_color(uint2(screenPos.x, screenPos.y)).r;
+            float disp = color.x;
+        //return get_heat(comparison - disp);
+            return (comparison - disp) * (comparison - disp);
+        }
+        else
+        {
+            return color;
+        }
     }
 }

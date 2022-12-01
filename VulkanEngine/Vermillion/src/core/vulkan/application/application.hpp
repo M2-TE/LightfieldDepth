@@ -75,9 +75,10 @@ private:
 	}
 	void imgui_end()
 	{
-		ImGui::Begin("Render Info");
-		ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-		switch (pushConstant.iRenderMode) {
+		if (bShowUI) {
+			ImGui::Begin("Render Info");
+			ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+			switch (pushConstant.iRenderMode) {
 			case 0: ImGui::Text("Color - RGB"); break;
 			case 1: ImGui::Text("Gradients Horizontal - RG"); break;
 			case 2: ImGui::Text("Gradients Vertical - RG"); break;
@@ -92,47 +93,48 @@ private:
 				ImGui::Text("White = N/A");
 				break;
 			}
+			}
+
+			// TODO: show current iFilterMode status
+			//if (pushConstant.bGradientFillers) ImGui::Text("0-filler enabled");
+			//else ImGui::Text("0-filler disabled");
+
+			ImGui::Text("\nKeybinds:");
+			ImGui::Text("F1 - F6: render modes");
+			ImGui::Text("LCTRL: toggle 0.0f filler");
+			ImGui::Text("F10: device memory dump");
+			ImGui::Text("F11: fullscreen");
+			ImGui::End();
+
+			ImGui::Begin("Depth Sliders");
+			ImGui::Text("Depth = 1 / A + B * disparity");
+			ImGui::SliderFloat("Depth Mod A", &pushConstant.depthModA, 0.0f, 1.0f);
+			ImGui::SliderFloat("Depth Mod B", &pushConstant.depthModB, 0.0f, 4.0f);
+			ImGui::End();
+
+			ImGui::Begin("Source Selection");
+			std::string currentDir = std::filesystem::current_path().append("lightfields").string();
+
+			// load all folder names in "lightfields" dynamically
+			std::vector<std::string> mainDirs = get_directories("lightfields");
+			iMainFolder = std::clamp(iMainFolder, 0, (int)mainDirs.size());
+			ImGui::Text("Main Folder");
+			bool bMain = ImGui::ListBox("##0", &iMainFolder, VectorOfStringGetter, (void*)&mainDirs, (int)mainDirs.size());
+
+			// load all folder names within current mainFolder and offer them as options
+			std::vector<std::string> subDirs = get_directories(std::filesystem::path("lightfields").append(mainDirs[iMainFolder]).string());
+			iSubFolder = std::clamp(iSubFolder, 0, (int)subDirs.size());
+			ImGui::Text("Sub Folder");
+			bool bSub = ImGui::ListBox("##1", &iSubFolder, VectorOfStringGetter, (void*)&subDirs, (int)subDirs.size());
+
+			if (bMain || bSub) {
+				mainFolder.assign(mainDirs[iMainFolder]).append("/");
+				subFolder.assign(subDirs[iSubFolder]).append("/");
+				resize(true);
+			}
+			renderer.handle_imgui();
+			ImGui::End();
 		}
-
-		// TODO: show current iFilterMode status
-		//if (pushConstant.bGradientFillers) ImGui::Text("0-filler enabled");
-		//else ImGui::Text("0-filler disabled");
-
-		ImGui::Text("\nKeybinds:");
-		ImGui::Text("F1 - F6: render modes");
-		ImGui::Text("LCTRL: toggle 0.0f filler");
-		ImGui::Text("F10: device memory dump");
-		ImGui::Text("F11: fullscreen");
-		ImGui::End();
-
-		ImGui::Begin("Depth Sliders");
-		ImGui::Text("Depth = 1 / A + B * disparity");
-		ImGui::SliderFloat("Depth Mod A", &pushConstant.depthModA, 0.0f, 1.0f);
-		ImGui::SliderFloat("Depth Mod B", &pushConstant.depthModB, 0.0f, 4.0f);
-		ImGui::End();
-
-		ImGui::Begin("Source Selection");
-		std::string currentDir = std::filesystem::current_path().append("lightfields").string();
-
-		// load all folder names in "lightfields" dynamically
-		std::vector<std::string> mainDirs = get_directories("lightfields");
-		iMainFolder = std::clamp(iMainFolder, 0, (int)mainDirs.size());
-		ImGui::Text("Main Folder");
-		bool bMain = ImGui::ListBox("##0", &iMainFolder, VectorOfStringGetter, (void*)&mainDirs, (int)mainDirs.size());
-
-		// load all folder names within current mainFolder and offer them as options
-		std::vector<std::string> subDirs = get_directories(std::filesystem::path("lightfields").append(mainDirs[iMainFolder]).string());
-		iSubFolder = std::clamp(iSubFolder, 0, (int)subDirs.size());
-		ImGui::Text("Sub Folder");
-		bool bSub = ImGui::ListBox("##1", &iSubFolder, VectorOfStringGetter, (void*)&subDirs, (int)subDirs.size());
-
-		if (bMain || bSub) {
-			mainFolder.assign(mainDirs[iMainFolder]).append("/");
-			subFolder.assign(subDirs[iSubFolder]).append("/");
-			resize(true);
-		}
-		renderer.handle_imgui();
-		ImGui::End();
 
 		ImGui::EndFrame();
 	}
@@ -181,6 +183,9 @@ private:
 		if (input.keysPressed.count(SDLK_F10)) {
 			renderer.dump_mem_vma();
 		}
+		if (input.keysPressed.count(SDLK_F9)) {
+			bShowUI = !bShowUI;
+		}
 		
 		// shift key to switch between render mode and filter mode
 		if (input.keysDown.count(SDLK_LSHIFT)) {
@@ -203,6 +208,7 @@ private:
 			else if (input.keysPressed.count(SDLK_F5)) pushConstant.iRenderMode = 4;
 			else if (input.keysPressed.count(SDLK_F6)) pushConstant.iRenderMode = 5;
 			else if (input.keysPressed.count(SDLK_F7)) pushConstant.iRenderMode = 6;
+			else if (input.keysPressed.count(SDLK_F8)) pushConstant.iRenderMode = 7;
 		}
 
 	}
@@ -241,6 +247,7 @@ private:
 	std::string mainFolder = "training/";
 	std::string subFolder = "cotton/";
 
+	bool bShowUI = true;
 	bool bPaused = false;
 	uint32_t fullscreenMode = 0;
 	//const uint32_t fullscreenModeTarget = SDL_WINDOW_FULLSCREEN;

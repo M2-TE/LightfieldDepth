@@ -206,7 +206,7 @@ float4 main(float4 screenPos : SV_Position) : SV_Target
     {
         return float4(gradients.y, gradients.w, 0.0f, 1.0f);
     }
-    else if (pcs.iRenderMode == 3) // disparity view
+    else if (pcs.iRenderMode == 3 || pcs.iRenderMode == 7) // disparity view
     {
         float s = disparity.x;
         //col = float4(s, s, s, 1.0f);
@@ -216,7 +216,8 @@ float4 main(float4 screenPos : SV_Position) : SV_Target
     else if (pcs.iRenderMode == 4) // depth view
     {
         // derive depth from disparity
-        float depth = 1.0f / (pcs.depthModA + pcs.depthModB * disparity.x);
+        //float depth = 1.0f / (pcs.depthModA + pcs.depthModB * disparity.x);
+        float depth = 1.0f / (pcs.depthModA + pcs.depthModB * abs(disparity.x));
         //col = float4(depth, depth, depth, 1.0f);
         
         return get_heat(depth);

@@ -95,6 +95,89 @@ public:
 		commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eTransfer, {}, {}, {}, barrier);
 	}
 
+	void compare_disparity(DeviceWrapper& deviceWrapper, vma::Allocator& allocator, vk::CommandPool& commandPool)
+	{
+		std::vector<float> approxImagData(512*512);
+
+		{
+			// staging buffer
+			vk::BufferCreateInfo bufferInfo = vk::BufferCreateInfo()
+				.setSize(512 * 512 * 4)
+				.setUsage(vk::BufferUsageFlagBits::eTransferDst);
+			vma::AllocationCreateInfo allocCreateInfo = vma::AllocationCreateInfo()
+				.setUsage(vma::MemoryUsage::eAuto)
+				.setFlags(vma::AllocationCreateFlagBits::eHostAccessSequentialWrite | vma::AllocationCreateFlagBits::eMapped);
+			vma::AllocationInfo allocInfo;
+			auto stagingBuffer = allocator.createBuffer(bufferInfo, allocCreateInfo, allocInfo);
+
+			vk::CommandBufferAllocateInfo buffAllocInfo = vk::CommandBufferAllocateInfo()
+				.setLevel(vk::CommandBufferLevel::ePrimary)
+				.setCommandPool(commandPool)
+				.setCommandBufferCount(1);
+
+			vk::CommandBuffer commandBuffer;
+			auto res = deviceWrapper.logicalDevice.allocateCommandBuffers(&buffAllocInfo, &commandBuffer);
+
+			// begin recording to temporary command buffer
+			vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo()
+				.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
+			commandBuffer.begin(beginInfo);
+
+			vk::ImageSubresourceLayers subres = vk::ImageSubresourceLayers()
+				.setMipLevel(0)
+				.setBaseArrayLayer(0)
+				.setLayerCount(1)
+				.setAspectMask(vk::ImageAspectFlagBits::eColor);
+
+			vk::BufferImageCopy imgCopyBuffer = vk::BufferImageCopy()
+				.setBufferImageHeight(512)
+				.setBufferRowLength(512)
+				.setBufferOffset(0)
+				.setImageExtent(vk::Extent3D(512, 512, 1))
+				.setImageOffset(0)
+				.setImageSubresource(subres);
+
+			vk::ImageMemoryBarrier barrier = vk::ImageMemoryBarrier()
+				.setOldLayout(vk::ImageLayout::eUndefined)
+				.setNewLayout(vk::ImageLayout::eTransferSrcOptimal)
+				.setImage(disparityImage)
+				.setSubresourceRange(vk::ImageSubresourceRange()
+					.setAspectMask(vk::ImageAspectFlagBits::eColor)
+					.setBaseArrayLayer(0)
+					.setLayerCount(1)
+					.setBaseMipLevel(0)
+					.setLevelCount(1));
+
+			commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eTransfer, {}, {}, {}, barrier);
+			commandBuffer.copyImageToBuffer(disparityImage, vk::ImageLayout::eTransferSrcOptimal, stagingBuffer.first, imgCopyBuffer);
+			commandBuffer.end();
+
+			vk::SubmitInfo submitInfo = vk::SubmitInfo()
+				.setCommandBufferCount(1)
+				.setPCommandBuffers(&commandBuffer);
+			deviceWrapper.queue.submit(submitInfo);
+			deviceWrapper.queue.waitIdle(); // TODO: change this to wait on a fence instead (upon queue submit) so multiple memory transfers would be possible
+
+			// free command buffer directly after use
+			deviceWrapper.logicalDevice.freeCommandBuffers(commandPool, commandBuffer);
+
+			memcpy(approxImagData.data(), allocInfo.pMappedData, approxImagData.size() * 4);
+			allocator.destroyBuffer(stagingBuffer.first, stagingBuffer.second);
+		}
+
+		float sum = 0.0f;
+		for (int i = 0; i < 512 * 512; i++) {
+			struct ColStr{
+				uint8_t r, g, b, a;
+			};
+			ColStr col = *reinterpret_cast<ColStr*>(&approxImagData[i]);
+			float magn = (float)col.r / 255.0f;
+			sum += magn;
+		}
+		sum /= 512 * 512;
+		VMI_LOG("MSE compared to ground truth disparity: " << sum);
+	}
+
 private:
 	void create_images(vma::Allocator& allocator, SwapchainWrapper& swapchainWrapper)
 	{
@@ -132,7 +215,7 @@ private:
 		allocator.setAllocationName(comparisonAlloc, std::string("Comparison").c_str());
 
 		// disparity
-		imageCreateInfo.setUsage(vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment);
+		imageCreateInfo.setUsage(vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment | vk::ImageUsageFlagBits::eTransferSrc);
 		imageCreateInfo.setFormat(colorFormat);
 		result = allocator.createImage(&imageCreateInfo, &allocCreateInfo, &disparityImage, &disparityAlloc, nullptr);
 		if (result != vk::Result::eSuccess) VMI_ERR("Disparity image creation unsuccessful");
