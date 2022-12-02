@@ -100,8 +100,10 @@ private:
 			//else ImGui::Text("0-filler disabled");
 
 			ImGui::Text("\nKeybinds:");
-			ImGui::Text("F1 - F6: render modes");
-			ImGui::Text("LCTRL: toggle 0.0f filler");
+			ImGui::Text("F1 - F8: render modes");
+			ImGui::Text("SHIFT + F1 - F5: tap filter modes");
+			ImGui::Text("LCTRL + F1 - F3: post processing modes");
+			ImGui::Text("RCTRL: toggle sim/benchmark");
 			ImGui::Text("F10: device memory dump");
 			ImGui::Text("F11: fullscreen");
 			ImGui::End();
@@ -243,7 +245,7 @@ private:
 	PC pushConstant;
 
 	// lightfield data directory
-	int iMainFolder = 0, iSubFolder = 0;
+	int iMainFolder = 3, iSubFolder = 1;
 	std::string mainFolder = "training/";
 	std::string subFolder = "cotton/";
 

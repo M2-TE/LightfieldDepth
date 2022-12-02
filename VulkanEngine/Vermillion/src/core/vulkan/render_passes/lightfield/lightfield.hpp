@@ -138,7 +138,7 @@ public:
 				.setImageSubresource(subres);
 
 			vk::ImageMemoryBarrier barrier = vk::ImageMemoryBarrier()
-				.setOldLayout(vk::ImageLayout::eUndefined)
+				.setOldLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
 				.setNewLayout(vk::ImageLayout::eTransferSrcOptimal)
 				.setImage(disparityImage)
 				.setSubresourceRange(vk::ImageSubresourceRange()
@@ -150,6 +150,9 @@ public:
 
 			commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eTransfer, {}, {}, {}, barrier);
 			commandBuffer.copyImageToBuffer(disparityImage, vk::ImageLayout::eTransferSrcOptimal, stagingBuffer.first, imgCopyBuffer);
+			barrier.setOldLayout(vk::ImageLayout::eTransferSrcOptimal);
+			barrier.setNewLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
+			commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eTransfer, {}, {}, {}, barrier);
 			commandBuffer.end();
 
 			vk::SubmitInfo submitInfo = vk::SubmitInfo()
@@ -176,6 +179,7 @@ public:
 		}
 		sum /= 512 * 512;
 		VMI_LOG("MSE compared to ground truth disparity: " << sum);
+		// TODO: show min, max!
 	}
 
 private:

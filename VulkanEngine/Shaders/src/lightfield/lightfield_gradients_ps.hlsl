@@ -1,5 +1,5 @@
-#define BRIGHTNESS(col) dot(col, float3(0.333333f, 0.333333f, 0.333333f)); // using standard greyscale
-//#define BRIGHTNESS(col) dot(col, float3(0.299f, 0.587f, 0.114f)); // using luminance construction
+//#define BRIGHTNESS(col) dot(col, float3(0.333333f, 0.333333f, 0.333333f)); // using standard greyscale
+#define BRIGHTNESS(col) dot(col, float3(0.299f, 0.587f, 0.114f)); // using luminance construction
 
 // anisotropic filtering? - UNFIT (static filter size, would potentially include false depths)
 
@@ -80,12 +80,14 @@ float4 get_gradients(int3 texPos, int tapSize, float p[9], float d[9])
                 for (int v = 0; v < nCams; v++)
                 {
                     // selecting cameras to be used, not working with current filter
-                    bool3x3 enabledCams = {
+                    bool3x3 enabledCams =
+                    {
                         true, true, true,
                         true, true, true,
                         true, true, true
                     };
-                    if (!enabledCams[u][v]) continue;
+                    if (!enabledCams[u][v])
+                        continue;
                     
                     int camIndex = u * 3 + v;
                     int3 texOffset = int3(x - pixelOffset, y - pixelOffset, camIndex);

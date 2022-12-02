@@ -106,7 +106,7 @@ public:
 
 			// reset command pool and then record into it (using command buffer)
 			deviceWrapper.logicalDevice.resetCommandPool(syncFrame.commandPool);
-			record_command_buffer(reg, syncFrame.commandBuffer, iFrame, pushConstant);
+			record_command_buffer(reg, deviceWrapper, syncFrame.commandBuffer, iFrame, pushConstant);
 		}
 
 		// Render (submit)
@@ -246,7 +246,7 @@ private:
 	{
 		systems::Geometry::deallocate(reg, allocator);
 	}
-	void record_command_buffer(entt::registry& reg, vk::CommandBuffer& commandBuffer, uint32_t iFrame, PC pushConstant)
+	void record_command_buffer(entt::registry& reg, DeviceWrapper& deviceWrapper, vk::CommandBuffer& commandBuffer, uint32_t iFrame, PC pushConstant)
 	{
 		// setting up command buffer
 		vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo()
@@ -278,6 +278,8 @@ private:
 		gradientsRenderpass.execute(commandBuffer, pushConstant);
 		lightfield.layout_transition_gradients(commandBuffer, vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
 		disparityRenderpass.execute(commandBuffer, pushConstant);
+
+		lightfield.compare_disparity(deviceWrapper, allocator, transientCommandPool);
 
 		// direct write to swapchain image
 		swapchainWriteRenderpass.execute(commandBuffer, iFrame);
