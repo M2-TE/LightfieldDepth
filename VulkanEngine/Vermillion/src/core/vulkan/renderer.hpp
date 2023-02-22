@@ -144,7 +144,7 @@ public:
 	void handle_input(DeviceWrapper& deviceWrapper, Input& input)
 	{
 		if (input.keysPressed.count(SDLK_SPACE)) {
-			lightfield.compare_disparity(deviceWrapper, allocator, transientCommandPool);
+			//lightfield.compare_disparity(deviceWrapper, allocator, transientCommandPool);
 		}
 		if (input.keysPressed.count(SDLK_RCTRL)) {
 			bSimulateLightfield = !bSimulateLightfield;
@@ -279,7 +279,14 @@ private:
 		lightfield.layout_transition_gradients(commandBuffer, vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
 		disparityRenderpass.execute(commandBuffer, pushConstant);
 
-		lightfield.compare_disparity(deviceWrapper, allocator, transientCommandPool);
+		if (bCompareDisparity) {
+			lightfield.compare_disparity(deviceWrapper, allocator, transientCommandPool);
+			bCompareDisparity = false;
+		}
+		if (bSaveLightfield) {
+			lightfield.save_pfm("disparity0.pfm", deviceWrapper, allocator, transientCommandPool);
+			bSaveLightfield = false;
+		}
 
 		// direct write to swapchain image
 		swapchainWriteRenderpass.execute(commandBuffer, iFrame);
@@ -287,6 +294,11 @@ private:
 		// finalize command buffer
 		commandBuffer.end();
 	}
+
+public:
+	// basically event messengers
+	bool bSaveLightfield = false;
+	bool bCompareDisparity = false;
 
 private:
 	vma::Allocator allocator;

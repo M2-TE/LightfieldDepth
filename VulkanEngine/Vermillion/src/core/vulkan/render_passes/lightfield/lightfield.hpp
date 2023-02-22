@@ -95,6 +95,100 @@ public:
 		commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eTransfer, {}, {}, {}, barrier);
 	}
 
+	void save_pfm(const char* filename, DeviceWrapper& deviceWrapper, vma::Allocator& allocator, vk::CommandPool& commandPool)
+	{
+		int x = 512, y = 512;
+		uint size = x * y * sizeof(float);
+		// staging buffer
+		vk::BufferCreateInfo bufferInfo = vk::BufferCreateInfo()
+			.setSize(size)
+			.setUsage(vk::BufferUsageFlagBits::eTransferDst);
+		vma::AllocationCreateInfo allocCreateInfo = vma::AllocationCreateInfo()
+			.setUsage(vma::MemoryUsage::eAuto)
+			.setFlags(vma::AllocationCreateFlagBits::eHostAccessSequentialWrite | vma::AllocationCreateFlagBits::eMapped);
+		vma::AllocationInfo allocInfo;
+		auto stagingBuffer = allocator.createBuffer(bufferInfo, allocCreateInfo, allocInfo);
+
+		// copy image to staging buffer
+		{
+			vk::CommandBufferAllocateInfo allocInfo = vk::CommandBufferAllocateInfo()
+				.setLevel(vk::CommandBufferLevel::ePrimary)
+				.setCommandPool(commandPool)
+				.setCommandBufferCount(1);
+
+			vk::CommandBuffer commandBuffer;
+			auto res = deviceWrapper.logicalDevice.allocateCommandBuffers(&allocInfo, &commandBuffer);
+
+			// begin recording to temporary command buffer
+			vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo()
+				.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
+			commandBuffer.begin(beginInfo);
+
+			// TODO: describe subresource here, need to select each image in lightfield array individually
+			vk::BufferImageCopy region = vk::BufferImageCopy()
+				// buffer
+				.setBufferRowLength(512)
+				.setBufferImageHeight(512)
+				.setBufferOffset(0)
+				// img
+				.setImageExtent(vk::Extent3D(512, 512, 1))
+				.setImageOffset(0)
+				.setImageSubresource(vk::ImageSubresourceLayers()
+					.setAspectMask(vk::ImageAspectFlagBits::eColor)
+					.setBaseArrayLayer(0)
+					.setLayerCount(1)
+					.setMipLevel(0));
+
+			vk::ImageMemoryBarrier barrier = vk::ImageMemoryBarrier()
+				.setOldLayout(vk::ImageLayout::eUndefined)
+				.setNewLayout(vk::ImageLayout::eTransferSrcOptimal)
+				.setImage(comparisonImage)
+				.setSubresourceRange(vk::ImageSubresourceRange()
+					.setAspectMask(vk::ImageAspectFlagBits::eColor)
+					.setBaseArrayLayer(0)
+					.setLayerCount(1)
+					.setBaseMipLevel(0)
+					.setLevelCount(1));
+			commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eTransfer, {}, {}, {}, barrier);
+			commandBuffer.copyImageToBuffer(comparisonImage, vk::ImageLayout::eTransferSrcOptimal, stagingBuffer.first, region);
+			barrier.oldLayout = vk::ImageLayout::eTransferSrcOptimal;
+			barrier.newLayout = vk::ImageLayout::eReadOnlyOptimal;
+			//barrier.newLayout = vk::ImageLayout::eColorAttachmentOptimal;
+			commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eTransfer, {}, {}, {}, barrier);
+			commandBuffer.end();
+
+			vk::SubmitInfo submitInfo = vk::SubmitInfo()
+				.setCommandBufferCount(1)
+				.setPCommandBuffers(&commandBuffer);
+			deviceWrapper.queue.submit(submitInfo);
+			deviceWrapper.queue.waitIdle(); // TODO: change this to wait on a fence instead (upon queue submit) so multiple memory transfers would be possible
+
+			// free command buffer directly after use
+			deviceWrapper.logicalDevice.freeCommandBuffers(commandPool, commandBuffer);
+		}
+
+		std::ofstream myfile(filename, std::ios::binary);
+		char header[] = { 0x50, 0x66, 0x0A, 0x35, 0x31, 0x32, 0x20, 0x35, 0x31, 0x32, 0x0A, 0x2D, 0x31, 0x0A }; // lazy header
+		myfile.write(header, std::size(header));
+
+
+		comparisonImageData.resize(x * y);
+		// mirror in y axis
+		float* curWrite = comparisonImageData.data();
+		float* curRead = reinterpret_cast<float*>(allocInfo.pMappedData);
+		for (int j = 0; j < y; j++) {
+			int yIndex = (x * y - y - j * y);
+			for (int i = 0; i < x; i++) {
+				curWrite[i + j * y] = curRead[i + yIndex];
+			}
+		}
+
+		myfile.write(reinterpret_cast<char*>(comparisonImageData.data()), comparisonImageData.size() * sizeof(float));
+
+		// clean up
+		allocator.destroyBuffer(stagingBuffer.first, stagingBuffer.second);
+
+	}
 	void compare_disparity(DeviceWrapper& deviceWrapper, vma::Allocator& allocator, vk::CommandPool& commandPool)
 	{
 		std::vector<float> approxImagData(512*512);
@@ -212,7 +306,7 @@ private:
 		allocator.setAllocationName(gradientsAlloc, std::string("Gradients").c_str());
 
 		// comparison
-		imageCreateInfo.setUsage(vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst);
+		imageCreateInfo.setUsage(vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc);
 		imageCreateInfo.setFormat(vk::Format::eR32Sfloat);
 		result = allocator.createImage(&imageCreateInfo, &allocCreateInfo, &comparisonImage, &comparisonAlloc, nullptr);
 		if (result != vk::Result::eSuccess) VMI_ERR("Gradients image creation unsuccessful");
@@ -370,6 +464,11 @@ private:
 		myfile.seekg(0, std::ios::end);
 		std::streampos end = myfile.tellg();
 		myfile.seekg(0, std::ios::beg);
+
+		// read header
+		// TODO
+
+
 		myfile.seekg(14); // header is 14 bytes
 		std::vector<char> imgData(end - begin);
 		myfile.read(imgData.data(), end - begin);

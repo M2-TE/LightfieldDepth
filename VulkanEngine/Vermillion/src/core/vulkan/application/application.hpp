@@ -179,6 +179,8 @@ private:
 	{
 		renderer.handle_input(deviceManager.get_device_wrapper(), input);
 
+
+
 		if (input.keysPressed.count(SDLK_F11)) {
 			toggle_fullscreen();
 		}
@@ -198,6 +200,9 @@ private:
 			else if (input.keysPressed.count(SDLK_F5)) pushConstant.iFilterMode = 4;
 		}
 		else if (input.keysDown.count(SDLK_LCTRL)) {
+			if (input.keysPressed.count(SDLK_s)) {
+				renderer.bSaveLightfield = true;
+			}
 			if (input.keysPressed.count(SDLK_F1)) pushConstant.iPostProcessingMode = 0;
 			else if (input.keysPressed.count(SDLK_F2)) pushConstant.iPostProcessingMode = 1;
 			else if (input.keysPressed.count(SDLK_F3)) pushConstant.iPostProcessingMode = 2;
